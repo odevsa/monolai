@@ -3,7 +3,7 @@ ifeq (version,$(firstword $(MAKECMDGOALS)))
   $(eval $(VERSION_ARG):;@:)
 endif
 
-.PHONY: help all dev dev-host dev-frontend dev-backend build install clean version
+.PHONY: help all dev dev-host dev-frontend dev-backend build install clean version docker-build docker-up docker-down
 
 .DEFAULT_GOAL := help
 
@@ -17,6 +17,9 @@ help:
 	@printf "%-18s %s\n" "dev-frontend" "Start frontend dev server only"
 	@printf "%-18s %s\n" "dev-backend" "Start backend cargo server only"
 	@printf "%-18s %s\n" "build" "Build frontend and release backend"
+	@printf "%-18s %s\n" "docker-build" "Build Docker image locally"
+	@printf "%-18s %s\n" "docker-up" "Start services with docker compose"
+	@printf "%-18s %s\n" "docker-down" "Stop services with docker compose"
 	@printf "%-18s %s\n" "clean" "Remove build artifacts"
 	@printf "%-18s %s\n" "version" "Synchronize project version (usage: make version [x.y.z])"
 
@@ -55,6 +58,15 @@ dev-backend:
 build:
 	npm --prefix frontend run build
 	cargo build --manifest-path backend/Cargo.toml --release
+
+docker-build:
+	docker build -t monolai:latest -f docker/Dockerfile .
+
+docker-up:
+	docker compose up -d
+
+docker-down:
+	docker compose down
 
 clean:
 	rm -rf frontend/build frontend/.svelte-kit

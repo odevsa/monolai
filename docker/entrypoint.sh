@@ -1,9 +1,11 @@
 #!/bin/sh
 set -e
 
-# Ensure directories exist
-mkdir -p "${DATA_DIR:-/app/data}" "${NOTES_DIR:-/app/notes}"
+MODELS_DIR="${MODELS_DIR:-/app/models}"
+RUNTIMES_DIR="${RUNTIMES_DIR:-/app/runtimes}"
+DATA_DIR="${DATA_DIR:-/app/data}"
 
-# Execute command
+mkdir -p "${MODELS_DIR}" "${RUNTIMES_DIR}" "${DATA_DIR}"
+
 exec "$@"
 

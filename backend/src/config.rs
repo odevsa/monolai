@@ -26,8 +26,17 @@ pub struct ConfigStatus {
     pub cli_command_example: String,
 }
 
+pub fn get_env_data_dir() -> Option<PathBuf> {
+    std::env::var("MONOLAI_DATA_DIR")
+        .or_else(|_| std::env::var("DATA_DIR"))
+        .ok()
+        .map(PathBuf::from)
+}
+
 pub fn get_default_config_path() -> PathBuf {
-    if let Some(config_dir) = dirs::config_dir() {
+    if let Some(data_dir) = get_env_data_dir() {
+        data_dir.join("config.yaml")
+    } else if let Some(config_dir) = dirs::config_dir() {
         config_dir.join("monolai").join("config.yaml")
     } else {
         PathBuf::from("config.yaml")
@@ -35,7 +44,11 @@ pub fn get_default_config_path() -> PathBuf {
 }
 
 pub fn get_default_models_dir() -> PathBuf {
-    if let Some(data_dir) = dirs::data_local_dir() {
+    if let Ok(dir) = std::env::var("MODELS_DIR") {
+        PathBuf::from(dir)
+    } else if let Some(data_dir) = get_env_data_dir() {
+        data_dir.join("models")
+    } else if let Some(data_dir) = dirs::data_local_dir() {
         data_dir.join("monolai").join("models")
     } else if let Some(home) = dirs::home_dir() {
         home.join("models")
@@ -45,7 +58,11 @@ pub fn get_default_models_dir() -> PathBuf {
 }
 
 pub fn get_default_runtimes_dir() -> PathBuf {
-    if let Some(data_dir) = dirs::data_local_dir() {
+    if let Ok(dir) = std::env::var("RUNTIMES_DIR") {
+        PathBuf::from(dir)
+    } else if let Some(data_dir) = get_env_data_dir() {
+        data_dir.join("runtimes")
+    } else if let Some(data_dir) = dirs::data_local_dir() {
         data_dir.join("monolai").join("runtimes")
     } else if let Some(home) = dirs::home_dir() {
         home.join(".local").join("share").join("monolai").join("runtimes")
@@ -55,7 +72,9 @@ pub fn get_default_runtimes_dir() -> PathBuf {
 }
 
 pub fn get_default_db_path() -> PathBuf {
-    if let Some(config_dir) = dirs::config_dir() {
+    if let Some(data_dir) = get_env_data_dir() {
+        data_dir.join("app.db")
+    } else if let Some(config_dir) = dirs::config_dir() {
         config_dir.join("monolai").join("app.db")
     } else {
         PathBuf::from("app.db")
@@ -111,7 +130,10 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
 
     let created_auto_file = false;
 
+    let env_hardware = std::env::var("HARDWARE").ok().filter(|h| !h.trim().is_empty());
+
     if !expected_path_buf.exists() {
+        let hardware = env_hardware.unwrap_or_else(|| "auto".to_string());
         let status = ConfigStatus {
             is_valid: false,
             has_models: false,
@@ -122,7 +144,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             expected_path: expected_path_str,
             models_dir: Some(default_models_str),
             runtimes_dir: Some(default_runtimes_str),
-            hardware: "auto".to_string(),
+            hardware,
             error_message: Some("Configuration file does not exist yet. Please complete initial setup.".to_string()),
             example_yaml,
             cli_command_example,
@@ -143,7 +165,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 expected_path: expected_path_str,
                 models_dir: None,
                 runtimes_dir: None,
-                hardware: "auto".to_string(),
+                hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
                 error_message: Some(format!("Failed to read config file: {}", e)),
                 example_yaml,
                 cli_command_example,
@@ -152,7 +174,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         }
     };
 
-    let config: AppConfig = match serde_yaml::from_str(&contents) {
+    let mut config: AppConfig = match serde_yaml::from_str(&contents) {
         Ok(cfg) => cfg,
         Err(e) => {
             let status = ConfigStatus {
@@ -165,7 +187,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 expected_path: expected_path_str,
                 models_dir: None,
                 runtimes_dir: None,
-                hardware: "auto".to_string(),
+                hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
                 error_message: Some(format!("Invalid YAML configuration structure: {}", e)),
                 example_yaml,
                 cli_command_example,
@@ -173,6 +195,20 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             return (AppConfig::default(), status);
         }
     };
+
+    if config.models.is_none() {
+        if let Ok(dir) = std::env::var("MODELS_DIR") {
+            config.models = Some(dir);
+        }
+    }
+    if config.runtimes.is_none() {
+        if let Ok(dir) = std::env::var("RUNTIMES_DIR") {
+            config.runtimes = Some(dir);
+        }
+    }
+    if let Some(ref hw) = env_hardware {
+        config.hardware = Some(hw.clone());
+    }
 
     let has_models = config
         .models

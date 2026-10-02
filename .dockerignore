@@ -13,6 +13,9 @@ target
 backend/target
 
 # App data & local DB
+.monolai/
+models/
+runtimes/
 data/
 *.db
 *.db-shm
