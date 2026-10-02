@@ -1,0 +1,66 @@
+id: sd-cpp
+name: "Stable Diffusion C++ Server"
+version: "master-929-3f8527a"
+website: "https://github.com/leejet/stable-diffusion.cpp"
+description: |
+  Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image,
+  SD1.x, SD2.x, SDXL, FLUX, and SD3.5 model architectures with GPU offload.
+features:
+  - image-generation
+binary_name: "sd-server"
+
+downloads:
+  linux:
+    x86_64:
+      vulkan:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
+        archive_type: "zip"
+      cpu:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64.zip"
+        archive_type: "zip"
+      rocm:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-rocm-7.14.0.zip"
+        archive_type: "zip"
+  windows:
+    x86_64:
+      cpu:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cpu-x64.zip"
+        archive_type: "zip"
+      cuda:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cuda12-x64.zip"
+        archive_type: "zip"
+      vulkan:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-vulkan-x64.zip"
+        archive_type: "zip"
+
+flags:
+  - flag: "--model"
+    name: "Model File"
+    description: "Path to the Stable Diffusion checkpoint/safetensors file"
+    type: "file"
+    important: true
+    default_value: ""
+  - flag: "--vae"
+    name: "VAE File"
+    description: "Path to separate VAE weights file"
+    type: "file"
+    important: false
+    default_value: ""
+  - flag: "--clip_l"
+    name: "CLIP-L File"
+    description: "Path to CLIP-L text encoder file"
+    type: "file"
+    important: false
+    default_value: ""
+  - flag: "--t5xxl"
+    name: "T5-XXL File"
+    description: "Path to T5-XXL text encoder file (FLUX / SD3)"
+    type: "file"
+    important: false
+    default_value: ""
+  - flag: "--threads"
+    name: "CPU Threads"
+    description: "Number of CPU threads to use for generation"
+    type: "int"
+    important: false
+    default_value: "8"

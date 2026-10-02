@@ -1,0 +1,96 @@
+id: llama-cpp
+name: "LLaMA C++ Server"
+version: "b11146"
+website: "https://github.com/ggml-org/llama.cpp"
+description: |
+  High-performance LLM inference engine in C/C++ supporting text generation,
+  OpenAI-compatible HTTP chat and completion endpoints, multimodal vision models,
+  and full or partial GPU layer offloading (CUDA, ROCm, Vulkan, and CPU).
+features:
+  - chat
+  - completion
+  - embeddings
+binary_name: "llama-server"
+
+downloads:
+  linux:
+    x86_64:
+      vulkan:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-vulkan-x64.tar.gz"
+        archive_type: "tar.gz"
+      cpu:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-x64.tar.gz"
+        archive_type: "tar.gz"
+      cuda:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+        archive_type: "tar.gz"
+      rocm:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-rocm-10.0-x64.tar.gz"
+        archive_type: "tar.gz"
+  windows:
+    x86_64:
+      cpu:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cpu-x64.zip"
+        archive_type: "zip"
+      vulkan:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-vulkan-x64.zip"
+        archive_type: "zip"
+      cuda:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-12.4-x64.zip"
+        archive_type: "zip"
+
+flags:
+  - flag: "--model"
+    name: "Model File"
+    description: "Path to the main GGUF model file"
+    type: "file"
+    important: true
+    default_value: ""
+  - flag: "--ctx-size"
+    name: "Context Size"
+    description: "Prompt context window size (e.g. 4096, 8192, 16384)"
+    type: "int"
+    important: true
+    default_value: "4096"
+  - flag: "--n-gpu-layers"
+    name: "GPU Layers"
+    description: "Number of layers offloaded to GPU VRAM (use 99 for all)"
+    type: "int"
+    important: true
+    default_value: "99"
+  - flag: "--mmproj"
+    name: "Multimodal Projector"
+    description: "Path to the mmproj GGUF file for vision models"
+    type: "file"
+    important: false
+    default_value: ""
+  - flag: "--threads"
+    name: "CPU Threads"
+    description: "Number of CPU threads to use for processing"
+    type: "int"
+    important: false
+    default_value: "8"
+  - flag: "--batch-size"
+    name: "Logical Batch Size"
+    description: "Logical batch size for prompt processing"
+    type: "int"
+    important: false
+    default_value: "2048"
+  - flag: "--ubatch-size"
+    name: "Physical Batch Size"
+    description: "Physical batch size for prompt processing"
+    type: "int"
+    important: false
+    default_value: "512"
+  - flag: "--chat-template"
+    name: "Chat Template"
+    description: "Name of built-in Jinja chat template (llama3, chatml, deepseek, etc.)"
+    type: "string"
+    important: false
+    default_value: ""
+  - flag: "--embedding"
+    name: "Enable Embeddings"
+    description: "Enable text embedding generation endpoint"
+    type: "bool"
+    important: false
+    default_value: "false"

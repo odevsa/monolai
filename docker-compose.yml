@@ -1,0 +1,17 @@
+services:
+  monolai:
+    image: odevsa/monolai:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: monolai
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATA_DIR=/app/data
+      - JWT_SECRET=change_this_to_a_secure_random_secret_32_chars
+    volumes:
+      - ./.monolai/base:/app/data/
