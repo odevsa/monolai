@@ -35,6 +35,14 @@ struct Cli {
     #[arg(short, long)]
     listen: Option<String>,
 
+    /// Host address to bind
+    #[arg(long)]
+    host: Option<String>,
+
+    /// Port to bind
+    #[arg(short = 'p', long)]
+    port: Option<u16>,
+
     /// Path to SQLite database
     #[arg(long)]
     db: Option<String>,
@@ -75,8 +83,16 @@ async fn main() {
     let listen_addr_str = if let Some(l) = cli.listen {
         l
     } else {
-        let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-        let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+        let host = cli
+            .host
+            .or_else(|| env::var("HOST").ok())
+            .or_else(|| app_config.host.clone())
+            .unwrap_or_else(|| "0.0.0.0".to_string());
+        let port = cli
+            .port
+            .or_else(|| env::var("PORT").ok().and_then(|p| p.parse().ok()))
+            .or(app_config.port)
+            .unwrap_or(8080);
         format!("{}:{}", host, port)
     };
 

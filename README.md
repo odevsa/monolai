@@ -114,6 +114,10 @@ runtimes: ~/.local/share/monolai/runtimes
 
 # Acceleration target: auto, cpu, cuda, rocm, vulkan, oneapi
 hardware: auto
+
+# Network configuration
+host: 0.0.0.0
+port: 8080
 ```
 
 ### Environment Variables

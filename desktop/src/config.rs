@@ -70,7 +70,7 @@ impl GuiConfig {
             }
         }
 
-        // 2. config.yaml is the SINGLE SOURCE OF TRUTH for models, runtimes, and hardware!
+        // 2. config.yaml is the SINGLE SOURCE OF TRUTH for models, runtimes, hardware, host, and port!
         let yaml_path = Self::backend_yaml_path();
         if let Ok(contents) = fs::read_to_string(&yaml_path) {
             #[derive(Deserialize)]
@@ -78,6 +78,8 @@ impl GuiConfig {
                 models: Option<String>,
                 runtimes: Option<String>,
                 hardware: Option<String>,
+                host: Option<String>,
+                port: Option<u16>,
             }
             if let Ok(y) = serde_yaml::from_str::<YamlPart>(&contents) {
                 if let Some(m) = y.models {
@@ -93,6 +95,16 @@ impl GuiConfig {
                 if let Some(h) = y.hardware {
                     if !h.trim().is_empty() {
                         cfg.hardware = h;
+                    }
+                }
+                if let Some(host) = y.host {
+                    if !host.trim().is_empty() {
+                        cfg.host = host;
+                    }
+                }
+                if let Some(port) = y.port {
+                    if port > 0 {
+                        cfg.port = port;
                     }
                 }
             }
@@ -126,13 +138,18 @@ impl GuiConfig {
             if let Ok(existing) = fs::read_to_string(&yaml_path) {
                 let mut updated = update_yaml_field(&existing, "models", self.models_dir.trim());
                 updated = update_yaml_field(&updated, "runtimes", self.runtimes_dir.trim());
-                update_yaml_field(&updated, "hardware", self.hardware.trim())
+                updated = update_yaml_field(&updated, "hardware", self.hardware.trim());
+                let host_val = if self.host.trim().is_empty() { "0.0.0.0" } else { self.host.trim() };
+                updated = update_yaml_field(&updated, "host", host_val);
+                update_yaml_field(&updated, "port", &self.port.to_string())
             } else {
                 format!(
-                    "# Monolai Configuration File\nmodels: {}\nruntimes: {}\nhardware: {}\n",
+                    "# Monolai Configuration File\nmodels: {}\nruntimes: {}\nhardware: {}\nhost: {}\nport: {}\n",
                     self.models_dir.trim(),
                     self.runtimes_dir.trim(),
-                    self.hardware.trim()
+                    self.hardware.trim(),
+                    self.host.trim(),
+                    self.port
                 )
             }
         } else {
@@ -149,11 +166,17 @@ impl GuiConfig {
                  runtimes: {}\n\n\
                  # 3. Hardware Acceleration:\n\
                  # Preferred target acceleration: auto, cpu, cuda, rocm, vulkan, oneapi\n\
-                 hardware: {}\n",
+                 hardware: {}\n\n\
+                 # 4. Network Configuration:\n\
+                 # Bind address and HTTP port for the Monolai server\n\
+                 host: {}\n\
+                 port: {}\n",
                 yaml_path.display(),
                 self.models_dir.trim(),
                 self.runtimes_dir.trim(),
-                self.hardware.trim()
+                self.hardware.trim(),
+                self.host.trim(),
+                self.port
             )
         };
 

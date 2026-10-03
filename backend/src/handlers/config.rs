@@ -17,6 +17,10 @@ pub struct SaveConfigRequest {
     /// Target hardware acceleration: "auto", "cpu", "cuda", "rocm", or "vulkan"
     #[serde(default = "default_hardware")]
     pub hardware: String,
+    /// Optional host address to bind (e.g. 0.0.0.0 or 127.0.0.1)
+    pub host: Option<String>,
+    /// Optional port to bind (e.g. 8080)
+    pub port: Option<u16>,
 }
 
 fn default_hardware() -> String {
@@ -96,6 +100,8 @@ pub async fn save_setup_config_handler(
         payload.models.trim(),
         payload.runtimes.trim(),
         payload.hardware.trim(),
+        payload.host.as_deref(),
+        payload.port,
     ) {
         return Err((StatusCode::INTERNAL_SERVER_ERROR, err));
     }

@@ -14,7 +14,8 @@
 		AlertCircle,
 		HardDrive,
 		Terminal,
-		Sparkles
+		Sparkles,
+		Network
 	} from '@lucide/svelte';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import CodeBlock from '$lib/components/CodeBlock.svelte';
@@ -30,6 +31,8 @@
 		models_dir: string | null;
 		runtimes_dir: string | null;
 		hardware: string;
+		host: string;
+		port: number;
 		error_message: string | null;
 		example_yaml: string;
 		cli_command_example: string;
@@ -55,6 +58,8 @@
 	let modelsDir = $state('');
 	let runtimesDir = $state('');
 	let selectedHardware = $state('auto');
+	let host = $state('0.0.0.0');
+	let port = $state(8080);
 
 	let isStorageConfigured = $derived(!!configStatus?.has_models && !!configStatus?.has_runtimes);
 
@@ -90,6 +95,12 @@
 				if (status.hardware && status.hardware !== 'auto') {
 					selectedHardware = status.hardware;
 				}
+				if (status.host) {
+					host = status.host;
+				}
+				if (status.port) {
+					port = status.port;
+				}
 			}
 
 			if (hwRes.ok) {
@@ -116,6 +127,15 @@
 			saveError = 'Please specify a valid Runtimes directory.';
 			return;
 		}
+		if (!host.trim()) {
+			saveError = 'Please specify a valid Host address.';
+			return;
+		}
+		const parsedPort = Number(port);
+		if (isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+			saveError = 'Please specify a valid Port number (1-65535).';
+			return;
+		}
 
 		try {
 			saving = true;
@@ -127,7 +147,9 @@
 				body: JSON.stringify({
 					models: targetModels,
 					runtimes: targetRuntimes,
-					hardware: selectedHardware
+					hardware: selectedHardware,
+					host: host.trim(),
+					port: parsedPort
 				})
 			});
 
@@ -504,6 +526,59 @@
 										</p>
 									</button>
 								{/each}
+							</div>
+						</div>
+
+						<!-- Network Configuration -->
+						<div
+							class="flex flex-col gap-3 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
+						>
+							<div class="flex items-center justify-between">
+								<span
+									class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
+								>
+									<Network size={15} class="text-[var(--primary)]" />
+									<span>{isStorageConfigured ? 'Network & Port' : '4. Network Configuration'}</span>
+								</span>
+								<span class="text-[11px] text-[var(--text-muted)] font-mono">
+									Default: 0.0.0.0:8080
+								</span>
+							</div>
+
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<div class="flex flex-col gap-1.5">
+									<label
+										for="host-input"
+										class="text-xs font-semibold text-[var(--text-secondary)]"
+									>
+										Host Address
+									</label>
+									<input
+										id="host-input"
+										type="text"
+										bind:value={host}
+										placeholder="0.0.0.0"
+										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+									/>
+								</div>
+
+								<div class="flex flex-col gap-1.5">
+									<label
+										for="port-input"
+										class="text-xs font-semibold text-[var(--text-secondary)]"
+									>
+										HTTP Port
+									</label>
+									<input
+										id="port-input"
+										type="number"
+										min="1"
+										max="65535"
+										bind:value={port}
+										placeholder="8080"
+										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+									/>
+								</div>
 							</div>
 						</div>
 

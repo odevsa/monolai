@@ -13,7 +13,8 @@
 		RefreshCw,
 		AlertCircle,
 		FileCode,
-		ShieldCheck
+		ShieldCheck,
+		Network
 	} from '@lucide/svelte';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 
@@ -28,6 +29,8 @@
 		models_dir: string | null;
 		runtimes_dir: string | null;
 		hardware: string;
+		host: string;
+		port: number;
 		error_message: string | null;
 		example_yaml: string;
 		cli_command_example: string;
@@ -89,6 +92,8 @@
 	let editModels = $state('');
 	let editRuntimes = $state('');
 	let editHardware = $state('auto');
+	let editHost = $state('0.0.0.0');
+	let editPort = $state(8080);
 
 	// Copy feedback state
 	let copiedField = $state<string | null>(null);
@@ -114,6 +119,8 @@
 	let runtimesPath = $derived(configStatus?.runtimes_dir || 'Not configured');
 	let hardwareSetting = $derived(configStatus?.hardware || 'auto');
 	let hardwareMeta = $derived(getHardwareMeta(hardwareSetting));
+	let hostSetting = $derived(configStatus?.host || '0.0.0.0');
+	let portSetting = $derived(configStatus?.port ?? 8080);
 
 	async function loadConfigData(silent = false) {
 		if (!silent) isLoading = true;
@@ -132,6 +139,8 @@
 				editModels = status.models_dir || '';
 				editRuntimes = status.runtimes_dir || '';
 				editHardware = status.hardware || 'auto';
+				editHost = status.host || '0.0.0.0';
+				editPort = status.port ?? 8080;
 			} else {
 				fetchError = 'Failed to load configuration status from server';
 			}
@@ -153,6 +162,8 @@
 			editModels = configStatus.models_dir || '';
 			editRuntimes = configStatus.runtimes_dir || '';
 			editHardware = configStatus.hardware || 'auto';
+			editHost = configStatus.host || '0.0.0.0';
+			editPort = configStatus.port ?? 8080;
 		}
 		saveError = null;
 		saveSuccess = false;
@@ -164,6 +175,8 @@
 			editModels = configStatus.models_dir || '';
 			editRuntimes = configStatus.runtimes_dir || '';
 			editHardware = configStatus.hardware || 'auto';
+			editHost = configStatus.host || '0.0.0.0';
+			editPort = configStatus.port ?? 8080;
 		}
 		saveError = null;
 		isEditing = false;
@@ -178,6 +191,15 @@
 			saveError = 'Runtimes directory path cannot be empty';
 			return;
 		}
+		if (!editHost.trim()) {
+			saveError = 'Host address cannot be empty';
+			return;
+		}
+		const parsedPort = Number(editPort);
+		if (isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+			saveError = 'Port must be a valid number between 1 and 65535';
+			return;
+		}
 
 		isSaving = true;
 		saveError = null;
@@ -190,7 +212,9 @@
 				body: JSON.stringify({
 					models: editModels.trim(),
 					runtimes: editRuntimes.trim(),
-					hardware: editHardware
+					hardware: editHardware,
+					host: editHost.trim(),
+					port: parsedPort
 				})
 			});
 
@@ -366,7 +390,46 @@
 					</button>
 				</div>
 
-				<!-- 2. Models Directory Item -->
+				<!-- 2. Network & Port Item -->
+				<div
+					class="p-3 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl flex items-center justify-between gap-3 group hover:border-[var(--border-hover)] transition-all shadow-2xs"
+				>
+					<div class="flex items-start gap-2.5 min-w-0">
+						<Network size={16} class="text-[var(--primary)] shrink-0 mt-0.5" />
+						<div class="flex flex-col gap-0.5 min-w-0">
+							<div class="flex items-center gap-2">
+								<span class="text-xs font-semibold text-[var(--text-primary)]">Host & Port</span>
+								<span
+									class="px-1.5 py-0.5 rounded-md text-[0.65rem] font-medium bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]"
+								>
+									HTTP Endpoint
+								</span>
+							</div>
+							<span
+								class="text-[0.725rem] font-mono text-[var(--text-secondary)] truncate max-w-full"
+								title={`${hostSetting}:${portSetting}`}
+							>
+								{hostSetting}:{portSetting}
+							</span>
+						</div>
+					</div>
+
+					<button
+						type="button"
+						onclick={() => handleCopy(`${hostSetting}:${portSetting}`, 'network')}
+						class="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer shrink-0 shadow-2xs"
+						title="Copy host and port"
+						aria-label="Copy host and port"
+					>
+						{#if copiedField === 'network'}
+							<Check size={14} class="text-emerald-500" />
+						{:else}
+							<Copy size={14} />
+						{/if}
+					</button>
+				</div>
+
+				<!-- 3. Models Directory Item -->
 				<div
 					class="p-3 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl flex items-center justify-between gap-3 group hover:border-[var(--border-hover)] transition-all shadow-2xs"
 				>
@@ -499,11 +562,44 @@
 			>
 				<div class="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2.5">
 					<span class="text-xs font-bold text-[var(--text-primary)]">
-						Modify Configuration Paths & Hardware
+						Modify Configuration & Network
 					</span>
 					<span class="text-[0.7rem] text-[var(--text-muted)]">
 						Writes to <code class="font-mono text-[var(--primary)]">config.yaml</code>
 					</span>
+				</div>
+
+				<!-- Host and Port Inputs -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					<div class="flex flex-col gap-1.5">
+						<label for="cfg-host-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+							<Network size={14} class="text-emerald-500" />
+							<span>Host Address</span>
+						</label>
+						<input
+							id="cfg-host-input"
+							type="text"
+							bind:value={editHost}
+							placeholder="0.0.0.0"
+							class="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+						/>
+					</div>
+
+					<div class="flex flex-col gap-1.5">
+						<label for="cfg-port-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+							<span class="text-emerald-500 text-xs font-mono font-bold">#</span>
+							<span>HTTP Port</span>
+						</label>
+						<input
+							id="cfg-port-input"
+							type="number"
+							min="1"
+							max="65535"
+							bind:value={editPort}
+							placeholder="8080"
+							class="w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+						/>
+					</div>
 				</div>
 
 				<!-- Models Input -->

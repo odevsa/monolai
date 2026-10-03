@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub models: Option<String>,
     pub runtimes: Option<String>,
     pub hardware: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -21,6 +23,8 @@ pub struct ConfigStatus {
     pub models_dir: Option<String>,
     pub runtimes_dir: Option<String>,
     pub hardware: String,
+    pub host: String,
+    pub port: u16,
     pub error_message: Option<String>,
     pub example_yaml: String,
     pub cli_command_example: String,
@@ -91,7 +95,13 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     p.to_path_buf()
 }
 
-pub fn generate_commented_example_yaml(expected_path: &str, models_dir: &str, runtimes_dir: &str) -> String {
+pub fn generate_commented_example_yaml(
+    expected_path: &str,
+    models_dir: &str,
+    runtimes_dir: &str,
+    host: &str,
+    port: u16,
+) -> String {
     format!(
         r#"# ==============================================================================
 # Monolai Configuration File
@@ -109,8 +119,13 @@ runtimes: {}
 # 3. Hardware Acceleration:
 # Preferred target acceleration: auto, cpu, cuda, rocm, vulkan, oneapi
 hardware: auto
+
+# 4. Network Configuration:
+# Host address and HTTP port for the Monolai server
+host: {}
+port: {}
 "#,
-        expected_path, models_dir, runtimes_dir
+        expected_path, models_dir, runtimes_dir, host, port
     )
 }
 
@@ -131,13 +146,27 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let expected_path_str = expected_path_buf.to_string_lossy().to_string();
     let default_models_str = get_default_models_dir().to_string_lossy().to_string();
     let default_runtimes_str = get_default_runtimes_dir().to_string_lossy().to_string();
-
-    let example_yaml = generate_commented_example_yaml(&expected_path_str, &default_models_str, &default_runtimes_str);
-    let cli_command_example = format!("monolai --config {}", expected_path_str);
+    let default_host = "0.0.0.0".to_string();
+    let default_port = 8080u16;
 
     let env_models = std::env::var("MODELS_DIR").ok().filter(|m| !m.trim().is_empty());
     let env_runtimes = std::env::var("RUNTIMES_DIR").ok().filter(|r| !r.trim().is_empty());
     let env_hardware = std::env::var("HARDWARE").ok().filter(|h| !h.trim().is_empty());
+    let env_host = std::env::var("HOST").ok().filter(|h| !h.trim().is_empty());
+    let env_port = std::env::var("PORT").ok().and_then(|p| p.parse::<u16>().ok());
+
+    let initial_host = env_host.clone().unwrap_or_else(|| default_host.clone());
+    let initial_port = env_port.unwrap_or(default_port);
+
+    let example_yaml = generate_commented_example_yaml(
+        &expected_path_str,
+        &default_models_str,
+        &default_runtimes_str,
+        &initial_host,
+        initial_port,
+    );
+    let cli_command_example = format!("monolai --config {}", expected_path_str);
+
     let in_docker = is_running_in_docker();
     let mut created_auto_file = false;
 
@@ -149,6 +178,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             &default_models_str,
             &default_runtimes_str,
             &hw_to_save,
+            Some(&initial_host),
+            Some(initial_port),
         ) {
             created_auto_file = true;
             tracing::info!(
@@ -173,6 +204,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             models_dir: Some(models_dir),
             runtimes_dir: Some(runtimes_dir),
             hardware,
+            host: initial_host,
+            port: initial_port,
             error_message: Some("Configuration file does not exist yet. Please complete initial setup.".to_string()),
             example_yaml,
             cli_command_example,
@@ -194,6 +227,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 models_dir: None,
                 runtimes_dir: None,
                 hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
+                host: initial_host,
+                port: initial_port,
                 error_message: Some(format!("Failed to read config file: {}", e)),
                 example_yaml,
                 cli_command_example,
@@ -216,6 +251,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 models_dir: None,
                 runtimes_dir: None,
                 hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
+                host: initial_host,
+                port: initial_port,
                 error_message: Some(format!("Invalid YAML configuration structure: {}", e)),
                 example_yaml,
                 cli_command_example,
@@ -232,6 +269,12 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     }
     if let Some(hw) = env_hardware {
         config.hardware = Some(hw);
+    }
+    if let Some(h) = env_host {
+        config.host = Some(h);
+    }
+    if let Some(p) = env_port {
+        config.port = Some(p);
     }
 
     let has_models = config
@@ -254,6 +297,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let resolved_models_dir = config.models.as_ref().map(|m| expand_tilde(m).to_string_lossy().to_string());
     let resolved_runtimes_dir = config.runtimes.as_ref().map(|r| expand_tilde(r).to_string_lossy().to_string());
     let resolved_hardware = config.hardware.clone().unwrap_or_else(|| "auto".to_string());
+    let resolved_host = config.host.clone().unwrap_or_else(|| default_host.clone());
+    let resolved_port = config.port.unwrap_or(default_port);
 
     let error_message = if is_valid {
         None
@@ -280,6 +325,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         models_dir: resolved_models_dir,
         runtimes_dir: resolved_runtimes_dir,
         hardware: resolved_hardware,
+        host: resolved_host,
+        port: resolved_port,
         error_message,
         example_yaml,
         cli_command_example,
@@ -356,6 +403,8 @@ pub fn save_config(
     models: &str,
     runtimes: &str,
     hardware: &str,
+    host: Option<&str>,
+    port: Option<u16>,
 ) -> Result<PathBuf, String> {
     let target_path = if let Some(p) = explicit_path {
         expand_tilde(p)
@@ -373,20 +422,27 @@ pub fn save_config(
     let runtimes_expanded = expand_tilde(runtimes);
     fs::create_dir_all(&runtimes_expanded).map_err(|e| format!("Failed to create runtimes directory: {}", e))?;
 
+    let host_val = host.map(|h| h.trim()).filter(|h| !h.is_empty()).unwrap_or("0.0.0.0");
+    let port_val = port.unwrap_or(8080);
+
     let final_yaml = if target_path.exists() {
         if let Ok(existing) = fs::read_to_string(&target_path) {
             let mut updated = update_yaml_field(&existing, "models", models.trim());
             updated = update_yaml_field(&updated, "runtimes", runtimes.trim());
             let hw_val = if hardware.trim().is_empty() { "auto" } else { hardware.trim() };
-            update_yaml_field(&updated, "hardware", hw_val)
+            updated = update_yaml_field(&updated, "hardware", hw_val);
+            updated = update_yaml_field(&updated, "host", host_val);
+            update_yaml_field(&updated, "port", &port_val.to_string())
         } else {
-            generate_commented_example_yaml(&target_path.to_string_lossy(), models, runtimes)
+            generate_commented_example_yaml(&target_path.to_string_lossy(), models, runtimes, host_val, port_val)
         }
     } else {
         let yaml_content = generate_commented_example_yaml(
             &target_path.to_string_lossy(),
             models,
             runtimes,
+            host_val,
+            port_val,
         );
         if hardware.trim().is_empty() {
             yaml_content.replace("hardware: auto\n", "# hardware: auto\n")

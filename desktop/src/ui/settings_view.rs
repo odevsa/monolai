@@ -254,6 +254,8 @@ pub fn show_settings_screen(
                     "models": config.models_dir.trim(),
                     "runtimes": config.runtimes_dir.trim(),
                     "hardware": config.hardware.trim(),
+                    "host": config.host.trim(),
+                    "port": config.port,
                 });
                 if let Ok(body) = serde_json::to_string(&payload) {
                     let _ = ureq::post(&format!("http://127.0.0.1:{}/api/config/setup", config.port))

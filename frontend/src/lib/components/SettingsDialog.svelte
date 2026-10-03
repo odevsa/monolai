@@ -36,6 +36,8 @@
 		models_dir: string | null;
 		runtimes_dir: string | null;
 		hardware: string;
+		host?: string;
+		port?: number;
 	} | null>(null);
 
 	$effect(() => {
@@ -324,6 +326,16 @@
 											{configStatus.loaded_path || configStatus.expected_path}
 										</span>
 									</div>
+									{#if configStatus.host !== undefined && configStatus.port !== undefined}
+										<div
+											class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
+										>
+											<span class="text-[var(--text-muted)]">Endpoint</span>
+											<span class="text-[var(--text-primary)] font-mono text-[0.7rem]">
+												{configStatus.host}:{configStatus.port}
+											</span>
+										</div>
+									{/if}
 									<div
 										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
 									>

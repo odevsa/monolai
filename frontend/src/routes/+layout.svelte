@@ -31,6 +31,8 @@
 		loaded_path: string | null;
 		expected_path: string;
 		models_dir: string | null;
+		host?: string;
+		port?: number;
 		error_message: string | null;
 		example_yaml: string;
 	}
