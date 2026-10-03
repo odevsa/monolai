@@ -133,7 +133,7 @@ impl ProcessSupervisor {
         cmd.env("RUNTIMES_DIR", &config.runtimes_dir);
         cmd.arg("--config").arg(GuiConfig::backend_yaml_path());
 
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         unsafe {
             use std::os::unix::process::CommandExt;
             cmd.pre_exec(|| {

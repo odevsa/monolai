@@ -28,10 +28,12 @@ for size in "${SIZES[@]}"; do
     magick -background none "${SOURCE_SVG}" -resize "${size}x${size}" "${out_png}"
   elif command -v rsvg-convert &>/dev/null; then
     rsvg-convert -w "${size}" -h "${size}" -a -f png -o "${out_png}" "${SOURCE_SVG}"
+  elif command -v convert &>/dev/null; then
+    convert -background none "${SOURCE_SVG}" -resize "${size}x${size}" "${out_png}"
   elif command -v inkscape &>/dev/null; then
     inkscape -w "${size}" -h "${size}" -o "${out_png}" "${SOURCE_SVG}"
   else
-    echo "Error: No SVG rasterizer found (magick, rsvg-convert, or inkscape required)." >&2
+    echo "Error: No SVG rasterizer found (magick, convert, rsvg-convert, or inkscape required)." >&2
     exit 1
   fi
 done
@@ -81,6 +83,15 @@ if command -v magick &>/dev/null; then
          "${TMP_DIR}/icon-128.png" \
          "${TMP_DIR}/icon-256.png" \
          "${WINDOWS_ASSETS}/monolai.ico"
+elif command -v convert &>/dev/null; then
+  convert "${TMP_DIR}/icon-16.png" \
+          "${TMP_DIR}/icon-24.png" \
+          "${TMP_DIR}/icon-32.png" \
+          "${TMP_DIR}/icon-48.png" \
+          "${TMP_DIR}/icon-64.png" \
+          "${TMP_DIR}/icon-128.png" \
+          "${TMP_DIR}/icon-256.png" \
+          "${WINDOWS_ASSETS}/monolai.ico"
 fi
 
 echo "==> All OS-specific assets successfully generated in packaging/<os>/assets/!"

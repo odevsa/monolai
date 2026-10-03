@@ -33,9 +33,10 @@ jobs:
           node-version: 20
 
       - name: Build frontend
+        working-directory: frontend
         run: |
-          npm --prefix frontend install
-          npm --prefix frontend run build
+          npm install
+          npm run build
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
