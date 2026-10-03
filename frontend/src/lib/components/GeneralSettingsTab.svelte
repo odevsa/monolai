@@ -2,6 +2,7 @@
 	import { Clock, Save, Check, AlertCircle, RefreshCw, Cpu, ShieldCheck, MessageSquare } from '@lucide/svelte';
 	import { formatTimeoutDuration as formatDuration } from '$lib/utils/format';
 	import { DEFAULT_SYSTEM_PROMPT } from '$lib/utils/context';
+	import SystemConfigCard from './SystemConfigCard.svelte';
 
 	let idleAutoUnloadEnabled = $state<boolean>(true);
 	let idleTimeoutSeconds = $state<number>(300);
@@ -92,23 +93,25 @@
 		idleTimeoutSeconds = seconds;
 	}
 
-
-
 	$effect(() => {
 		loadSettings();
 	});
 </script>
 
-<div class="flex flex-col gap-5">
-	<div class="border-b border-[var(--border-color)] pb-3">
-		<h4 class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-			<Cpu size={18} class="text-[var(--primary)]" />
-			Process Lifecycle & Memory Management
-		</h4>
-		<p class="m-0 text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
-			Configure automatic model unloading and RAM/VRAM resource recycling.
-		</p>
-	</div>
+<div class="flex flex-col gap-6">
+	<!-- Active System Configuration & Storage -->
+	<SystemConfigCard />
+
+	<div class="border-t border-[var(--border-color)] pt-2 flex flex-col gap-4">
+		<div class="border-b border-[var(--border-color)] pb-3">
+			<h4 class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+				<Cpu size={18} class="text-[var(--primary)]" />
+				Process Lifecycle & Memory Management
+			</h4>
+			<p class="m-0 text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+				Configure automatic model unloading and RAM/VRAM resource recycling.
+			</p>
+		</div>
 
 	{#if errorMessage}
 		<div class="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 text-red-500 px-4 py-3 rounded-xl text-xs">
@@ -251,4 +254,5 @@
 			</div>
 		</div>
 	{/if}
+	</div>
 </div>

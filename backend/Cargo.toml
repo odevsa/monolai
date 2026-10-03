@@ -30,11 +30,5 @@ tar = "0.4"
 utoipa = { version = "5.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "reqwest"] }
 
-[profile.release]
-opt-level = 3
-lto = "thin"
-strip = true
-codegen-units = 1
-
 
 

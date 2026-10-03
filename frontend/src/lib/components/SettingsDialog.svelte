@@ -30,6 +30,24 @@
 
 	let activeTab = $state<'general' | 'appearance' | 'models' | 'about'>('general');
 	let modelsTabRef = $state<{ resetView: () => void } | null>(null);
+	let configStatus = $state<{
+		loaded_path: string | null;
+		expected_path: string;
+		models_dir: string | null;
+		runtimes_dir: string | null;
+		hardware: string;
+	} | null>(null);
+
+	$effect(() => {
+		if (open && activeTab === 'about') {
+			fetch('/api/config/status')
+				.then((r) => (r.ok ? r.json() : null))
+				.then((data) => {
+					if (data) configStatus = data;
+				})
+				.catch(() => {});
+		}
+	});
 
 	function selectTab(tab: 'general' | 'appearance' | 'models' | 'about') {
 		if (tab === 'models') {
@@ -64,18 +82,11 @@
 				class="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-[var(--border-color)] shrink-0 bg-[var(--bg-sidebar)]/60 backdrop-blur-md"
 			>
 				<div class="flex items-center gap-2.5">
-					<div
-						class="w-8 h-8 rounded-xl bg-[var(--primary)]/15 text-[var(--primary)] flex items-center justify-center border border-[var(--primary)]/30"
-					>
-						<Sliders size={18} />
-					</div>
+					<Sliders size={20} class="text-[var(--primary)] shrink-0" />
 					<div>
 						<h3 class="m-0 text-base sm:text-lg font-bold text-[var(--text-primary)] leading-none">
 							Settings
 						</h3>
-						<p class="m-0 text-[0.7rem] text-[var(--text-muted)] mt-0.5">
-							Workspace preferences & system controls
-						</p>
 					</div>
 				</div>
 				<button
@@ -295,10 +306,55 @@
 									<span class="text-[var(--text-muted)]">Backend</span>
 									<span class="text-[var(--text-primary)] font-semibold">Rust</span>
 								</div>
-								<div class="flex items-center justify-between text-xs py-1.5">
+								<div
+									class="flex items-center justify-between text-xs py-1.5 {configStatus ? 'border-b border-[var(--border-color)]/60' : ''}"
+								>
 									<span class="text-[var(--text-muted)]">Frontend</span>
 									<span class="text-[var(--text-primary)] font-semibold">Svelte + Tailwind</span>
 								</div>
+								{#if configStatus}
+									<div
+										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
+									>
+										<span class="text-[var(--text-muted)]">Config File</span>
+										<span
+											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
+											title={configStatus.loaded_path || configStatus.expected_path}
+										>
+											{configStatus.loaded_path || configStatus.expected_path}
+										</span>
+									</div>
+									<div
+										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
+									>
+										<span class="text-[var(--text-muted)]">Hardware</span>
+										<span
+											class="text-[var(--primary)] font-bold text-[0.7rem] uppercase tracking-wider bg-[var(--primary-light)] px-1.5 py-0.5 rounded border border-[var(--primary)]/20"
+										>
+											{configStatus.hardware || 'auto'}
+										</span>
+									</div>
+									<div
+										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
+									>
+										<span class="text-[var(--text-muted)]">Models Dir</span>
+										<span
+											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
+											title={configStatus.models_dir || ''}
+										>
+											{configStatus.models_dir || 'Default'}
+										</span>
+									</div>
+									<div class="flex items-center justify-between text-xs py-1.5">
+										<span class="text-[var(--text-muted)]">Runtimes Dir</span>
+										<span
+											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
+											title={configStatus.runtimes_dir || ''}
+										>
+											{configStatus.runtimes_dir || 'Default'}
+										</span>
+									</div>
+								{/if}
 							</div>
 						</div>
 					{/if}

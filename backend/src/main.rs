@@ -146,8 +146,20 @@ async fn main() {
         println!("  - Network:    http://{}:{}", ip, port);
     }
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("Failed to bind to {}: {}", addr, e);
+            eprintln!("\nFatal error: Failed to bind to port {} ({}).", addr.port(), e);
+            eprintln!("Tip: Check if another process or Docker container is already using port {}.\n", addr.port());
+            std::process::exit(1);
+        }
+    };
+    if let Err(e) = axum::serve(listener, app).await {
+        tracing::error!("Server error: {}", e);
+        eprintln!("Server error: {}", e);
+        std::process::exit(1);
+    }
 }
 
 fn get_local_network_ip() -> Option<std::net::IpAddr> {

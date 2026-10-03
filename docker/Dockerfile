@@ -49,14 +49,14 @@ COPY --from=backend-builder /app/backend/target/release/monolai /usr/local/bin/m
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/monolai
 
-ENV HOST=0.0.0.0 \
-    PORT=3000 \
-    HARDWARE=auto \
+ENV DOCKER=true \
+    HOST=0.0.0.0 \
+    PORT=8080 \
     MODELS_DIR=/app/models \
     RUNTIMES_DIR=/app/runtimes \
     DATA_DIR=/app/data
 
-EXPOSE 3000
+EXPOSE 8080
 
 VOLUME ["/app/models", "/app/runtimes", "/app/data"]
 

@@ -56,6 +56,8 @@
 	let runtimesDir = $state('');
 	let selectedHardware = $state('auto');
 
+	let isStorageConfigured = $derived(!!configStatus?.has_models && !!configStatus?.has_runtimes);
+
 	// Copy feedback states
 	let copiedPath = $state(false);
 	let copiedCli = $state(false);
@@ -103,11 +105,14 @@
 	}
 
 	async function saveSetup() {
-		if (!modelsDir.trim()) {
+		const targetModels = modelsDir.trim() || configStatus?.models_dir || '';
+		const targetRuntimes = runtimesDir.trim() || configStatus?.runtimes_dir || '';
+
+		if (!targetModels) {
 			saveError = 'Please specify a valid Models directory.';
 			return;
 		}
-		if (!runtimesDir.trim()) {
+		if (!targetRuntimes) {
 			saveError = 'Please specify a valid Runtimes directory.';
 			return;
 		}
@@ -120,8 +125,8 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					models: modelsDir.trim(),
-					runtimes: runtimesDir.trim(),
+					models: targetModels,
+					runtimes: targetRuntimes,
 					hardware: selectedHardware
 				})
 			});
@@ -238,9 +243,13 @@
 							<Sparkles size={22} />
 						</div>
 						<div>
-							<h1 class="m-0 text-lg font-bold text-[var(--text-primary)]">Monolai Setup</h1>
+							<h1 class="m-0 text-lg font-bold text-[var(--text-primary)]">
+								{isStorageConfigured ? 'Hardware Acceleration' : 'Monolai Setup'}
+							</h1>
 							<p class="m-0 text-xs text-[var(--text-muted)] mt-0.5">
-								Configure storage paths and acceleration to start running local AI models.
+								{isStorageConfigured
+									? 'Select your target hardware acceleration to start running local AI models.'
+									: 'Configure storage paths and acceleration to start running local AI models.'}
 							</p>
 						</div>
 					</div>
@@ -256,31 +265,33 @@
 					</button>
 				</div>
 
-				<!-- Setup Tabs -->
-				<div
-					class="flex items-center gap-1.5 p-1 rounded-xl bg-black/20 border border-[var(--border-color)]"
-				>
-					<button
-						onclick={() => (activeTab = 'wizard')}
-						class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
-						'wizard'
-							? 'bg-[var(--primary)] text-white shadow-sm'
-							: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
+				{#if !isStorageConfigured}
+					<!-- Setup Tabs -->
+					<div
+						class="flex items-center gap-1.5 p-1 rounded-xl bg-black/20 border border-[var(--border-color)]"
 					>
-						<Wand2 size={14} />
-						<span>Interactive Setup</span>
-					</button>
-					<button
-						onclick={() => (activeTab = 'manual')}
-						class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
-						'manual'
-							? 'bg-[var(--primary)] text-white shadow-sm'
-							: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
-					>
-						<FileCode size={14} />
-						<span>Manual Configuration</span>
-					</button>
-				</div>
+						<button
+							onclick={() => (activeTab = 'wizard')}
+							class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
+							'wizard'
+								? 'bg-[var(--primary)] text-white shadow-sm'
+								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
+						>
+							<Wand2 size={14} />
+							<span>Interactive Setup</span>
+						</button>
+						<button
+							onclick={() => (activeTab = 'manual')}
+							class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
+							'manual'
+								? 'bg-[var(--primary)] text-white shadow-sm'
+								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
+						>
+							<FileCode size={14} />
+							<span>Manual Configuration</span>
+						</button>
+					</div>
+				{/if}
 			</header>
 
 			<!-- Content Area -->
@@ -302,69 +313,91 @@
 						}}
 						class="flex flex-col gap-5"
 					>
-						<!-- Step 1: Models Directory -->
-						<div
-							class="flex flex-col gap-2 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
-						>
-							<div class="flex items-center justify-between">
-								<label
-									for="models-dir-input"
-									class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
-								>
-									<HardDrive size={15} class="text-[var(--primary)]" />
-									<span>1. Models Directory</span>
-								</label>
-								<button
-									type="button"
-									onclick={() => {
-										if (configStatus?.models_dir) modelsDir = configStatus.models_dir;
-									}}
-									class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
-								>
-									Reset to default
-								</button>
+						{#if !isStorageConfigured}
+							<!-- Step 1: Models Directory -->
+							<div
+								class="flex flex-col gap-2 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
+							>
+								<div class="flex items-center justify-between">
+									<label
+										for="models-dir-input"
+										class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
+									>
+										<HardDrive size={15} class="text-[var(--primary)]" />
+										<span>1. Models Directory</span>
+									</label>
+									<button
+										type="button"
+										onclick={() => {
+											if (configStatus?.models_dir) modelsDir = configStatus.models_dir;
+										}}
+										class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
+									>
+										Reset to default
+									</button>
+								</div>
+								<input
+									id="models-dir-input"
+									type="text"
+									bind:value={modelsDir}
+									placeholder="e.g. ~/.local/share/monolai/models"
+									class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+								/>
 							</div>
-							<input
-								id="models-dir-input"
-								type="text"
-								bind:value={modelsDir}
-								placeholder="e.g. ~/.local/share/monolai/models"
-								class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
-							/>
-						</div>
 
-						<!-- Step 2: Runtimes Directory -->
-						<div
-							class="flex flex-col gap-2 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
-						>
-							<div class="flex items-center justify-between">
-								<label
-									for="runtimes-dir-input"
-									class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
-								>
-									<Folder size={15} class="text-[var(--primary)]" />
-									<span>2. Runtimes Directory</span>
-								</label>
-								<button
-									type="button"
-									onclick={() => {
-										if (configStatus?.runtimes_dir) runtimesDir = configStatus.runtimes_dir;
-									}}
-									class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
-								>
-									Reset to default
-								</button>
+							<!-- Step 2: Runtimes Directory -->
+							<div
+								class="flex flex-col gap-2 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
+							>
+								<div class="flex items-center justify-between">
+									<label
+										for="runtimes-dir-input"
+										class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
+									>
+										<Folder size={15} class="text-[var(--primary)]" />
+										<span>2. Runtimes Directory</span>
+									</label>
+									<button
+										type="button"
+										onclick={() => {
+											if (configStatus?.runtimes_dir) runtimesDir = configStatus.runtimes_dir;
+										}}
+										class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
+									>
+										Reset to default
+									</button>
+								</div>
+								<input
+									id="runtimes-dir-input"
+									type="text"
+									bind:value={runtimesDir}
+									placeholder="e.g. ~/.local/share/monolai/runtimes"
+									class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+								/>
 							</div>
-							<input
-								id="runtimes-dir-input"
-								type="text"
-								bind:value={runtimesDir}
-								placeholder="e.g. ~/.local/share/monolai/runtimes"
-								class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
-							/>
-						</div>
+						{:else}
+							<!-- Storage Volumes Detected Card -->
+							<div
+								class="flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border-color)] bg-white/[0.02] text-xs"
+							>
+								<div
+									class="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0"
+								>
+									<CheckCircle2 size={16} />
+								</div>
+								<div class="flex flex-col gap-0.5 min-w-0">
+									<div class="font-semibold text-[var(--text-primary)]">
+										Storage Volumes Configured
+									</div>
+									<ul class="text-[11px] text-[var(--text-muted)] font-mono truncate">
+										<li>Models: {configStatus.models_dir || '/app/models'}</li>
+										<li>Runtimes: {configStatus.runtimes_dir || '/app/runtimes'}</li>
+									</ul>
+								</div>
+							</div>
+						{/if}
 
-						<!-- Step 3: Hardware Acceleration -->
+						<!-- Hardware Acceleration -->
 						<div
 							class="flex flex-col gap-3 p-4 rounded-xl border border-[var(--border-color)] bg-white/[0.02]"
 						>
@@ -373,7 +406,7 @@
 									class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
 								>
 									<Zap size={15} class="text-[var(--primary)]" />
-									<span>3. Hardware Acceleration</span>
+									<span>{isStorageConfigured ? 'Hardware Acceleration' : '3. Hardware Acceleration'}</span>
 								</span>
 								{#if hardwareReport}
 									<span class="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
@@ -509,8 +542,12 @@
 									></div>
 									<span>Saving Configuration...</span>
 								{:else}
-									<Wand2 size={15} />
-									<span>Save Configuration & Start Monolai</span>
+									<Check size={15} />
+									<span>
+										{isStorageConfigured
+											? 'Save Hardware & Continue'
+											: 'Save Configuration & Start Monolai'}
+									</span>
 								{/if}
 							</button>
 						</div>

@@ -114,6 +114,13 @@ hardware: auto
     )
 }
 
+pub fn is_running_in_docker() -> bool {
+    std::env::var("DOCKER").map(|v| v == "true" || v == "1").unwrap_or(false)
+        || Path::new("/.dockerenv").exists()
+        || (std::env::var("MODELS_DIR").as_deref() == Ok("/app/models")
+            && std::env::var("RUNTIMES_DIR").as_deref() == Ok("/app/runtimes"))
+}
+
 pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let expected_path_buf = if let Some(p) = explicit_path {
         expand_tilde(p)
@@ -128,11 +135,32 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let example_yaml = generate_commented_example_yaml(&expected_path_str, &default_models_str, &default_runtimes_str);
     let cli_command_example = format!("monolai --config {}", expected_path_str);
 
-    let created_auto_file = false;
-
+    let env_models = std::env::var("MODELS_DIR").ok().filter(|m| !m.trim().is_empty());
+    let env_runtimes = std::env::var("RUNTIMES_DIR").ok().filter(|r| !r.trim().is_empty());
     let env_hardware = std::env::var("HARDWARE").ok().filter(|h| !h.trim().is_empty());
+    let in_docker = is_running_in_docker();
+    let mut created_auto_file = false;
+
+    // In Docker, automatically create the configuration with container volumes
+    if !expected_path_buf.exists() && in_docker {
+        let hw_to_save = env_hardware.clone().unwrap_or_default();
+        if let Ok(_) = save_config(
+            Some(&expected_path_str),
+            &default_models_str,
+            &default_runtimes_str,
+            &hw_to_save,
+        ) {
+            created_auto_file = true;
+            tracing::info!(
+                "Docker environment detected: initialized configuration file at {}",
+                expected_path_str
+            );
+        }
+    }
 
     if !expected_path_buf.exists() {
+        let models_dir = env_models.unwrap_or(default_models_str);
+        let runtimes_dir = env_runtimes.unwrap_or(default_runtimes_str);
         let hardware = env_hardware.unwrap_or_else(|| "auto".to_string());
         let status = ConfigStatus {
             is_valid: false,
@@ -142,8 +170,8 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             created_auto_file,
             loaded_path: None,
             expected_path: expected_path_str,
-            models_dir: Some(default_models_str),
-            runtimes_dir: Some(default_runtimes_str),
+            models_dir: Some(models_dir),
+            runtimes_dir: Some(runtimes_dir),
             hardware,
             error_message: Some("Configuration file does not exist yet. Please complete initial setup.".to_string()),
             example_yaml,
@@ -196,18 +224,14 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         }
     };
 
-    if config.models.is_none() {
-        if let Ok(dir) = std::env::var("MODELS_DIR") {
-            config.models = Some(dir);
-        }
+    if let Some(dir) = env_models {
+        config.models = Some(dir);
     }
-    if config.runtimes.is_none() {
-        if let Ok(dir) = std::env::var("RUNTIMES_DIR") {
-            config.runtimes = Some(dir);
-        }
+    if let Some(dir) = env_runtimes {
+        config.runtimes = Some(dir);
     }
-    if let Some(ref hw) = env_hardware {
-        config.hardware = Some(hw.clone());
+    if let Some(hw) = env_hardware {
+        config.hardware = Some(hw);
     }
 
     let has_models = config
@@ -225,7 +249,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         .as_ref()
         .map_or(false, |h| !h.trim().is_empty());
 
-    let is_valid = has_models && has_runtimes;
+    let is_valid = has_models && has_runtimes && has_hardware;
 
     let resolved_models_dir = config.models.as_ref().map(|m| expand_tilde(m).to_string_lossy().to_string());
     let resolved_runtimes_dir = config.runtimes.as_ref().map(|r| expand_tilde(r).to_string_lossy().to_string());
@@ -237,8 +261,12 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         Some("Both 'models' directory and 'runtimes' directory must be specified.".to_string())
     } else if !has_models {
         Some("Missing 'models' directory specification in configuration.".to_string())
-    } else {
+    } else if !has_runtimes {
         Some("Missing 'runtimes' directory specification in configuration.".to_string())
+    } else if !has_hardware {
+        Some("Hardware acceleration target must be configured.".to_string())
+    } else {
+        None
     };
 
     let status = ConfigStatus {
@@ -260,7 +288,69 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     (config, status)
 }
 
-/// Save new configuration to file.
+/// Updates a single key: value in YAML content while preserving comments and layout.
+pub fn update_yaml_field(content: &str, key: &str, value: &str) -> String {
+    let mut replaced = false;
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+
+    // 1. Try to find active key: e.g. "models: ..." or "  models : ..."
+    for line in lines.iter_mut() {
+        let trimmed = line.trim();
+        if trimmed.starts_with(key) {
+            let rest = trimmed[key.len()..].trim_start();
+            if rest.starts_with(':') {
+                let indent_len = line.len() - line.trim_start().len();
+                let indent = &line[..indent_len];
+                let val_part = rest[1..].trim();
+                if let Some(comment_idx) = val_part.find('#') {
+                    let comment = &val_part[comment_idx..];
+                    *line = format!("{}{}: {} {}", indent, key, value, comment);
+                } else {
+                    *line = format!("{}{}: {}", indent, key, value);
+                }
+                replaced = true;
+                break;
+            }
+        }
+    }
+
+    // 2. If not found as active key, check if it was commented out: e.g. "# hardware: auto" or "#hardware: auto"
+    if !replaced {
+        for line in lines.iter_mut() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('#') {
+                let unhash = trimmed[1..].trim_start();
+                if unhash.starts_with(key) {
+                    let rest = unhash[key.len()..].trim_start();
+                    if rest.starts_with(':') {
+                        let indent_len = line.len() - line.trim_start().len();
+                        let indent = &line[..indent_len];
+                        *line = format!("{}{}: {}", indent, key, value);
+                        replaced = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut result = lines.join("\n");
+    if content.ends_with('\n') {
+        result.push('\n');
+    }
+
+    // 3. If key doesn't exist anywhere in the file, append it
+    if !replaced {
+        if !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
+        }
+        result.push_str(&format!("{}: {}\n", key, value));
+    }
+
+    result
+}
+
+/// Save new configuration to file while preserving existing comments.
 pub fn save_config(
     explicit_path: Option<&str>,
     models: &str,
@@ -283,17 +373,28 @@ pub fn save_config(
     let runtimes_expanded = expand_tilde(runtimes);
     fs::create_dir_all(&runtimes_expanded).map_err(|e| format!("Failed to create runtimes directory: {}", e))?;
 
-    let yaml_content = generate_commented_example_yaml(
-        &target_path.to_string_lossy(),
-        models,
-        runtimes,
-    );
-
-    // If hardware is specified, update or append it
-    let final_yaml = if hardware != "auto" {
-        yaml_content.replace("hardware: auto", &format!("hardware: {}", hardware))
+    let final_yaml = if target_path.exists() {
+        if let Ok(existing) = fs::read_to_string(&target_path) {
+            let mut updated = update_yaml_field(&existing, "models", models.trim());
+            updated = update_yaml_field(&updated, "runtimes", runtimes.trim());
+            let hw_val = if hardware.trim().is_empty() { "auto" } else { hardware.trim() };
+            update_yaml_field(&updated, "hardware", hw_val)
+        } else {
+            generate_commented_example_yaml(&target_path.to_string_lossy(), models, runtimes)
+        }
     } else {
-        yaml_content
+        let yaml_content = generate_commented_example_yaml(
+            &target_path.to_string_lossy(),
+            models,
+            runtimes,
+        );
+        if hardware.trim().is_empty() {
+            yaml_content.replace("hardware: auto\n", "# hardware: auto\n")
+        } else if hardware != "auto" {
+            yaml_content.replace("hardware: auto", &format!("hardware: {}", hardware))
+        } else {
+            yaml_content
+        }
     };
 
     fs::write(&target_path, final_yaml).map_err(|e| format!("Failed to write configuration file: {}", e))?;
