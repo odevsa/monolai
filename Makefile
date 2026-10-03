@@ -3,7 +3,7 @@ ifeq (version,$(firstword $(MAKECMDGOALS)))
   $(eval $(VERSION_ARG):;@:)
 endif
 
-.PHONY: help all dev dev-host dev-frontend dev-backend build build-server build-desktop build-all install clean version docker-build docker-up docker-down
+.PHONY: help all dev dev-host dev-frontend dev-backend build build-server build-desktop build-all icons install clean version docker-build docker-up docker-down
 
 .DEFAULT_GOAL := help
 
@@ -20,6 +20,7 @@ help:
 	@printf "%-18s %s\n" "build" "Build both server and desktop release binaries"
 	@printf "%-18s %s\n" "build-server" "Build frontend and release server binary (monolai)"
 	@printf "%-18s %s\n" "build-desktop" "Build native desktop GUI binary (monolai-gui)"
+	@printf "%-18s %s\n" "icons" "Generate app icons (PNGs, ICO, ICNS) from SVG"
 	@printf "%-18s %s\n" "docker-build" "Build Docker image locally"
 	@printf "%-18s %s\n" "docker-up" "Start services with docker compose"
 	@printf "%-18s %s\n" "docker-down" "Stop services with docker compose"
@@ -71,6 +72,9 @@ build-desktop:
 build: build-server build-desktop
 
 build-all: build
+
+icons:
+	./packaging/scripts/generate-icons.sh
 
 docker-build:
 	docker build -t monolai:latest -f docker/Dockerfile .

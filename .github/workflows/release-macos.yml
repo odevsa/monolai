@@ -1,0 +1,100 @@
+name: Release macOS
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            target: aarch64-apple-darwin
+            runner: macos-latest
+          - arch: x86_64
+            target: x86_64-apple-darwin
+            runner: macos-13
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: |
+          npm --prefix frontend install
+          npm --prefix frontend run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build server & desktop binaries
+        run: |
+          cargo build --manifest-path backend/Cargo.toml --release --target ${{ matrix.target }}
+          cargo build --manifest-path desktop/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Generate icons
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install imagemagick
+          chmod +x packaging/scripts/generate-icons.sh packaging/scripts/make_icns.py
+          ./packaging/scripts/generate-icons.sh
+
+      - name: Package Monolai.app & DMG
+        run: |
+          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          STAGING="dist/macos-staging"
+          APP_DIR="${STAGING}/Monolai.app"
+          OUTPUT_DMG="dist/monolai-v${VERSION}-macos-${{ matrix.arch }}.dmg"
+
+          mkdir -p dist
+          mkdir -p "${APP_DIR}/Contents/MacOS"
+          mkdir -p "${APP_DIR}/Contents/Resources"
+
+          install -m 755 "backend/target/${{ matrix.target }}/release/monolai" "${APP_DIR}/Contents/MacOS/monolai"
+          install -m 755 "desktop/target/${{ matrix.target }}/release/monolai-gui" "${APP_DIR}/Contents/MacOS/monolai-gui"
+          install -m 644 packaging/macos/assets/monolai.icns "${APP_DIR}/Contents/Resources/monolai.icns"
+
+          sed "s/VERSION_PLACEHOLDER/${VERSION}/g" packaging/macos/Info.plist > "${APP_DIR}/Contents/Info.plist"
+          echo -n "APPL????" > "${APP_DIR}/Contents/PkgInfo"
+
+          ln -sf /Applications "${STAGING}/Applications"
+
+          hdiutil create \
+            -volname "Monolai" \
+            -srcfolder "${STAGING}" \
+            -ov \
+            -format UDZO \
+            "${OUTPUT_DMG}"
+
+          rm -rf "${STAGING}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolai-macos-${{ matrix.arch }}
+          path: dist/*.dmg
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          gh release upload "${TAG}" dist/*.dmg --clobber

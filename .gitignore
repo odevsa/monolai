@@ -1,6 +1,8 @@
 # Rust / Cargo
 backend/target/
+desktop/target/
 target/
+dist/
 *.rs.bk
 
 # Node / Frontend

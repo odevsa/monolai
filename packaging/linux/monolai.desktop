@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Monolai
+GenericName=Local AI Model Manager
+Comment=Lightweight, local AI model manager and OpenAI-compatible runtime
+Exec=monolai-gui %U
+Icon=monolai
+Terminal=false
+Categories=Utility;Development;ArtificialIntelligence;
+Keywords=ai;llm;openai;gguf;models;monolai;
+StartupWMClass=monolai
+StartupNotify=true
+MimeType=x-scheme-handler/monolai;

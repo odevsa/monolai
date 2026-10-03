@@ -1,0 +1,100 @@
+name: Release Windows
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Windows (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            target: x86_64-pc-windows-msvc
+          - arch: arm64
+            target: aarch64-pc-windows-msvc
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          npm --prefix frontend install
+          npm --prefix frontend run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Install NSIS
+        shell: bash
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" >> $GITHUB_PATH
+
+      - name: Build server & desktop binaries
+        shell: bash
+        run: |
+          cargo build --manifest-path backend/Cargo.toml --release --target ${{ matrix.target }}
+          cargo build --manifest-path desktop/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Package Windows Installer & Portable ZIP
+        shell: bash
+        run: |
+          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          BIN_DIR="desktop/target/${{ matrix.target }}/release"
+          # Ensure backend exe is in the same folder for packaging
+          cp "backend/target/${{ matrix.target }}/release/monolai.exe" "${BIN_DIR}/monolai.exe"
+          mkdir -p dist
+
+          # 1. Portable ZIP
+          PORTABLE_DIR="dist/monolai-v${VERSION}-windows-${{ matrix.arch }}"
+          mkdir -p "${PORTABLE_DIR}"
+          cp "${BIN_DIR}/monolai.exe" "${PORTABLE_DIR}/"
+          cp "${BIN_DIR}/monolai-gui.exe" "${PORTABLE_DIR}/"
+          cp "packaging/windows/assets/monolai.ico" "${PORTABLE_DIR}/"
+          if [ -f README.md ]; then cp README.md "${PORTABLE_DIR}/"; fi
+          (cd dist && 7z a "monolai-v${VERSION}-windows-${{ matrix.arch }}-portable.zip" "monolai-v${VERSION}-windows-${{ matrix.arch }}")
+          rm -rf "${PORTABLE_DIR}"
+
+          # 2. NSIS Installer (.exe)
+          makensis \
+            -DVERSION="${VERSION}" \
+            -DARCH="${{ matrix.arch }}" \
+            -DBIN_DIR="${BIN_DIR}" \
+            -DASSETS_DIR="packaging/windows/assets" \
+            -DOUT_DIR="dist" \
+            packaging/windows/monolai.nsi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolai-windows-${{ matrix.arch }}
+          path: dist/*
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          gh release upload "${TAG}" dist/* --clobber

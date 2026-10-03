@@ -54,12 +54,12 @@ impl DesktopApp {
         let logo_dark = components::load_png_texture(
             &cc.egui_ctx,
             "logo_dark",
-            include_bytes!("../../assets/icons/logo-dark-128.png"),
+            include_bytes!("../assets/icons/logo-dark-128.png"),
         );
         let logo_light = components::load_png_texture(
             &cc.egui_ctx,
             "logo_light",
-            include_bytes!("../../assets/icons/logo-light-128.png"),
+            include_bytes!("../assets/icons/logo-light-128.png"),
         );
 
         let mut app = Self {

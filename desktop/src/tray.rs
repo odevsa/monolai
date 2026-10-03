@@ -51,8 +51,8 @@ impl TrayManager {
         let _ = menu.append(&PredefinedMenuItem::separator());
         let _ = menu.append(&quit_item);
 
-        let icon_running = Self::load_icon(include_bytes!("../../assets/tray/tray-running.png"))?;
-        let icon_stopped = Self::load_icon(include_bytes!("../../assets/tray/tray-stopped.png"))?;
+        let icon_running = Self::load_icon(include_bytes!("../assets/tray/tray-running.png"))?;
+        let icon_stopped = Self::load_icon(include_bytes!("../assets/tray/tray-stopped.png"))?;
 
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))

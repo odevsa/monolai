@@ -1,0 +1,159 @@
+name: Release Linux
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            deb_arch: amd64
+            appimage_arch: x86_64
+            target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - arch: arm64
+            deb_arch: arm64
+            appimage_arch: aarch64
+            target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev pkg-config imagemagick xz-utils libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: |
+          npm --prefix frontend install
+          npm --prefix frontend run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build server & desktop binaries
+        run: |
+          cargo build --manifest-path backend/Cargo.toml --release --target ${{ matrix.target }}
+          cargo build --manifest-path desktop/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Generate icons
+        run: |
+          chmod +x packaging/scripts/generate-icons.sh packaging/scripts/make_icns.py
+          ./packaging/scripts/generate-icons.sh
+
+      - name: Package DEB, Tar.xz & AppImage
+        run: |
+          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          SERVER_BIN="backend/target/${{ matrix.target }}/release/monolai"
+          GUI_BIN="desktop/target/${{ matrix.target }}/release/monolai-gui"
+          mkdir -p dist
+
+          # -----------------------------------------------------------------
+          # 1. Debian Package (.deb)
+          # -----------------------------------------------------------------
+          DEB_DIR="dist/monolai-deb-${{ matrix.deb_arch }}"
+          mkdir -p "${DEB_DIR}/usr/bin"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/usr/share/icons"
+          mkdir -p "${DEB_DIR}/DEBIAN"
+
+          install -m 755 "${SERVER_BIN}" "${DEB_DIR}/usr/bin/monolai"
+          install -m 755 "${GUI_BIN}" "${DEB_DIR}/usr/bin/monolai-gui"
+          install -m 644 packaging/linux/monolai.desktop "${DEB_DIR}/usr/share/applications/monolai.desktop"
+          cp -r packaging/linux/assets/icons/hicolor "${DEB_DIR}/usr/share/icons/"
+
+          {
+            echo "Package: monolai"
+            echo "Version: ${VERSION}"
+            echo "Section: utils"
+            echo "Priority: optional"
+            echo "Architecture: ${{ matrix.deb_arch }}"
+            echo "Maintainer: Monolai Team <dev@monolai.io>"
+            echo "Depends: libc6, libgcc-s1"
+            echo "Homepage: https://github.com/odevsa/monolai"
+            echo "Description: Local AI Model Manager & OpenAI-compatible runtime"
+            echo " Monolai provides a lightweight local runtime and supervisor for GGUF models."
+          } > "${DEB_DIR}/DEBIAN/control"
+
+          dpkg-deb --build "${DEB_DIR}" "dist/monolai_${VERSION}_${{ matrix.deb_arch }}.deb"
+          rm -rf "${DEB_DIR}"
+
+          # -----------------------------------------------------------------
+          # 2. Portable Archive (.tar.xz)
+          # -----------------------------------------------------------------
+          TAR_DIR="dist/monolai-v${VERSION}-linux-${{ matrix.arch }}"
+          mkdir -p "${TAR_DIR}/bin"
+          mkdir -p "${TAR_DIR}/share/applications"
+          mkdir -p "${TAR_DIR}/share/icons"
+
+          install -m 755 "${SERVER_BIN}" "${TAR_DIR}/bin/monolai"
+          install -m 755 "${GUI_BIN}" "${TAR_DIR}/bin/monolai-gui"
+          install -m 644 packaging/linux/monolai.desktop "${TAR_DIR}/share/applications/monolai.desktop"
+          cp -r packaging/linux/assets/icons/hicolor "${TAR_DIR}/share/icons/"
+          if [ -f README.md ]; then cp README.md "${TAR_DIR}/"; fi
+
+          (cd dist && tar -cJf "monolai-v${VERSION}-linux-${{ matrix.arch }}.tar.xz" "monolai-v${VERSION}-linux-${{ matrix.arch }}")
+          rm -rf "${TAR_DIR}"
+
+          # -----------------------------------------------------------------
+          # 3. Linux AppImage (.AppImage)
+          # -----------------------------------------------------------------
+          APPDIR="dist/AppDir"
+          mkdir -p "${APPDIR}/usr/bin"
+          mkdir -p "${APPDIR}/usr/share/applications"
+          mkdir -p "${APPDIR}/usr/share/icons"
+
+          install -m 755 "${SERVER_BIN}" "${APPDIR}/usr/bin/monolai"
+          install -m 755 "${GUI_BIN}" "${APPDIR}/usr/bin/monolai-gui"
+          install -m 644 packaging/linux/monolai.desktop "${APPDIR}/monolai.desktop"
+          install -m 644 packaging/linux/monolai.desktop "${APPDIR}/usr/share/applications/monolai.desktop"
+          cp packaging/linux/assets/monolai.png "${APPDIR}/monolai.png"
+          ln -sf monolai.png "${APPDIR}/.DirIcon"
+          cp -r packaging/linux/assets/icons/hicolor "${APPDIR}/usr/share/icons/"
+
+          ln -sf usr/bin/monolai-gui "${APPDIR}/AppRun"
+
+          curl -L -f --retry 3 "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.appimage_arch }}.AppImage" -o /tmp/appimagetool || \
+          curl -L -f --retry 3 "https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-${{ matrix.appimage_arch }}.AppImage" -o /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+
+          export ARCH="${{ matrix.appimage_arch }}"
+          /tmp/appimagetool --appimage-extract-and-run "${APPDIR}" "dist/monolai-v${VERSION}-linux-${{ matrix.arch }}.AppImage" || true
+          rm -rf "${APPDIR}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolai-linux-${{ matrix.arch }}
+          path: dist/*
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          gh release upload "${TAG}" dist/* --clobber

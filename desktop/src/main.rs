@@ -10,7 +10,7 @@ use eframe::egui::{self, IconData};
 use std::sync::Arc;
 
 fn load_window_icon() -> Option<IconData> {
-    let bytes = include_bytes!("../../assets/icons/logo-dark-128.png");
+    let bytes = include_bytes!("../assets/icons/logo-dark-128.png");
     if let Ok(img) = image::load_from_memory(bytes) {
         let rgba = img.to_rgba8();
         let (width, height) = rgba.dimensions();

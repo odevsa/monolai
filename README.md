@@ -25,6 +25,7 @@
 - **Web UI**: SvelteKit 5 dashboard with real-time hardware telemetry (CPU, RAM, GPU) via SSE and persistent chat history.
 - **GUI Interfaces**: Native Desktop App (`monolai-gui`) with system tray, background daemon supervisor.
 - **OpenAPI Documentation**: Interactive Swagger UI at `/api/swagger`.
+- **Multi-platform**: Linux, MacOS, Windows and Docker.
 
 ## Quick Start
 
@@ -202,6 +203,7 @@ Interactive Swagger documentation is available at **http://localhost:8080/api/sw
 | `make build`           | Build release binaries for both server and desktop           |
 | `make build-server`    | Compile frontend and build release server binary (`monolai`) |
 | `make build-desktop`   | Build release desktop binary (`monolai-gui`)                 |
+| `make icons`           | Generate all multi-resolution icons (PNG, ICO, ICNS)         |
 | `make clean`           | Remove build artifacts                                       |
 | `make version [x.y.z]` | Synchronize project version across manifests                 |
 
