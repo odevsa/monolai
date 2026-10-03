@@ -92,6 +92,8 @@ elif command -v convert &>/dev/null; then
           "${TMP_DIR}/icon-128.png" \
           "${TMP_DIR}/icon-256.png" \
           "${WINDOWS_ASSETS}/monolai.ico"
+fi
+
 if [ -f "${WINDOWS_ASSETS}/monolai.ico" ]; then
   cp "${WINDOWS_ASSETS}/monolai.ico" "${ROOT_DIR}/desktop/assets/monolai.ico"
 fi
