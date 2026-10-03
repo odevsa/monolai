@@ -47,6 +47,7 @@ pub async fn runtimes_handler(State(state): State<AppState>) -> Json<Vec<Runtime
         (crate::config::expand_tilde(dir), hw)
     };
 
+    let hw_report = crate::runtimes::hardware::detect_hardware();
     let active_accel = resolve_target_acceleration(configured_hardware.as_deref());
     let manifests = get_runtime_manifests();
     let mut items = Vec::new();
@@ -56,6 +57,38 @@ pub async fn runtimes_handler(State(state): State<AppState>) -> Json<Vec<Runtime
         let is_installed = binary_path.is_some();
         let installed_path = binary_path.map(|p| p.to_string_lossy().to_string());
         let progress = state.installer_manager.get_progress(&manifest.id);
+        let installed_accel = crate::runtimes::installer::get_installed_acceleration(&runtimes_dir, &manifest.id);
+
+        let avail_keys = manifest.get_available_accelerations(&hw_report.os, &hw_report.arch);
+        let mut avail_options = Vec::new();
+        let mut recommended_found = false;
+
+        for key in avail_keys {
+            let is_rec = if !recommended_found {
+                if key == active_accel
+                    || (active_accel == "cuda" && key.starts_with("cuda"))
+                    || (active_accel == "metal" && key == "metal")
+                {
+                    recommended_found = true;
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
+            let label = crate::runtimes::manifest_loader::format_acceleration_label(&key);
+            avail_options.push(crate::runtimes::manifest_loader::AccelerationOption {
+                id: key,
+                label,
+                is_recommended: is_rec,
+            });
+        }
+
+        if !recommended_found && !avail_options.is_empty() {
+            avail_options[0].is_recommended = true;
+        }
 
         items.push(RuntimeItem {
             id: manifest.id,
@@ -68,6 +101,8 @@ pub async fn runtimes_handler(State(state): State<AppState>) -> Json<Vec<Runtime
             is_installed,
             installed_path,
             active_acceleration: active_accel.clone(),
+            installed_acceleration: installed_accel,
+            available_accelerations: avail_options,
             install_progress: progress,
         });
     }

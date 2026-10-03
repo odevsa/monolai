@@ -1,4 +1,5 @@
 use crate::config::{AppConfig, ConfigStatus};
+use crate::runtimes::hardware::GpuTracker;
 use crate::runtimes::installer::RuntimeInstallerManager;
 use crate::runtimes::process_manager::ProcessManager;
 use sqlx::SqlitePool;
@@ -14,4 +15,6 @@ pub struct AppState {
     pub db: SqlitePool,
     pub process_manager: ProcessManager,
     pub installer_manager: Arc<RuntimeInstallerManager>,
+    pub gpu_tracker: Arc<GpuTracker>,
 }
+

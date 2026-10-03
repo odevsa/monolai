@@ -1,5 +1,5 @@
 use crate::runtimes::hardware::{detect_hardware, resolve_target_acceleration};
-use crate::runtimes::manifest_loader::{get_manifest_for_runtime, RuntimeManifest};
+use crate::runtimes::manifest_loader::{get_manifest_for_runtime, AccelerationOption, RuntimeManifest};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,6 +33,8 @@ pub struct RuntimeItem {
     pub is_installed: bool,
     pub installed_path: Option<String>,
     pub active_acceleration: String,
+    pub installed_acceleration: Option<String>,
+    pub available_accelerations: Vec<AccelerationOption>,
     pub install_progress: Option<InstallProgress>,
 }
 
@@ -66,6 +68,162 @@ impl RuntimeInstallerManager {
         }
         let _ = self.broadcaster.send(progress);
     }
+}
+
+pub fn get_installed_acceleration(runtimes_dir: &Path, runtime_id: &str) -> Option<String> {
+    let meta_path = runtimes_dir.join(runtime_id).join(".monolai_metadata.json");
+    if let Ok(content) = fs::read_to_string(meta_path) {
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+            return val.get("acceleration").and_then(|a| a.as_str()).map(|s| s.to_string());
+        }
+    }
+    None
+}
+
+fn save_installed_metadata(dest_dir: &Path, runtime_id: &str, version: &str, acceleration: &str) {
+    let meta_path = dest_dir.join(".monolai_metadata.json");
+    let json = serde_json::json!({
+        "runtime_id": runtime_id,
+        "version": version,
+        "acceleration": acceleration,
+        "installed_at": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+    });
+    let _ = fs::write(meta_path, json.to_string());
+}
+
+fn flatten_single_child_dir(dir: &Path) -> io::Result<()> {
+    let entries: Vec<_> = fs::read_dir(dir)?
+        .filter_map(|e| e.ok())
+        .collect();
+
+    if entries.len() == 1 && entries[0].file_type().map_or(false, |t| t.is_dir()) {
+        let child_dir = entries[0].path();
+        let sub_entries: Vec<_> = fs::read_dir(&child_dir)?
+            .filter_map(|e| e.ok())
+            .collect();
+        for sub in sub_entries {
+            let dest = dir.join(sub.file_name());
+            fs::rename(sub.path(), dest)?;
+        }
+        let _ = fs::remove_dir(child_dir);
+    }
+    Ok(())
+}
+
+fn extract_archive_file(
+    archive_path: &Path,
+    archive_type: &str,
+    extract_dir: &Path,
+) -> Result<(), String> {
+    if archive_type == "zip" || archive_path.to_string_lossy().ends_with(".zip") {
+        let file = File::open(archive_path).map_err(|e| format!("Failed to open zip archive: {}", e))?;
+        let reader = BufReader::new(file);
+        let mut zip = zip::ZipArchive::new(reader).map_err(|e| format!("Failed to parse zip archive: {}", e))?;
+
+        for i in 0..zip.len() {
+            let mut zip_file = zip.by_index(i).map_err(|e| format!("Failed to read zip entry: {}", e))?;
+            let outpath = match zip_file.enclosed_name() {
+                Some(path) => extract_dir.join(path),
+                None => continue,
+            };
+
+            if zip_file.is_dir() {
+                fs::create_dir_all(&outpath).map_err(|e| format!("Failed to create dir: {}", e))?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        fs::create_dir_all(p).map_err(|e| format!("Failed to create parent dir: {}", e))?;
+                    }
+                }
+                let mut outfile = File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
+                io::copy(&mut zip_file, &mut outfile).map_err(|e| format!("Failed to copy file: {}", e))?;
+            }
+        }
+    } else if archive_type == "tar.gz" || archive_path.to_string_lossy().ends_with(".tar.gz") {
+        let file = File::open(archive_path).map_err(|e| format!("Failed to open tar.gz archive: {}", e))?;
+        let tar = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(tar);
+        archive.unpack(extract_dir).map_err(|e| format!("Failed to unpack tar.gz: {}", e))?;
+    } else {
+        return Err(format!("Unsupported archive format: {}", archive_type));
+    }
+    Ok(())
+}
+
+async fn download_and_stream(
+    client: &reqwest::Client,
+    url: &str,
+    dest_path: &Path,
+    installer_mgr: &RuntimeInstallerManager,
+    runtime_id: &str,
+    status_label: &str,
+    base_percent: f32,
+    percent_span: f32,
+) -> Result<u64, String> {
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to initiate download: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Download failed with HTTP status {}: {}", response.status(), url));
+    }
+
+    let total_bytes = response.content_length().unwrap_or(0);
+    let mut downloaded_bytes: u64 = 0;
+    let mut stream = response.bytes_stream();
+
+    let mut file = tokio::fs::File::create(dest_path)
+        .await
+        .map_err(|e| format!("Failed to create temporary archive file: {}", e))?;
+
+    let start_time = Instant::now();
+    let mut last_progress_report = Instant::now();
+
+    while let Some(chunk_result) = stream.next().await {
+        let chunk = chunk_result.map_err(|e| format!("Error while streaming download: {}", e))?;
+        use tokio::io::AsyncWriteExt;
+        file.write_all(&chunk)
+            .await
+            .map_err(|e| format!("Error writing chunk to disk: {}", e))?;
+
+        downloaded_bytes += chunk.len() as u64;
+
+        if last_progress_report.elapsed().as_millis() > 200 || downloaded_bytes == total_bytes {
+            last_progress_report = Instant::now();
+            let elapsed_secs = start_time.elapsed().as_secs_f32();
+            let speed_mbps = if elapsed_secs > 0.0 {
+                (downloaded_bytes as f32 / (1024.0 * 1024.0)) / elapsed_secs
+            } else {
+                0.0
+            };
+
+            let fraction = if total_bytes > 0 {
+                downloaded_bytes as f32 / total_bytes as f32
+            } else {
+                0.5
+            };
+            let percent = base_percent + fraction * percent_span;
+
+            installer_mgr.update_progress(InstallProgress {
+                runtime_id: runtime_id.to_string(),
+                status: status_label.to_string(),
+                percent,
+                speed_mbps,
+                downloaded_bytes,
+                total_bytes,
+                error_message: None,
+            });
+        }
+    }
+
+    use tokio::io::AsyncWriteExt;
+    file.flush().await.map_err(|e| format!("Failed to flush archive file: {}", e))?;
+    Ok(downloaded_bytes)
 }
 
 /// Check if a given runtime is physically installed in the runtimes directory.
@@ -112,7 +270,7 @@ pub fn uninstall_runtime(runtimes_dir: &Path, runtime_id: &str) -> Result<(), St
     Ok(())
 }
 
-/// Download and extract a runtime.
+/// Download and extract a runtime and its dependencies.
 pub async fn install_runtime(
     installer_mgr: Arc<RuntimeInstallerManager>,
     runtimes_dir: PathBuf,
@@ -149,11 +307,11 @@ pub async fn install_runtime(
     fs::create_dir_all(&runtimes_dir)
         .map_err(|e| format!("Failed to create runtimes directory: {}", e))?;
 
-    let temp_archive_path = runtimes_dir.join(format!(".tmp_download_{}.archive", runtime_id));
+    let main_archive_path = runtimes_dir.join(format!(".tmp_main_{}.archive", runtime_id));
     let temp_extract_dir = runtimes_dir.join(format!(".tmp_extract_{}", runtime_id));
 
-    // Cleanup any leftovers from failed previous attempts
-    let _ = fs::remove_file(&temp_archive_path);
+    // Cleanup leftovers from any previous failed attempts
+    let _ = fs::remove_file(&main_archive_path);
     let _ = fs::remove_dir_all(&temp_extract_dir);
 
     // Initial progress
@@ -173,143 +331,117 @@ pub async fn install_runtime(
         .build()
         .map_err(|e| format!("HTTP client error: {}", e))?;
 
-    let response = client
-        .get(&download_target.url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to initiate download: {}", e))?;
+    let num_extras = download_target.extra_archives.len();
+    let total_archives = 1 + num_extras;
+    let download_span_per_archive = 85.0 / total_archives as f32;
 
-    if !response.status().is_success() {
-        let err = format!(
-            "Download failed with HTTP status: {} (URL: {})",
-            response.status(),
-            download_target.url
-        );
-        installer_mgr.update_progress(InstallProgress {
-            runtime_id: runtime_id.clone(),
-            status: "error".to_string(),
-            percent: 0.0,
-            speed_mbps: 0.0,
-            downloaded_bytes: 0,
-            total_bytes: 0,
-            error_message: Some(err.clone()),
-        });
-        return Err(err);
-    }
-
-    let total_bytes = response.content_length().unwrap_or(0);
-    let mut downloaded_bytes: u64 = 0;
-    let mut stream = response.bytes_stream();
-
-    let mut file = tokio::fs::File::create(&temp_archive_path)
-        .await
-        .map_err(|e| format!("Failed to create temporary archive file: {}", e))?;
-
-    let start_time = Instant::now();
-    let mut last_progress_report = Instant::now();
-
-    while let Some(chunk_result) = stream.next().await {
-        let chunk = chunk_result.map_err(|e| format!("Error while streaming download: {}", e))?;
-        use tokio::io::AsyncWriteExt;
-        file.write_all(&chunk)
-            .await
-            .map_err(|e| format!("Error writing chunk to disk: {}", e))?;
-
-        downloaded_bytes += chunk.len() as u64;
-
-        if last_progress_report.elapsed().as_millis() > 200 || downloaded_bytes == total_bytes {
-            last_progress_report = Instant::now();
-            let elapsed_secs = start_time.elapsed().as_secs_f32();
-            let speed_mbps = if elapsed_secs > 0.0 {
-                (downloaded_bytes as f32 / (1024.0 * 1024.0)) / elapsed_secs
-            } else {
-                0.0
-            };
-
-            let percent = if total_bytes > 0 {
-                (downloaded_bytes as f32 / total_bytes as f32) * 100.0
-            } else {
-                50.0
-            };
-
+    // 1. Download main archive
+    let mut total_downloaded_bytes: u64 = 0;
+    match download_and_stream(
+        &client,
+        &download_target.url,
+        &main_archive_path,
+        &installer_mgr,
+        &runtime_id,
+        "downloading",
+        0.0,
+        download_span_per_archive,
+    ).await {
+        Ok(bytes) => total_downloaded_bytes += bytes,
+        Err(err) => {
+            let _ = fs::remove_file(&main_archive_path);
             installer_mgr.update_progress(InstallProgress {
                 runtime_id: runtime_id.clone(),
-                status: "downloading".to_string(),
-                percent,
-                speed_mbps,
-                downloaded_bytes,
-                total_bytes,
-                error_message: None,
+                status: "error".to_string(),
+                percent: 0.0,
+                speed_mbps: 0.0,
+                downloaded_bytes: 0,
+                total_bytes: 0,
+                error_message: Some(err.clone()),
             });
+            return Err(err);
         }
     }
 
-    // Flush file
-    use tokio::io::AsyncWriteExt;
-    file.flush().await.map_err(|e| format!("Failed to flush archive file: {}", e))?;
-    drop(file);
+    // 2. Download any extra archives (e.g. CUDA DLLs)
+    let mut extra_archive_paths = Vec::new();
+    for (i, extra) in download_target.extra_archives.iter().enumerate() {
+        let extra_path = runtimes_dir.join(format!(".tmp_extra_{}_{}.archive", runtime_id, i));
+        let _ = fs::remove_file(&extra_path);
+        let base_p = (1 + i) as f32 * download_span_per_archive;
 
-    // Extraction phase
+        tracing::info!(
+            "Downloading extra dependency for runtime '{}': {}",
+            runtime_id,
+            extra.url
+        );
+
+        match download_and_stream(
+            &client,
+            &extra.url,
+            &extra_path,
+            &installer_mgr,
+            &runtime_id,
+            "downloading dependencies",
+            base_p,
+            download_span_per_archive,
+        ).await {
+            Ok(bytes) => {
+                total_downloaded_bytes += bytes;
+                extra_archive_paths.push((extra_path, extra.archive_type.clone()));
+            }
+            Err(err) => {
+                let _ = fs::remove_file(&main_archive_path);
+                for (p, _) in &extra_archive_paths {
+                    let _ = fs::remove_file(p);
+                }
+                let _ = fs::remove_file(&extra_path);
+                installer_mgr.update_progress(InstallProgress {
+                    runtime_id: runtime_id.clone(),
+                    status: "error".to_string(),
+                    percent: 0.0,
+                    speed_mbps: 0.0,
+                    downloaded_bytes: 0,
+                    total_bytes: 0,
+                    error_message: Some(err.clone()),
+                });
+                return Err(err);
+            }
+        }
+    }
+
+    // 3. Extraction phase
     installer_mgr.update_progress(InstallProgress {
         runtime_id: runtime_id.clone(),
         status: "extracting".to_string(),
-        percent: 99.0,
+        percent: 90.0,
         speed_mbps: 0.0,
-        downloaded_bytes,
-        total_bytes,
+        downloaded_bytes: total_downloaded_bytes,
+        total_bytes: total_downloaded_bytes,
         error_message: None,
     });
 
     fs::create_dir_all(&temp_extract_dir)
         .map_err(|e| format!("Failed to create temporary extraction directory: {}", e))?;
 
-    let extract_result = tokio::task::spawn_blocking({
-        let archive_path = temp_archive_path.clone();
-        let extract_dir = temp_extract_dir.clone();
-        let archive_type = download_target.archive_type.clone();
+    let main_archive_clone = main_archive_path.clone();
+    let temp_extract_clone = temp_extract_dir.clone();
+    let main_archive_type = download_target.archive_type.clone();
 
-        move || -> Result<(), String> {
-            if archive_type == "zip" || archive_path.to_string_lossy().ends_with(".zip") {
-                let file = File::open(&archive_path).map_err(|e| format!("Failed to open zip archive: {}", e))?;
-                let reader = BufReader::new(file);
-                let mut zip = zip::ZipArchive::new(reader).map_err(|e| format!("Failed to parse zip archive: {}", e))?;
-
-                for i in 0..zip.len() {
-                    let mut zip_file = zip.by_index(i).map_err(|e| format!("Failed to read zip entry: {}", e))?;
-                    let outpath = match zip_file.enclosed_name() {
-                        Some(path) => extract_dir.join(path),
-                        None => continue,
-                    };
-
-                    if zip_file.is_dir() {
-                        fs::create_dir_all(&outpath).map_err(|e| format!("Failed to create dir: {}", e))?;
-                    } else {
-                        if let Some(p) = outpath.parent() {
-                            if !p.exists() {
-                                fs::create_dir_all(p).map_err(|e| format!("Failed to create parent dir: {}", e))?;
-                            }
-                        }
-                        let mut outfile = File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
-                        io::copy(&mut zip_file, &mut outfile).map_err(|e| format!("Failed to copy file: {}", e))?;
-                    }
-                }
-            } else if archive_type == "tar.gz" || archive_path.to_string_lossy().ends_with(".tar.gz") {
-                let file = File::open(&archive_path).map_err(|e| format!("Failed to open tar.gz archive: {}", e))?;
-                let tar = flate2::read::GzDecoder::new(file);
-                let mut archive = tar::Archive::new(tar);
-                archive.unpack(&extract_dir).map_err(|e| format!("Failed to unpack tar.gz: {}", e))?;
-            } else {
-                return Err(format!("Unsupported archive format: {}", archive_type));
-            }
-
-            Ok(())
-        }
+    let extract_result = tokio::task::spawn_blocking(move || -> Result<(), String> {
+        // Extract main archive
+        extract_archive_file(&main_archive_clone, &main_archive_type, &temp_extract_clone)?;
+        let _ = flatten_single_child_dir(&temp_extract_clone);
+        Ok(())
     })
     .await
     .map_err(|e| format!("Extraction task panicked: {}", e))?;
 
     if let Err(e) = extract_result {
-        let _ = fs::remove_file(&temp_archive_path);
+        let _ = fs::remove_file(&main_archive_path);
+        for (p, _) in &extra_archive_paths {
+            let _ = fs::remove_file(p);
+        }
         let _ = fs::remove_dir_all(&temp_extract_dir);
         installer_mgr.update_progress(InstallProgress {
             runtime_id: runtime_id.clone(),
@@ -323,24 +455,63 @@ pub async fn install_runtime(
         return Err(e);
     }
 
+    // 4. Extract extra archives (CUDA DLLs, etc.) directly into temp_extract_dir
+    for (extra_path, extra_type) in extra_archive_paths.drain(..) {
+        let temp_sub = runtimes_dir.join(format!(".tmp_sub_extra_{}", runtime_id));
+        let _ = fs::remove_dir_all(&temp_sub);
+        fs::create_dir_all(&temp_sub)
+            .map_err(|e| format!("Failed to create temp dependency dir: {}", e))?;
+
+        let extract_sub = tokio::task::spawn_blocking({
+            let ep = extra_path.clone();
+            let et = extra_type.clone();
+            let ts = temp_sub.clone();
+            move || -> Result<(), String> {
+                extract_archive_file(&ep, &et, &ts)?;
+                let _ = flatten_single_child_dir(&ts);
+                Ok(())
+            }
+        })
+        .await
+        .map_err(|e| format!("Extra extraction task panicked: {}", e))?;
+
+        let _ = fs::remove_file(&extra_path);
+
+        if let Err(e) = extract_sub {
+            tracing::warn!("Warning during extra archive extraction: {}", e);
+        } else {
+            // Copy all extracted DLLs / files into temp_extract_dir
+            if let Ok(entries) = walkdir::WalkDir::new(&temp_sub).into_iter().collect::<Result<Vec<_>, _>>() {
+                for entry in entries {
+                    if entry.file_type().is_file() {
+                        let rel = entry.path().strip_prefix(&temp_sub).unwrap_or(entry.path());
+                        let target_file = temp_extract_dir.join(rel);
+                        if let Some(parent) = target_file.parent() {
+                            let _ = fs::create_dir_all(parent);
+                        }
+                        let _ = fs::copy(entry.path(), &target_file);
+                    }
+                }
+            }
+        }
+        let _ = fs::remove_dir_all(&temp_sub);
+    }
+
+    // Save metadata
+    save_installed_metadata(&temp_extract_dir, &runtime_id, &manifest.version, &acceleration);
+
     // Move to final target directory: runtimes_dir/runtime_id
     let final_dest_dir = runtimes_dir.join(&runtime_id);
     let _ = fs::remove_dir_all(&final_dest_dir);
 
-    // Check if the extracted directory contains a single root folder containing all files
-    let mut actual_source_dir = temp_extract_dir.clone();
-    if let Ok(entries) = fs::read_dir(&temp_extract_dir) {
-        let valid_entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-        if valid_entries.len() == 1 && valid_entries[0].file_type().map_or(false, |t| t.is_dir()) {
-            actual_source_dir = valid_entries[0].path();
-        }
-    }
+    // Re-check flattening one last time
+    let _ = flatten_single_child_dir(&temp_extract_dir);
 
-    fs::rename(&actual_source_dir, &final_dest_dir)
+    fs::rename(&temp_extract_dir, &final_dest_dir)
         .map_err(|e| format!("Failed to move extracted runtime to {}: {}", final_dest_dir.display(), e))?;
 
     // Cleanup temp files
-    let _ = fs::remove_file(&temp_archive_path);
+    let _ = fs::remove_file(&main_archive_path);
     let _ = fs::remove_dir_all(&temp_extract_dir);
 
     // Set executable permissions on Unix
@@ -369,14 +540,15 @@ pub async fn install_runtime(
         status: "completed".to_string(),
         percent: 100.0,
         speed_mbps: 0.0,
-        downloaded_bytes: total_bytes,
-        total_bytes,
+        downloaded_bytes: total_downloaded_bytes,
+        total_bytes: total_downloaded_bytes,
         error_message: None,
     });
 
     tracing::info!(
-        "Runtime '{}' successfully installed at: {}",
+        "Runtime '{}' ({}) successfully installed at: {}",
         runtime_id,
+        acceleration,
         resolved_binary.display()
     );
 

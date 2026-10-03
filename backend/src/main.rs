@@ -140,6 +140,13 @@ async fn main() {
 
 
     let installer_manager = Arc::new(crate::runtimes::installer::RuntimeInstallerManager::new());
+    let gpu_tracker = Arc::new(crate::runtimes::hardware::GpuTracker::new());
+
+    if let Some(ref gpu) = gpu_tracker.primary_gpu() {
+        tracing::info!("Detected primary GPU: {} (vendor: {}, dedicated: {})", gpu.name, gpu.vendor, gpu.is_dedicated);
+    } else {
+        tracing::info!("No dedicated GPU detected on host system.");
+    }
 
     let state = AppState {
         sys: Arc::new(Mutex::new(sys)),
@@ -149,6 +156,7 @@ async fn main() {
         db: db_pool,
         process_manager,
         installer_manager,
+        gpu_tracker,
     };
 
     let app = routes::create_router(state);

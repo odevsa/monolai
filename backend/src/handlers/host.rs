@@ -39,13 +39,15 @@ pub struct OsInfo {
     pub uptime_seconds: u64,
 }
 
+use crate::runtimes::hardware::GpuInfo;
+
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SysInfoResponse {
     pub cpu: CpuInfo,
     pub ram: RamInfo,
     pub os: OsInfo,
     #[schema(value_type = Option<Object>)]
-    pub gpu: Option<serde_json::Value>,
+    pub gpu: Option<GpuInfo>,
     pub timestamp: u64,
 }
 
@@ -102,6 +104,8 @@ pub async fn sysinfo_handler(State(state): State<AppState>) -> Json<SysInfoRespo
     let host_name = System::host_name().unwrap_or_else(|| "localhost".to_string());
     let uptime = System::uptime();
 
+    let gpu = state.gpu_tracker.primary_gpu();
+
     Json(SysInfoResponse {
         cpu: CpuInfo {
             usage: global_cpu_usage,
@@ -122,7 +126,7 @@ pub async fn sysinfo_handler(State(state): State<AppState>) -> Json<SysInfoRespo
             hostname: host_name,
             uptime_seconds: uptime,
         },
-        gpu: None,
+        gpu,
         timestamp: ts,
     })
 }
@@ -141,20 +145,9 @@ pub async fn sysinfo_stream_handler(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = async_stream::stream! {
         let mut interval = tokio::time::interval(Duration::from_millis(500));
-        // TEST DISCONNECT: Uncomment line below to track ticks
-        // let mut tick_count = 0;
 
         loop {
             interval.tick().await;
-
-            // TEST DISCONNECT: Uncomment block below to simulate SSE drop after 5 seconds (10 ticks at 500ms)
-            /*
-            tick_count += 1;
-            if tick_count >= 10 {
-                tracing::info!("Simulating SSE disconnect after 5s");
-                break;
-            }
-            */
 
             let tick = {
                 let mut sys = state.sys.lock().unwrap();
@@ -175,13 +168,15 @@ pub async fn sysinfo_stream_handler(
                     .unwrap_or_default()
                     .as_secs();
 
+                let gpu_usage = state.gpu_tracker.current_usage();
+
                 HostMetricsTick {
                     cpu_usage: global_cpu_usage,
                     ram_used_bytes: used_ram,
                     ram_total_bytes: total_ram,
                     ram_free_bytes: free_ram,
                     ram_percentage: ram_pct,
-                    gpu_usage: None,
+                    gpu_usage,
                     timestamp: ts,
                 }
             };

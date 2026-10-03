@@ -12,11 +12,11 @@ binary_name: "sd-server"
 downloads:
   linux:
     x86_64:
-      vulkan:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
-        archive_type: "zip"
       cpu:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64.zip"
+        archive_type: "zip"
+      vulkan:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
         archive_type: "zip"
       rocm:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-rocm-7.14.0.zip"
@@ -29,8 +29,28 @@ downloads:
       cuda:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cuda12-x64.zip"
         archive_type: "zip"
+        extra_archives:
+          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
+            archive_type: "zip"
+      cuda-12:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cuda12-x64.zip"
+        archive_type: "zip"
+        extra_archives:
+          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
+            archive_type: "zip"
       vulkan:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-vulkan-x64.zip"
+        archive_type: "zip"
+      rocm:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-rocm-7.14.0-x64.zip"
+        archive_type: "zip"
+  macos:
+    arm64:
+      metal:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Darwin-macOS-26.6.2-arm64.zip"
+        archive_type: "zip"
+      cpu:
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Darwin-macOS-26.6.2-arm64.zip"
         archive_type: "zip"
 
 flags:

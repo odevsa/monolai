@@ -42,7 +42,13 @@
 		cpu: CpuInfo;
 		ram: RamInfo;
 		os: OsInfo;
-		gpu: any | null;
+		gpu: {
+			name: string;
+			vendor: string;
+			memory_total_bytes?: number | null;
+			driver_version?: string | null;
+			is_dedicated: boolean;
+		} | null;
 		timestamp: number;
 	}
 
@@ -144,7 +150,7 @@
 
 	let isGpuUnavailable = $derived.by(() => {
 		if (sysinfo && sysinfo.gpu === null) return true;
-		if (latestTick && latestTick.gpu_usage === null) return true;
+		if (!sysinfo && latestTick && latestTick.gpu_usage === null) return true;
 		return false;
 	});
 </script>
@@ -216,7 +222,7 @@
 				<!-- GPU Usage Mountain Chart -->
 				<AreaChart
 					title="GPU Engine"
-					subtitle={!isGpuUnavailable ? 'Dedicated Acceleration' : 'No Dedicated GPU Detected'}
+					subtitle={!isGpuUnavailable ? (sysinfo?.gpu?.name || 'Dedicated Acceleration') : 'No Dedicated GPU Detected'}
 					currentValue={latestTick?.gpu_usage ?? 0}
 					unit="%"
 					color="#a855f7"
@@ -425,7 +431,7 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu ? 'xl:grid-cols-5' : ''} gap-4">
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
@@ -465,6 +471,20 @@
 							>{formatUptime(sysinfo.os.uptime_seconds)}</span
 						>
 					</div>
+
+					{#if sysinfo.gpu}
+						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
+							<span
+								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
+								>Dedicated GPU</span
+							>
+							<span
+								class="text-sm font-semibold text-[var(--text-primary)] truncate"
+								title={sysinfo.gpu.name}
+								>{sysinfo.gpu.name}</span
+							>
+						</div>
+					{/if}
 				</div>
 			</section>
 		{/if}

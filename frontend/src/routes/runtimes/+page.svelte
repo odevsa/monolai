@@ -33,6 +33,12 @@
 		error_message: string | null;
 	}
 
+	interface AccelerationOption {
+		id: string;
+		label: string;
+		is_recommended: boolean;
+	}
+
 	interface Runtime {
 		id: string;
 		name: string;
@@ -44,10 +50,13 @@
 		is_installed: boolean;
 		installed_path: string | null;
 		active_acceleration: string;
+		installed_acceleration: string | null;
+		available_accelerations: AccelerationOption[];
 		install_progress: InstallProgress | null;
 	}
 
 	let runtimes = $state<Runtime[]>([]);
+	let selectedAccelerations = $state<Record<string, string>>({});
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -65,6 +74,17 @@
 			}
 			const data: Runtime[] = await res.json();
 			runtimes = data;
+
+			for (const r of data) {
+				if (!selectedAccelerations[r.id]) {
+					const rec = r.available_accelerations?.find((a) => a.is_recommended);
+					selectedAccelerations[r.id] =
+						r.installed_acceleration ||
+						rec?.id ||
+						r.available_accelerations?.[0]?.id ||
+						r.active_acceleration;
+				}
+			}
 
 			// Reconnect SSE for any runtime currently downloading/extracting
 			for (const runtime of runtimes) {
@@ -138,10 +158,11 @@
 
 			listenProgress(runtimeId);
 
+			const chosenHardware = selectedAccelerations[runtimeId];
 			const res = await fetch(`/api/runtimes/${encodeURIComponent(runtimeId)}/install`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({})
+				body: JSON.stringify({ hardware: chosenHardware })
 			});
 
 			if (!res.ok) {
@@ -298,7 +319,7 @@
 										<div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
 											<Badge variant="pill">v{runtime.version}</Badge>
 											<Badge variant="pill" class="text-[var(--primary)] font-semibold uppercase">
-												{runtime.active_acceleration}
+												{runtime.installed_acceleration || runtime.active_acceleration}
 											</Badge>
 										</div>
 									</div>
@@ -342,6 +363,29 @@
 									<span class="truncate" title={runtime.installed_path}
 										>{runtime.installed_path}</span
 									>
+								</div>
+							{/if}
+
+							<!-- Acceleration Selector -->
+							{#if runtime.available_accelerations && runtime.available_accelerations.length > 0}
+								<div
+									class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-[var(--border-color)]"
+								>
+									<div class="flex flex-col min-w-0">
+										<span class="text-[11px] font-semibold text-[var(--text-secondary)]">Hardware Target</span>
+										<span class="text-[10px] text-[var(--text-muted)] truncate">Choose GPU backend or CUDA version</span>
+									</div>
+									<select
+										class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-[var(--text-primary)] cursor-pointer focus:outline-none focus:border-[var(--primary)] transition disabled:opacity-60 disabled:cursor-not-allowed max-w-[210px]"
+										bind:value={selectedAccelerations[runtime.id]}
+										disabled={isInstalling}
+									>
+										{#each runtime.available_accelerations as opt}
+											<option value={opt.id}>
+												{opt.label}{opt.is_recommended ? ' (Recommended)' : ''}
+											</option>
+										{/each}
+									</select>
 								</div>
 							{/if}
 
