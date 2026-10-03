@@ -106,17 +106,21 @@ impl ProcessSupervisor {
         }
 
         // Pre-flight check: verify if the desired port is already occupied
-        let port_test = std::net::TcpListener::bind((config.host.as_str(), config.port))
-            .or_else(|_| std::net::TcpListener::bind(("127.0.0.1", config.port)));
+        {
+            let port_test = std::net::TcpListener::bind((config.host.as_str(), config.port))
+                .or_else(|_| std::net::TcpListener::bind(("127.0.0.1", config.port)));
 
-        if let Err(e) = port_test {
-            let err_msg = format!(
-                "Port {} is already in use ({}). Check if Docker or another instance is running on this port!",
-                config.port, e
-            );
-            let mut st = self.status.lock().unwrap();
-            *st = ServerStatus::Error(err_msg.clone());
-            return Err(err_msg);
+            if let Err(e) = port_test {
+                let err_msg = format!(
+                    "Port {} is already in use ({}). Check if Docker or another instance is running on this port!",
+                    config.port, e
+                );
+                let mut st = self.status.lock().unwrap();
+                *st = ServerStatus::Error(err_msg.clone());
+                return Err(err_msg);
+            }
+            // Explicitly drop listener so the port is immediately released before spawn
+            drop(port_test);
         }
 
         self.intentional_stop.store(false, Ordering::SeqCst);
@@ -126,12 +130,40 @@ impl ProcessSupervisor {
         }
 
         let mut cmd = Command::new(&binary_path);
+        if let Some(parent) = binary_path.parent() {
+            cmd.current_dir(parent);
+        }
         cmd.env("HOST", &config.host);
         cmd.env("PORT", config.port.to_string());
         cmd.env("HARDWARE", &config.hardware);
         cmd.env("MODELS_DIR", &config.models_dir);
         cmd.env("RUNTIMES_DIR", &config.runtimes_dir);
         cmd.arg("--config").arg(GuiConfig::backend_yaml_path());
+
+        // Redirect child stdout and stderr to server.log to avoid invalid handle crashes on Windows GUI
+        let log_dir = dirs::data_local_dir()
+            .map(|p| p.join("monolai").join("logs"))
+            .unwrap_or_else(|| PathBuf::from("logs"));
+        let _ = std::fs::create_dir_all(&log_dir);
+        let log_file_path = log_dir.join("server.log");
+
+        if let Ok(file) = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&log_file_path)
+        {
+            if let Ok(file_clone) = file.try_clone() {
+                cmd.stdout(file);
+                cmd.stderr(file_clone);
+            } else {
+                cmd.stdout(std::process::Stdio::null());
+                cmd.stderr(std::process::Stdio::null());
+            }
+        } else {
+            cmd.stdout(std::process::Stdio::null());
+            cmd.stderr(std::process::Stdio::null());
+        }
 
         #[cfg(target_os = "linux")]
         unsafe {
@@ -161,6 +193,7 @@ impl ProcessSupervisor {
         let stop_flag = Arc::clone(&self.intentional_stop);
         let port = config.port;
         let url = format!("http://localhost:{}", port);
+        let log_file_for_thread = log_file_path.clone();
 
         thread::spawn(move || {
             let start_time = Instant::now();
@@ -185,11 +218,17 @@ impl ProcessSupervisor {
                     }
                 }
 
-                // Probe HTTP /health
-                let health_url = format!("{}/health", url);
+                // Probe HTTP /health using 127.0.0.1 directly to avoid IPv6 localhost resolution issues on Windows
+                let health_url = format!("http://127.0.0.1:{}/health", port);
                 let resp = ureq::get(&health_url)
-                    .timeout(Duration::from_millis(800))
-                    .call();
+                    .timeout(Duration::from_millis(500))
+                    .call()
+                    .or_else(|_| {
+                        let fallback_url = format!("http://localhost:{}/health", port);
+                        ureq::get(&fallback_url)
+                            .timeout(Duration::from_millis(500))
+                            .call()
+                    });
 
                 if let Ok(r) = resp {
                     if r.status() == 200 {
@@ -254,8 +293,26 @@ impl ProcessSupervisor {
                     let _ = child.wait();
                     *lock = None;
                 }
+
+                let error_detail = std::fs::read_to_string(&log_file_for_thread)
+                    .ok()
+                    .and_then(|content| {
+                        let trimmed = content.trim();
+                        if trimmed.is_empty() {
+                            None
+                        } else {
+                            Some(trimmed.lines().rev().take(3).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join(" "))
+                        }
+                    });
+
+                let err_msg = if let Some(detail) = error_detail {
+                    format!("Server failed to respond: {}", detail)
+                } else {
+                    "Server failed to respond on health endpoint within 18s".to_string()
+                };
+
                 let mut st = status_arc.lock().unwrap();
-                *st = ServerStatus::Error("Server failed to respond on health endpoint within 18s".to_string());
+                *st = ServerStatus::Error(err_msg);
             }
         });
 
