@@ -17,7 +17,9 @@ pub struct DesktopApp {
     config: GuiConfig,
     supervisor: ProcessSupervisor,
     tray: Option<TrayManager>,
+    #[cfg(target_os = "linux")]
     tray_dismiss_at: Option<Instant>,
+    #[cfg(target_os = "linux")]
     tray_restore_at: Option<Instant>,
     current_screen: Screen,
     previous_status: ServerStatus,
@@ -66,7 +68,9 @@ impl DesktopApp {
             config,
             supervisor,
             tray,
+            #[cfg(target_os = "linux")]
             tray_dismiss_at: None,
+            #[cfg(target_os = "linux")]
             tray_restore_at: None,
             current_screen: Screen::Main,
             previous_status: ServerStatus::Stopped,
@@ -158,6 +162,7 @@ impl eframe::App for DesktopApp {
             }
         }
 
+        #[cfg(target_os = "linux")]
         let mut had_tray_action = false;
         for action in tray_actions {
             match action {
@@ -165,48 +170,56 @@ impl eframe::App for DesktopApp {
                     "open_web" => {
                         let url = format!("http://localhost:{}", self.config.port);
                         let _ = open::that(url);
-                        had_tray_action = true;
+                        #[cfg(target_os = "linux")]
+                        { had_tray_action = true; }
                     }
                     "show_panel" => {
                         components::restore_window(ctx);
-                        had_tray_action = true;
+                        #[cfg(target_os = "linux")]
+                        { had_tray_action = true; }
                     }
                     "start_server" => {
                         if let Err(e) = self.supervisor.start(&self.config) {
                             self.alert_message = Some((e, Instant::now()));
                         }
-                        had_tray_action = true;
+                        #[cfg(target_os = "linux")]
+                        { had_tray_action = true; }
                     }
                     "stop_server" => {
                         let _ = self.supervisor.stop();
-                        had_tray_action = true;
+                        #[cfg(target_os = "linux")]
+                        { had_tray_action = true; }
                     }
                     "restart_server" => {
                         let _ = self.supervisor.restart(&self.config);
-                        had_tray_action = true;
+                        #[cfg(target_os = "linux")]
+                        { had_tray_action = true; }
                     }
                     "quit" => {
                         let _ = self.supervisor.stop();
                         self.tray = None;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        #[cfg(target_os = "windows")]
+                        std::process::exit(0);
                     }
                     _ => {}
                 },
-                crate::tray::TrayAction::IconDoubleClick => {
+                crate::tray::TrayAction::IconDoubleClick | crate::tray::TrayAction::IconClick => {
                     components::restore_window(ctx);
                 }
-                crate::tray::TrayAction::IconClick => {}
             }
         }
 
         // Schedule tray dismissal with a short 60ms delay so ksni finishes sending its D-Bus reply,
         // preventing the 7-second D-Bus RPC deadlock/timeout.
+        #[cfg(target_os = "linux")]
         if had_tray_action {
             self.tray_dismiss_at = Some(Instant::now() + Duration::from_millis(60));
             ctx.request_repaint_after(Duration::from_millis(60));
         }
 
         // Dismiss tray after in-flight D-Bus RPC completes
+        #[cfg(target_os = "linux")]
         if let Some(dismiss_at) = self.tray_dismiss_at {
             if Instant::now() >= dismiss_at {
                 self.tray = None;
@@ -219,6 +232,7 @@ impl eframe::App for DesktopApp {
         }
 
         // Restore tray after dismissal
+        #[cfg(target_os = "linux")]
         if let Some(restore_at) = self.tray_restore_at {
             if Instant::now() >= restore_at {
                 let is_running = matches!(self.supervisor.get_status(), ServerStatus::Running { .. });

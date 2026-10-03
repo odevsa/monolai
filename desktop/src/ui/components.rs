@@ -18,6 +18,7 @@ pub fn draw_status_dot(ui: &mut Ui, color: Color32, radius: f32) {
 /// Minimize window to tray across Wayland and X11/Windows/macOS
 pub fn minimize_window(ctx: &egui::Context) {
     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+    #[cfg(not(target_os = "windows"))]
     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
     ctx.request_repaint();
 }
@@ -25,6 +26,7 @@ pub fn minimize_window(ctx: &egui::Context) {
 /// Restore window from tray across Wayland (COSMIC) and X11/Windows/macOS
 pub fn restore_window(ctx: &egui::Context) {
     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+    #[cfg(not(target_os = "windows"))]
     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
     ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
         egui::UserAttentionType::Critical,

@@ -56,6 +56,7 @@ impl TrayManager {
 
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
+            .with_menu_on_left_click(false)
             .with_tooltip("Monolai Service Manager")
             .with_icon(icon_stopped.clone())
             .build()
