@@ -24,7 +24,7 @@ Unicode True
 !endif
 
 Name "Monolai"
-OutFile "${OUT_DIR}\monolai-v${VERSION}-windows-${ARCH}-installer.exe"
+OutFile "${OUT_DIR}\monolai-${VERSION}-windows-${ARCH}.exe"
 InstallDir "$LOCALAPPDATA\Programs\Monolai"
 InstallDirRegKey HKCU "Software\Monolai" "Install_Dir"
 RequestExecutionLevel user
@@ -61,7 +61,7 @@ Section "Monolai Application" SecCore
   ; Write installed files
   File "${BIN_DIR}\monolai-gui.exe"
   File "${BIN_DIR}\monolai.exe"
-  File "${ASSETS_DIR}\icons\monolai.ico"
+  File "${ASSETS_DIR}\monolai.ico"
 
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\uninstall.exe"

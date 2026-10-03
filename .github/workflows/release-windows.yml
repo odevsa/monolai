@@ -3,10 +3,16 @@ name: Release Windows
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  APP_NAME: monolai
 
 jobs:
   build-windows:
@@ -24,6 +30,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: get_version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+          elif [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Define Package Names
+        id: names
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          APP_NAME="${{ env.APP_NAME }}"
+          echo "ZIP_NAME=${APP_NAME}-${VERSION}-windows-${ARCH}.zip" >> $GITHUB_OUTPUT
+          echo "EXE_NAME=${APP_NAME}-${VERSION}-windows-${ARCH}.exe" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,26 +90,28 @@ jobs:
       - name: Package Windows Installer & Portable ZIP
         shell: bash
         run: |
-          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          APP_NAME="${{ env.APP_NAME }}"
           BIN_DIR="desktop/target/${{ matrix.target }}/release"
           # Ensure backend exe is in the same folder for packaging
           cp "backend/target/${{ matrix.target }}/release/monolai.exe" "${BIN_DIR}/monolai.exe"
           mkdir -p dist
 
           # 1. Portable ZIP
-          PORTABLE_DIR="dist/monolai-v${VERSION}-windows-${{ matrix.arch }}"
+          PORTABLE_DIR="dist/${APP_NAME}-${VERSION}-windows-${ARCH}"
           mkdir -p "${PORTABLE_DIR}"
           cp "${BIN_DIR}/monolai.exe" "${PORTABLE_DIR}/"
           cp "${BIN_DIR}/monolai-gui.exe" "${PORTABLE_DIR}/"
           cp "packaging/windows/assets/monolai.ico" "${PORTABLE_DIR}/"
           if [ -f README.md ]; then cp README.md "${PORTABLE_DIR}/"; fi
-          (cd dist && 7z a "monolai-v${VERSION}-windows-${{ matrix.arch }}-portable.zip" "monolai-v${VERSION}-windows-${{ matrix.arch }}")
+          (cd dist && 7z a "${{ steps.names.outputs.ZIP_NAME }}" "${APP_NAME}-${VERSION}-windows-${ARCH}")
           rm -rf "${PORTABLE_DIR}"
 
           # 2. NSIS Installer (.exe)
-          makensis \
+          makensis -NOCD \
             -DVERSION="${VERSION}" \
-            -DARCH="${{ matrix.arch }}" \
+            -DARCH="${ARCH}" \
             -DBIN_DIR="${BIN_DIR}" \
             -DASSETS_DIR="packaging/windows/assets" \
             -DOUT_DIR="dist" \

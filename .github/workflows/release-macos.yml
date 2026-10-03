@@ -3,10 +3,16 @@ name: Release macOS
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  APP_NAME: monolai
 
 jobs:
   build-macos:
@@ -26,6 +32,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: get_version
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+          elif [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Define Package Names
+        id: names
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          APP_NAME="${{ env.APP_NAME }}"
+          echo "DMG_NAME=${APP_NAME}-${VERSION}-macos-${ARCH}.dmg" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,10 +87,10 @@ jobs:
 
       - name: Package Monolai.app & DMG
         run: |
-          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
           STAGING="dist/macos-staging"
           APP_DIR="${STAGING}/Monolai.app"
-          OUTPUT_DMG="dist/monolai-v${VERSION}-macos-${{ matrix.arch }}.dmg"
+          OUTPUT_DMG="dist/${{ steps.names.outputs.DMG_NAME }}"
 
           mkdir -p dist
           mkdir -p "${APP_DIR}/Contents/MacOS"

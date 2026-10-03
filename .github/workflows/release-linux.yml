@@ -3,10 +3,16 @@ name: Release Linux
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  APP_NAME: monolai
 
 jobs:
   build-linux:
@@ -30,6 +36,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: get_version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+          elif [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          else
+            VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Define Package Names
+        id: names
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          APP_NAME="${{ env.APP_NAME }}"
+          echo "TAR_NAME=${APP_NAME}-${VERSION}-linux-${ARCH}.tar.xz" >> $GITHUB_OUTPUT
+          echo "DEB_NAME=${APP_NAME}-${VERSION}-linux-${ARCH}.deb" >> $GITHUB_OUTPUT
+          echo "APPIMAGE_NAME=${APP_NAME}-${VERSION}-linux-${ARCH}.AppImage" >> $GITHUB_OUTPUT
 
       - name: Install system dependencies
         run: |
@@ -67,7 +99,9 @@ jobs:
 
       - name: Package DEB, Tar.xz & AppImage
         run: |
-          VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          APP_NAME="${{ env.APP_NAME }}"
           SERVER_BIN="backend/target/${{ matrix.target }}/release/monolai"
           GUI_BIN="desktop/target/${{ matrix.target }}/release/monolai-gui"
           mkdir -p dist
@@ -99,13 +133,13 @@ jobs:
             echo " Monolai provides a lightweight local runtime and supervisor for GGUF models."
           } > "${DEB_DIR}/DEBIAN/control"
 
-          dpkg-deb --build "${DEB_DIR}" "dist/monolai_${VERSION}_${{ matrix.deb_arch }}.deb"
+          dpkg-deb --build "${DEB_DIR}" "dist/${{ steps.names.outputs.DEB_NAME }}"
           rm -rf "${DEB_DIR}"
 
           # -----------------------------------------------------------------
           # 2. Portable Archive (.tar.xz)
           # -----------------------------------------------------------------
-          TAR_DIR="dist/monolai-v${VERSION}-linux-${{ matrix.arch }}"
+          TAR_DIR="dist/${APP_NAME}-${VERSION}-linux-${ARCH}"
           mkdir -p "${TAR_DIR}/bin"
           mkdir -p "${TAR_DIR}/share/applications"
           mkdir -p "${TAR_DIR}/share/icons"
@@ -116,7 +150,7 @@ jobs:
           cp -r packaging/linux/assets/icons/hicolor "${TAR_DIR}/share/icons/"
           if [ -f README.md ]; then cp README.md "${TAR_DIR}/"; fi
 
-          (cd dist && tar -cJf "monolai-v${VERSION}-linux-${{ matrix.arch }}.tar.xz" "monolai-v${VERSION}-linux-${{ matrix.arch }}")
+          (cd dist && tar -cJf "${{ steps.names.outputs.TAR_NAME }}" "${APP_NAME}-${VERSION}-linux-${ARCH}")
           rm -rf "${TAR_DIR}"
 
           # -----------------------------------------------------------------
@@ -142,7 +176,7 @@ jobs:
           chmod +x /tmp/appimagetool
 
           export ARCH="${{ matrix.appimage_arch }}"
-          /tmp/appimagetool --appimage-extract-and-run "${APPDIR}" "dist/monolai-v${VERSION}-linux-${{ matrix.arch }}.AppImage" || true
+          /tmp/appimagetool --appimage-extract-and-run "${APPDIR}" "dist/${{ steps.names.outputs.APPIMAGE_NAME }}" || true
           rm -rf "${APPDIR}"
 
       - name: Upload Artifacts
