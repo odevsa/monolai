@@ -1325,7 +1325,7 @@ dependencies = [
 
 [[package]]
 name = "monolai"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-stream",
  "axum",
