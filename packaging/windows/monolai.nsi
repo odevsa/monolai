@@ -25,9 +25,9 @@ Unicode True
 
 Name "Monolai"
 OutFile "${OUT_DIR}\monolai-${VERSION}-windows-${ARCH}.exe"
-InstallDir "$LOCALAPPDATA\Programs\Monolai"
-InstallDirRegKey HKCU "Software\Monolai" "Install_Dir"
-RequestExecutionLevel user
+InstallDir "$PROGRAMFILES64\Monolai"
+InstallDirRegKey HKLM "Software\Monolai" "Install_Dir"
+RequestExecutionLevel admin
 
 ; Includes
 !include "MUI2.nsh"
@@ -56,6 +56,7 @@ RequestExecutionLevel user
 !insertmacro MUI_LANGUAGE "Portuguese"
 
 Section "Monolai Application" SecCore
+  SetShellVarContext all
   SetOutPath "$INSTDIR"
   
   ; Write installed files
@@ -67,22 +68,22 @@ Section "Monolai Application" SecCore
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
   ; Save install location
-  WriteRegStr HKCU "Software\Monolai" "Install_Dir" "$INSTDIR"
+  WriteRegStr HKLM "Software\Monolai" "Install_Dir" "$INSTDIR"
 
   ; Add to Add/Remove Programs
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayName" "Monolai"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayIcon" "$INSTDIR\monolai.ico"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "Publisher" "Monolai"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "URLInfoAbout" "https://github.com/odevsa/monolai"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "UninstallString" '"$INSTDIR\uninstall.exe"'
-  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "NoModify" 1
-  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "NoRepair" 1
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayName" "Monolai"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "DisplayIcon" "$INSTDIR\monolai.ico"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "Publisher" "Monolai"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "URLInfoAbout" "https://github.com/odevsa/monolai"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "NoModify" 1
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "NoRepair" 1
 
   ; Calculate and write EstimatedSize
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
-  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "EstimatedSize" "$0"
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai" "EstimatedSize" "$0"
 
   ; Start Menu Shortcuts
   CreateDirectory "$SMPROGRAMS\Monolai"
@@ -94,6 +95,8 @@ Section "Monolai Application" SecCore
 SectionEnd
 
 Section "Uninstall"
+  SetShellVarContext all
+
   ; Remove shortcuts
   Delete "$DESKTOP\Monolai.lnk"
   Delete "$SMPROGRAMS\Monolai\Monolai.lnk"
@@ -108,6 +111,6 @@ Section "Uninstall"
   RMDir "$INSTDIR"
 
   ; Remove registry keys
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai"
-  DeleteRegKey HKCU "Software\Monolai"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Monolai"
+  DeleteRegKey HKLM "Software\Monolai"
 SectionEnd

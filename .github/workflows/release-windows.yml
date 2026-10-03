@@ -53,7 +53,6 @@ jobs:
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           ARCH="${{ matrix.arch }}"
           APP_NAME="${{ env.APP_NAME }}"
-          echo "ZIP_NAME=${APP_NAME}-${VERSION}-windows-${ARCH}.zip" >> $GITHUB_OUTPUT
           echo "EXE_NAME=${APP_NAME}-${VERSION}-windows-${ARCH}.exe" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
@@ -87,28 +86,17 @@ jobs:
           cargo build --manifest-path backend/Cargo.toml --release --target ${{ matrix.target }}
           cargo build --manifest-path desktop/Cargo.toml --release --target ${{ matrix.target }}
 
-      - name: Package Windows Installer & Portable ZIP
+      - name: Package Windows Installer
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           ARCH="${{ matrix.arch }}"
-          APP_NAME="${{ env.APP_NAME }}"
           BIN_DIR="desktop/target/${{ matrix.target }}/release"
           # Ensure backend exe is in the same folder for packaging
           cp "backend/target/${{ matrix.target }}/release/monolai.exe" "${BIN_DIR}/monolai.exe"
           mkdir -p dist
 
-          # 1. Portable ZIP
-          PORTABLE_DIR="dist/${APP_NAME}-${VERSION}-windows-${ARCH}"
-          mkdir -p "${PORTABLE_DIR}"
-          cp "${BIN_DIR}/monolai.exe" "${PORTABLE_DIR}/"
-          cp "${BIN_DIR}/monolai-gui.exe" "${PORTABLE_DIR}/"
-          cp "packaging/windows/assets/monolai.ico" "${PORTABLE_DIR}/"
-          if [ -f README.md ]; then cp README.md "${PORTABLE_DIR}/"; fi
-          (cd dist && 7z a "${{ steps.names.outputs.ZIP_NAME }}" "${APP_NAME}-${VERSION}-windows-${ARCH}")
-          rm -rf "${PORTABLE_DIR}"
-
-          # 2. NSIS Installer (.exe)
+          # NSIS Installer (.exe)
           makensis -NOCD \
             -DVERSION="${VERSION}" \
             -DARCH="${ARCH}" \

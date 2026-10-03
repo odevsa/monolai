@@ -271,6 +271,12 @@ pub async fn load_model_process(
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
     // 6. Spawn child process
     let mut child = match cmd.spawn() {
         Ok(c) => c,

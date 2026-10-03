@@ -22,3 +22,6 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 libc = "0.2"
 dark-light = "3.0"
 auto-launch = "0.6.0"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

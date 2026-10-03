@@ -133,7 +133,7 @@ jobs:
             echo " Monolai provides a lightweight local runtime and supervisor for GGUF models."
           } > "${DEB_DIR}/DEBIAN/control"
 
-          dpkg-deb --build "${DEB_DIR}" "dist/${{ steps.names.outputs.DEB_NAME }}"
+          dpkg-deb -Zxz --build "${DEB_DIR}" "dist/${{ steps.names.outputs.DEB_NAME }}"
           rm -rf "${DEB_DIR}"
 
           # -----------------------------------------------------------------
