@@ -42,7 +42,13 @@ impl Drop for DesktopApp {
 impl DesktopApp {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         let mut config = GuiConfig::load();
-        config.autostart_app = crate::config::is_autostart_app_enabled();
+        if !GuiConfig::config_path().exists() {
+            let _ = crate::config::set_autostart_app(true);
+            config.autostart_app = true;
+            let _ = config.save();
+        } else if crate::config::is_autostart_app_enabled() {
+            config.autostart_app = true;
+        }
         let supervisor = ProcessSupervisor::new();
         let tray = match TrayManager::new(cc.egui_ctx.clone()) {
             Ok(t) => Some(t),

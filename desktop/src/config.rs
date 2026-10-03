@@ -2,6 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuiConfig {
     pub host: String,
@@ -9,9 +13,11 @@ pub struct GuiConfig {
     pub hardware: String,
     pub models_dir: String,
     pub runtimes_dir: String,
+    #[serde(default = "default_true")]
     pub minimize_on_start: bool,
+    #[serde(default = "default_true")]
     pub autostart_server: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub autostart_app: bool,
 }
 
@@ -38,8 +44,8 @@ impl Default for GuiConfig {
             models_dir: default_models,
             runtimes_dir: default_runtimes,
             minimize_on_start: true,
-            autostart_server: false,
-            autostart_app: false,
+            autostart_server: true,
+            autostart_app: true,
         }
     }
 }
