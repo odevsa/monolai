@@ -256,6 +256,7 @@ pub async fn uninstall_runtime_handler(
         downloaded_bytes: 0,
         total_bytes: 0,
         error_message: None,
+        message: None,
     });
 
     Ok(Json(OperationResponse {

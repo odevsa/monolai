@@ -19,6 +19,8 @@ pub struct InstallProgress {
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub error_message: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -162,6 +164,7 @@ async fn download_and_stream(
     status_label: &str,
     base_percent: f32,
     percent_span: f32,
+    message: Option<String>,
 ) -> Result<u64, String> {
     let response = client
         .get(url)
@@ -217,6 +220,7 @@ async fn download_and_stream(
                 downloaded_bytes,
                 total_bytes,
                 error_message: None,
+                message: message.clone(),
             });
         }
     }
@@ -314,6 +318,16 @@ pub async fn install_runtime(
     let _ = fs::remove_file(&main_archive_path);
     let _ = fs::remove_dir_all(&temp_extract_dir);
 
+    let num_extras = download_target.extra_archives.len();
+    let total_archives = 1 + num_extras;
+    let download_span_per_archive = 85.0 / total_archives as f32;
+
+    let main_msg = if total_archives > 1 {
+        format!("Downloading engine (1/{})...", total_archives)
+    } else {
+        "Downloading engine...".to_string()
+    };
+
     // Initial progress
     installer_mgr.update_progress(InstallProgress {
         runtime_id: runtime_id.clone(),
@@ -323,6 +337,7 @@ pub async fn install_runtime(
         downloaded_bytes: 0,
         total_bytes: 0,
         error_message: None,
+        message: Some(main_msg.clone()),
     });
 
     let client = reqwest::Client::builder()
@@ -330,10 +345,6 @@ pub async fn install_runtime(
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
         .map_err(|e| format!("HTTP client error: {}", e))?;
-
-    let num_extras = download_target.extra_archives.len();
-    let total_archives = 1 + num_extras;
-    let download_span_per_archive = 85.0 / total_archives as f32;
 
     // 1. Download main archive
     let mut total_downloaded_bytes: u64 = 0;
@@ -346,6 +357,7 @@ pub async fn install_runtime(
         "downloading",
         0.0,
         download_span_per_archive,
+        Some(main_msg),
     ).await {
         Ok(bytes) => total_downloaded_bytes += bytes,
         Err(err) => {
@@ -358,6 +370,7 @@ pub async fn install_runtime(
                 downloaded_bytes: 0,
                 total_bytes: 0,
                 error_message: Some(err.clone()),
+                message: None,
             });
             return Err(err);
         }
@@ -369,6 +382,7 @@ pub async fn install_runtime(
         let extra_path = runtimes_dir.join(format!(".tmp_extra_{}_{}.archive", runtime_id, i));
         let _ = fs::remove_file(&extra_path);
         let base_p = (1 + i) as f32 * download_span_per_archive;
+        let extra_msg = format!("Downloading dependencies ({}/{})...", 2 + i, total_archives);
 
         tracing::info!(
             "Downloading extra dependency for runtime '{}': {}",
@@ -376,15 +390,28 @@ pub async fn install_runtime(
             extra.url
         );
 
+        // Emit immediate progress so the UI seamlessly transitions into downloading dependency
+        installer_mgr.update_progress(InstallProgress {
+            runtime_id: runtime_id.clone(),
+            status: "downloading".to_string(),
+            percent: base_p,
+            speed_mbps: 0.0,
+            downloaded_bytes: total_downloaded_bytes,
+            total_bytes: 0,
+            error_message: None,
+            message: Some(extra_msg.clone()),
+        });
+
         match download_and_stream(
             &client,
             &extra.url,
             &extra_path,
             &installer_mgr,
             &runtime_id,
-            "downloading dependencies",
+            "downloading",
             base_p,
             download_span_per_archive,
+            Some(extra_msg),
         ).await {
             Ok(bytes) => {
                 total_downloaded_bytes += bytes;
@@ -404,6 +431,7 @@ pub async fn install_runtime(
                     downloaded_bytes: 0,
                     total_bytes: 0,
                     error_message: Some(err.clone()),
+                    message: None,
                 });
                 return Err(err);
             }
@@ -419,6 +447,7 @@ pub async fn install_runtime(
         downloaded_bytes: total_downloaded_bytes,
         total_bytes: total_downloaded_bytes,
         error_message: None,
+        message: Some("Extracting files...".to_string()),
     });
 
     fs::create_dir_all(&temp_extract_dir)
@@ -451,6 +480,7 @@ pub async fn install_runtime(
             downloaded_bytes: 0,
             total_bytes: 0,
             error_message: Some(e.clone()),
+            message: None,
         });
         return Err(e);
     }
@@ -543,6 +573,7 @@ pub async fn install_runtime(
         downloaded_bytes: total_downloaded_bytes,
         total_bytes: total_downloaded_bytes,
         error_message: None,
+        message: Some("Installation completed".to_string()),
     });
 
     tracing::info!(

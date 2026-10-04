@@ -25,12 +25,19 @@
 
 	interface InstallProgress {
 		runtime_id: string;
-		status: 'idle' | 'downloading' | 'extracting' | 'completed' | 'error';
+		status: 'idle' | 'downloading' | 'extracting' | 'completed' | 'error' | string;
 		percent: number;
 		speed_mbps: number;
 		downloaded_bytes: number;
 		total_bytes: number;
 		error_message: string | null;
+		message?: string | null;
+	}
+
+	function isInstallingStatus(status?: string): boolean {
+		if (!status) return false;
+		const s = status.toLowerCase();
+		return s.startsWith('download') || s.startsWith('extract');
 	}
 
 	interface AccelerationOption {
@@ -88,9 +95,8 @@
 
 			// Reconnect SSE for any runtime currently downloading/extracting
 			for (const runtime of runtimes) {
-				const status = runtime.install_progress?.status;
 				if (
-					(status === 'downloading' || status === 'extracting') &&
+					isInstallingStatus(runtime.install_progress?.status) &&
 					!activeEventSources[runtime.id]
 				) {
 					listenProgress(runtime.id);
@@ -276,8 +282,7 @@
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
 				{#each runtimes as runtime}
 					{@const progress = runtime.install_progress}
-					{@const isInstalling =
-						progress && (progress.status === 'downloading' || progress.status === 'extracting')}
+					{@const isInstalling = isInstallingStatus(progress?.status)}
 
 					<Card class="justify-between">
 						<!-- Card Top Details -->
@@ -423,9 +428,13 @@
 											<div class="flex items-center gap-2 min-w-0">
 												<RefreshCw size={13} class="animate-spin shrink-0" />
 												<span class="truncate">
-													{progress.status === 'extracting'
-														? 'Extracting files...'
-														: 'Downloading engine...'}
+													{#if progress.message}
+														{progress.message}
+													{:else if progress.status === 'extracting'}
+														Extracting files...
+													{:else}
+														Downloading engine...
+													{/if}
 												</span>
 											</div>
 											<div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
@@ -482,11 +491,15 @@
 										>
 											<div class="flex items-center gap-1.5">
 												<RefreshCw size={12} class="animate-spin text-[var(--primary)] shrink-0" />
-												<span
-													>{progress.status === 'extracting'
-														? 'Extracting...'
-														: 'Downloading...'}</span
-												>
+												<span class="truncate">
+													{#if progress.message}
+														{progress.message}
+													{:else if progress.status === 'extracting'}
+														Extracting...
+													{:else}
+														Downloading...
+													{/if}
+												</span>
 											</div>
 											<span class="font-mono font-bold text-[11px] text-[var(--primary)]"
 												>{progress.percent.toFixed(0)}%</span
