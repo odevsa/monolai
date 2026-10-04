@@ -101,6 +101,34 @@
 	function toggleReasoningCollapse(msgId: string) {
 		collapsedReasoning[msgId] = !collapsedReasoning[msgId];
 	}
+
+	// Dynamic auto-scrolling state for chat and reasoning
+	let autoScrollChat = $state(true);
+	let autoScrollReasoning = $state<Record<string, boolean>>({});
+	let reasoningContainers: Record<string, HTMLElement> = {};
+
+	function registerReasoningContainer(node: HTMLElement, msgId: string) {
+		reasoningContainers[msgId] = node;
+		if (autoScrollReasoning[msgId] !== false) {
+			node.scrollTop = node.scrollHeight;
+		}
+		return {
+			destroy() {
+				delete reasoningContainers[msgId];
+			}
+		};
+	}
+
+	function handleReasoningScroll(e: Event, msgId: string) {
+		const target = e.currentTarget as HTMLElement;
+		if (!target) return;
+		const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+		if (distanceFromBottom > 35) {
+			autoScrollReasoning[msgId] = false;
+		} else if (distanceFromBottom <= 15) {
+			autoScrollReasoning[msgId] = true;
+		}
+	}
 	let submenuRef: HTMLDivElement | null = $state(null);
 	let submenuDirection = $state<'right' | 'left'>('right');
 
@@ -550,10 +578,19 @@
 			const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
 			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 			showScrollButton = distanceFromBottom >= 100;
+
+			// If user scrolled up (> 80px from bottom), pause auto-scrolling
+			// If user scrolled back near the bottom (<= 40px), resume auto-scrolling
+			if (distanceFromBottom > 80) {
+				autoScrollChat = false;
+			} else if (distanceFromBottom <= 40) {
+				autoScrollChat = true;
+			}
 		}
 	}
 
 	async function scrollToBottom() {
+		autoScrollChat = true;
 		await tick();
 		if (messagesContainer) {
 			messagesContainer.scrollTo({
@@ -617,6 +654,7 @@
 		// Optimistically add user & assistant messages to UI and clear input textarea immediately
 		messages = [...messages, userMsg, assistantMsg];
 		inputMessage = '';
+		autoScrollChat = true;
 		scrollToBottom();
 		textareaRef?.focus();
 
@@ -688,6 +726,7 @@
 		// Expand reasoning accordion for this new assistant response
 		collapsedReasoning[assistantMsgId] = false;
 		let hasAutoCollapsedReasoning = false;
+		autoScrollReasoning[assistantMsgId] = true;
 
 		try {
 			// Industry standard Sliding Window Context:
@@ -940,7 +979,25 @@
 									}
 									return msg;
 								});
-								scrollToBottom();
+
+								// 1. Auto-scroll reasoning container if reasoning updated and user hasn't scrolled up inside it
+								if (deltaReasoning || isInsideThinkTag) {
+									if (autoScrollReasoning[assistantMsgId] !== false) {
+										await tick();
+										const rContainer = reasoningContainers[assistantMsgId];
+										if (rContainer && autoScrollReasoning[assistantMsgId] !== false) {
+											rContainer.scrollTop = rContainer.scrollHeight;
+										}
+									}
+								}
+
+								// 2. Auto-scroll chat viewport if user hasn't scrolled up
+								if (autoScrollChat && messagesContainer) {
+									await tick();
+									if (autoScrollChat && messagesContainer) {
+										messagesContainer.scrollTop = messagesContainer.scrollHeight;
+									}
+								}
 							}
 						} catch {
 							// Ignore incomplete chunk parse error
@@ -1041,7 +1098,9 @@
 
 			isGenerating = false;
 			currentAbortController = null;
-			scrollToBottom();
+			if (autoScrollChat) {
+				scrollToBottom();
+			}
 			textareaRef?.focus();
 		}
 	}
@@ -1177,11 +1236,11 @@
 									<!-- Reasoning Accordion if message has thoughts -->
 									{#if msg.reasoning}
 										<div
-											class="reasoning-container mb-3 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-surface)] overflow-hidden transition-all duration-150"
+											class="reasoning-container group/reasoning mb-3 rounded-xl overflow-hidden transition-colors duration-150 {!collapsedReasoning[msg.id] ? 'bg-[var(--bg-surface)]' : 'bg-transparent hover:bg-[var(--bg-surface)]'}"
 										>
 											<button
 												type="button"
-												class="flex items-center justify-between w-full px-3.5 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-0 bg-transparent select-none"
+												class="flex items-center justify-between w-full px-3.5 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer border-0 bg-transparent select-none"
 												onclick={() => toggleReasoningCollapse(msg.id)}
 												aria-expanded={!collapsedReasoning[msg.id]}
 											>
@@ -1196,13 +1255,15 @@
 												</div>
 												<ChevronDown
 													size={13}
-													class="text-[var(--text-muted)] transition-transform duration-200 shrink-0 {!collapsedReasoning[msg.id] ? 'rotate-180' : ''}"
+													class="text-[var(--text-muted)] transition-all duration-150 shrink-0 {!collapsedReasoning[msg.id] ? 'opacity-100 rotate-180' : 'opacity-0 group-hover/reasoning:opacity-100'}"
 												/>
 											</button>
 
 											{#if !collapsedReasoning[msg.id]}
 												<div
-													class="px-3.5 py-2.5 text-xs text-[var(--text-secondary)] border-t border-[var(--border-color)]/40 bg-[var(--bg-primary)]/40 leading-relaxed font-sans whitespace-pre-wrap max-h-96 overflow-y-auto"
+													use:registerReasoningContainer={msg.id}
+													onscroll={(e) => handleReasoningScroll(e, msg.id)}
+													class="px-3.5 pb-3 pt-1 text-xs text-[var(--text-secondary)] bg-transparent leading-relaxed font-sans whitespace-pre-wrap max-h-36 sm:max-h-40 overflow-y-auto"
 												>
 													{msg.reasoning}
 												</div>
