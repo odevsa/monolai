@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import {
 		Boxes,
 		Download,
@@ -15,6 +16,7 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import Select from '$lib/components/Select.svelte';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
 	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
 
@@ -227,9 +229,22 @@
 		return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 	}
 
+	afterNavigate(() => {
+		fetchRuntimes();
+	});
+
 	onMount(() => {
 		runtimesRefreshFn.set(fetchRuntimes);
 		fetchRuntimes();
+
+		const handleNavRuntimes = () => {
+			fetchRuntimes();
+		};
+
+		window.addEventListener('monolai:nav-runtimes', handleNavRuntimes);
+		return () => {
+			window.removeEventListener('monolai:nav-runtimes', handleNavRuntimes);
+		};
 	});
 
 	onDestroy(() => {
@@ -374,23 +389,23 @@
 							<!-- Acceleration Selector -->
 							{#if runtime.available_accelerations && runtime.available_accelerations.length > 0}
 								<div
-									class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-[var(--border-color)]"
+									class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-surface-hover)] border-0"
 								>
-									<div class="flex flex-col min-w-0">
-										<span class="text-[11px] font-semibold text-[var(--text-secondary)]">Hardware Target</span>
-										<span class="text-[10px] text-[var(--text-muted)] truncate">Choose GPU backend or CUDA version</span>
+									<div class="flex items-center justify-between gap-2">
+										<span class="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap shrink-0">Hardware Target</span>
+										<span class="text-[11px] text-[var(--text-muted)] truncate text-right">Choose GPU backend or CUDA version</span>
 									</div>
-									<select
-										class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-[var(--text-primary)] cursor-pointer focus:outline-none focus:border-[var(--primary)] transition disabled:opacity-60 disabled:cursor-not-allowed max-w-[210px]"
-										bind:value={selectedAccelerations[runtime.id]}
-										disabled={isInstalling}
-									>
-										{#each runtime.available_accelerations as opt}
-											<option value={opt.id}>
-												{opt.label}{opt.is_recommended ? ' (Recommended)' : ''}
-											</option>
-										{/each}
-									</select>
+									<div class="w-full">
+										<Select
+											bind:value={selectedAccelerations[runtime.id]}
+											options={runtime.available_accelerations.map((opt) => ({
+												value: opt.id,
+												label: opt.label + (opt.is_recommended ? ' (Recommended)' : '')
+											}))}
+											placeholder="Select hardware target..."
+											ariaLabel="Hardware Target"
+										/>
+									</div>
 								</div>
 							{/if}
 
@@ -404,69 +419,65 @@
 							{/if}
 						</div>
 
-						<!-- Card Bottom Actions with Embedded Progress -->
+						<!-- Card Bottom Actions with Dedicated Progress Bar -->
 						<div class="pt-2 border-0 flex items-center justify-end gap-2.5 flex-wrap">
-							{#if !runtime.is_installed}
-								{#if isInstalling && progress}
-									<!-- In-Button Progress State -->
-									<button
-										type="button"
-										disabled={true}
-										class="app-btn app-btn-primary app-btn-md w-full relative overflow-hidden select-none cursor-wait text-white"
-										title="Installation in progress"
-									>
-										<!-- Progress Fill Bar -->
+							{#if isInstalling && progress}
+								<!-- Dedicated Clean Progress Bar -->
+								<div class="w-full flex flex-col gap-2 p-3 rounded-xl bg-[var(--bg-primary)] border-0">
+									<!-- Top Row: Phase Message + Percentage -->
+									<div class="flex items-center justify-between gap-3 text-xs">
+										<div class="flex items-center gap-2 text-[var(--text-primary)] min-w-0">
+											<RefreshCw size={13} class="animate-spin text-[var(--primary)] shrink-0" />
+											<span class="font-medium truncate">
+												{#if progress.message}
+													{progress.message}
+												{:else if progress.status === 'extracting'}
+													Extracting files...
+												{:else}
+													Downloading engine...
+												{/if}
+											</span>
+										</div>
+										<span class="font-mono text-xs font-bold text-[var(--primary)] shrink-0">
+											{progress.percent.toFixed(0)}%
+										</span>
+									</div>
+
+									<!-- Middle Row: Progress Bar Track -->
+									<div class="w-full h-2 rounded-full bg-[var(--bg-surface)] overflow-hidden">
 										<div
-											class="absolute inset-0 bg-white/25 transition-all duration-200 pointer-events-none"
+											class="h-full bg-[var(--primary)] transition-all duration-200 rounded-full"
 											style="width: {Math.max(2, Math.min(100, progress.percent))}%"
 										></div>
+									</div>
 
-										<!-- Label and Percent Overlay -->
-										<div
-											class="relative z-10 w-full flex items-center justify-between gap-2 px-1 text-xs font-semibold"
-										>
-											<div class="flex items-center gap-2 min-w-0">
-												<RefreshCw size={13} class="animate-spin shrink-0" />
-												<span class="truncate">
-													{#if progress.message}
-														{progress.message}
-													{:else if progress.status === 'extracting'}
-														Extracting files...
-													{:else}
-														Downloading engine...
-													{/if}
-												</span>
-											</div>
-											<div class="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
-												{#if progress.speed_mbps > 0}
-													<span class="opacity-80 font-normal hidden sm:inline"
-														>{progress.speed_mbps.toFixed(1)} MB/s •</span
-													>
-												{/if}
+									<!-- Bottom Row: Download Metrics -->
+									{#if progress.total_bytes > 0 || progress.speed_mbps > 0}
+										<div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] pt-0.5">
+											<span>
 												{#if progress.total_bytes > 0}
-													<span class="opacity-80 font-normal hidden md:inline"
-														>{formatBytes(progress.downloaded_bytes)} / {formatBytes(
-															progress.total_bytes
-														)} •</span
-													>
+													{formatBytes(progress.downloaded_bytes)} of {formatBytes(progress.total_bytes)}
 												{/if}
-												<span class="font-bold">{progress.percent.toFixed(0)}%</span>
-											</div>
+											</span>
+											<span>
+												{#if progress.speed_mbps > 0}
+													{progress.speed_mbps.toFixed(1)} MB/s
+												{/if}
+											</span>
 										</div>
-									</button>
-								{:else}
-									<button
-										onclick={() => installRuntime(runtime.id)}
-										class="app-btn app-btn-primary app-btn-md w-full"
-									>
-										<Download size={14} />
-										<span>Install Runtime</span>
-									</button>
-								{/if}
+									{/if}
+								</div>
+							{:else if !runtime.is_installed}
+								<button
+									onclick={() => installRuntime(runtime.id)}
+									class="app-btn app-btn-primary app-btn-md w-full"
+								>
+									<Download size={14} />
+									<span>Install Runtime</span>
+								</button>
 							{:else}
 								<button
 									onclick={() => uninstallRuntime(runtime)}
-									disabled={isInstalling}
 									class="app-btn app-btn-danger app-btn-sm"
 									title="Uninstall this runtime"
 								>
@@ -474,48 +485,14 @@
 									<span>Uninstall</span>
 								</button>
 
-								{#if isInstalling && progress}
-									<!-- In-Button Progress for Reinstall -->
-									<button
-										type="button"
-										disabled={true}
-										class="app-btn app-btn-secondary app-btn-sm relative overflow-hidden select-none cursor-wait min-w-[200px]"
-										title="Reinstallation in progress"
-									>
-										<div
-											class="absolute inset-0 bg-[var(--primary)]/20 transition-all duration-200 pointer-events-none"
-											style="width: {Math.max(2, Math.min(100, progress.percent))}%"
-										></div>
-										<div
-											class="relative z-10 w-full flex items-center justify-between gap-2 text-xs font-medium"
-										>
-											<div class="flex items-center gap-1.5">
-												<RefreshCw size={12} class="animate-spin text-[var(--primary)] shrink-0" />
-												<span class="truncate">
-													{#if progress.message}
-														{progress.message}
-													{:else if progress.status === 'extracting'}
-														Extracting...
-													{:else}
-														Downloading...
-													{/if}
-												</span>
-											</div>
-											<span class="font-mono font-bold text-[11px] text-[var(--primary)]"
-												>{progress.percent.toFixed(0)}%</span
-											>
-										</div>
-									</button>
-								{:else}
-									<button
-										onclick={() => installRuntime(runtime.id)}
-										class="app-btn app-btn-secondary app-btn-sm"
-										title="Reinstall or update runtime to latest package"
-									>
-										<RefreshCw size={13} />
-										<span>Reinstall</span>
-									</button>
-								{/if}
+								<button
+									onclick={() => installRuntime(runtime.id)}
+									class="app-btn app-btn-secondary app-btn-sm"
+									title="Reinstall or update runtime to latest package"
+								>
+									<RefreshCw size={13} />
+									<span>Reinstall</span>
+								</button>
 							{/if}
 						</div>
 					</Card>

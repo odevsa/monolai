@@ -19,7 +19,7 @@
 		Plus,
 		Trash2
 	} from '@lucide/svelte';
-	import { chatTabs, syncRecentChats } from '$lib/headerStore';
+	import { chatTabs, syncRecentChats, runtimesRefreshFn } from '$lib/headerStore';
 	import { askConfirm } from '$lib/confirmStore';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import {
@@ -243,7 +243,13 @@
 				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isRuntimesPage
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
-			onclick={closeMobile}
+			onclick={() => {
+				closeMobile();
+				if (typeof window !== 'undefined') {
+					window.dispatchEvent(new CustomEvent('monolai:nav-runtimes'));
+				}
+				$runtimesRefreshFn?.();
+			}}
 			title="Runtimes"
 		>
 			<Boxes size={20} class="shrink-0 {isRuntimesPage ? 'text-[var(--primary)]' : ''}" />
