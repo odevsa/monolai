@@ -15,6 +15,9 @@ export const sysinfoReconnectFn = writable<(() => void) | null>(null);
 export const runtimesRefreshing = writable<boolean>(false);
 export const runtimesRefreshFn = writable<(() => void) | null>(null);
 
+export const modelsRefreshing = writable<boolean>(false);
+export const modelsRefreshFn = writable<(() => void) | null>(null);
+
 export function syncRecentChats(chats: { id: string; title: string }[], activeId?: string) {
 	chatTabs.update((prev) => {
 		const currentActiveId = activeId || prev.find((t) => t.active)?.id;

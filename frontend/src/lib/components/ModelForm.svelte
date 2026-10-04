@@ -310,7 +310,7 @@
 <div class="model-form-container">
 	<div class="form-header-row">
 		<h4 class="form-title">
-			{isEditingExisting ? 'Edit Model' : 'Register New Model'}
+			{isEditingExisting ? 'Edit Model' : 'New Model'}
 		</h4>
 		<button type="button" class="btn-text" onclick={onCancel}> Back to List </button>
 	</div>

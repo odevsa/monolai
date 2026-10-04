@@ -3,7 +3,6 @@
 		X,
 		Sliders,
 		Info,
-		Box,
 		Settings,
 		Check,
 		Palette,
@@ -13,7 +12,6 @@
 		Globe
 	} from '@lucide/svelte';
 	import Logo from './Logo.svelte';
-	import ModelsSettingsTab from './ModelsSettingsTab.svelte';
 	import GeneralSettingsTab from './GeneralSettingsTab.svelte';
 	import { THEMES, type ThemeId } from '$lib/themes';
 	import { APP_VERSION } from '$lib/version';
@@ -28,8 +26,7 @@
 		effectiveTheme: 'dark' | 'light';
 	} = $props();
 
-	let activeTab = $state<'general' | 'appearance' | 'models' | 'about'>('general');
-	let modelsTabRef = $state<{ resetView: () => void } | null>(null);
+	let activeTab = $state<'general' | 'appearance' | 'about'>('general');
 	let configStatus = $state<{
 		loaded_path: string | null;
 		expected_path: string;
@@ -51,10 +48,7 @@
 		}
 	});
 
-	function selectTab(tab: 'general' | 'appearance' | 'models' | 'about') {
-		if (tab === 'models') {
-			modelsTabRef?.resetView();
-		}
+	function selectTab(tab: 'general' | 'appearance' | 'about') {
 		activeTab = tab;
 	}
 
@@ -129,18 +123,6 @@
 					>
 						<Palette size={16} />
 						<span>Appearance</span>
-					</button>
-
-					<button
-						type="button"
-						class="flex items-center justify-center sm:justify-start gap-2.5 px-3.5 py-2.5 text-xs font-medium border-0 rounded-xl cursor-pointer transition-all duration-150 text-left shrink-0 sm:shrink flex-1 sm:flex-none text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] {activeTab ===
-						'models'
-							? '!text-[var(--primary)] !bg-[var(--primary-light)] font-semibold shadow-xs'
-							: ''}"
-						onclick={() => selectTab('models')}
-					>
-						<Box size={16} />
-						<span>Models</span>
 					</button>
 
 					<button
@@ -242,8 +224,6 @@
 								{/each}
 							</div>
 						</div>
-					{:else if activeTab === 'models'}
-						<ModelsSettingsTab bind:this={modelsTabRef} />
 					{:else if activeTab === 'about'}
 						<div class="flex flex-col items-center gap-5 py-4 text-center max-w-[420px] mx-auto">
 							<div class="flex flex-col items-center gap-3">
@@ -315,17 +295,6 @@
 									<span class="text-[var(--text-primary)] font-semibold">Svelte + Tailwind</span>
 								</div>
 								{#if configStatus}
-									<div
-										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
-									>
-										<span class="text-[var(--text-muted)]">Config File</span>
-										<span
-											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
-											title={configStatus.loaded_path || configStatus.expected_path}
-										>
-											{configStatus.loaded_path || configStatus.expected_path}
-										</span>
-									</div>
 									{#if configStatus.host !== undefined && configStatus.port !== undefined}
 										<div
 											class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
@@ -344,26 +313,6 @@
 											class="text-[var(--primary)] font-bold text-[0.7rem] uppercase tracking-wider bg-[var(--primary-light)] px-1.5 py-0.5 rounded border border-[var(--primary)]/20"
 										>
 											{configStatus.hardware || 'auto'}
-										</span>
-									</div>
-									<div
-										class="flex items-center justify-between text-xs py-1.5 border-b border-[var(--border-color)]/60"
-									>
-										<span class="text-[var(--text-muted)]">Models Dir</span>
-										<span
-											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
-											title={configStatus.models_dir || ''}
-										>
-											{configStatus.models_dir || 'Default'}
-										</span>
-									</div>
-									<div class="flex items-center justify-between text-xs py-1.5">
-										<span class="text-[var(--text-muted)]">Runtimes Dir</span>
-										<span
-											class="text-[var(--text-primary)] font-mono text-[0.7rem] truncate max-w-[200px]"
-											title={configStatus.runtimes_dir || ''}
-										>
-											{configStatus.runtimes_dir || 'Default'}
 										</span>
 									</div>
 								{/if}

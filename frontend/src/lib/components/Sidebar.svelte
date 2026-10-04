@@ -8,6 +8,7 @@
 		Activity,
 		Settings,
 		Boxes,
+		Box,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Search,
@@ -129,6 +130,7 @@
 	);
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
+	let isModelsPage = $derived(currentPath.startsWith('/models'));
 	let currentActiveChatId = $derived(
 		currentPath.startsWith('/chat/') ? currentPath.replace('/chat/', '') : ''
 	);
@@ -247,6 +249,23 @@
 			<Boxes size={20} class="shrink-0 {isRuntimesPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
 				<span>Runtimes</span>
+			{/if}
+		</a>
+
+		<!-- Models Action -->
+		<a
+			href="/models"
+			class="flex items-center rounded-xl transition-all duration-150 box-border no-underline border-0 cursor-pointer {!isExpanded
+				? 'w-10 h-10 mx-auto justify-center'
+				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isModelsPage
+				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
+				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
+			onclick={closeMobile}
+			title="Models"
+		>
+			<Box size={20} class="shrink-0 {isModelsPage ? 'text-[var(--primary)]' : ''}" />
+			{#if isExpanded}
+				<span>Models</span>
 			{/if}
 		</a>
 
