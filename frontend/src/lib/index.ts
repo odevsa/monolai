@@ -1,4 +1,4 @@
-export const MAX_CHART_POINTS = 100;
+export const MAX_CHART_POINTS = 50;
 export * from './utils/common';
 export * from './utils/clipboard';
 export * from './utils/format';

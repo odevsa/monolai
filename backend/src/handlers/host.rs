@@ -185,7 +185,7 @@ pub async fn sysinfo_stream_handler(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = async_stream::stream! {
-        let mut interval = tokio::time::interval(Duration::from_millis(500));
+        let mut interval = tokio::time::interval(Duration::from_millis(1000));
 
         loop {
             interval.tick().await;

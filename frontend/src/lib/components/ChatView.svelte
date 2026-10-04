@@ -414,12 +414,20 @@
 
 					let content = r.content || '';
 					let reasoning: string | undefined = undefined;
+					let reasoningDuration: string | undefined = undefined;
 
-					// Check for stored <think>...</think> tags in content
-					const thinkMatch = content.match(/^<think>([\s\S]*?)<\/think>([\s\S]*)$/);
+					// Check for stored <think>...</think> tags in content (supporting optional duration attribute)
+					const thinkMatch = content.match(
+						/^<think(?:\s+duration=["']([^"']+)["'])?>([\s\S]*?)<\/think>([\s\S]*)$/
+					);
 					if (thinkMatch) {
-						reasoning = thinkMatch[1].trim();
-						content = thinkMatch[2].trim();
+						if (thinkMatch[1]) {
+							reasoningDuration = thinkMatch[1].trim();
+						} else if (r.duration) {
+							reasoningDuration = r.duration;
+						}
+						reasoning = thinkMatch[2].trim();
+						content = thinkMatch[3].trim();
 						collapsedReasoning[r.id] = true;
 					}
 
@@ -428,6 +436,7 @@
 						role: r.role,
 						content,
 						reasoning,
+						reasoningDuration,
 						tokens: r.tokens || undefined,
 						duration: r.duration || undefined,
 						speed: r.speed || undefined,
@@ -1066,7 +1075,9 @@
 			try {
 				if (activeId && assistantMsgId) {
 					const fullStoredContent = accumulatedReasoning
-						? `<think>${accumulatedReasoning}</think>${accumulatedContent}`
+						? (reasoningDuration
+							? `<think duration="${reasoningDuration}">${accumulatedReasoning}</think>${accumulatedContent}`
+							: `<think>${accumulatedReasoning}</think>${accumulatedContent}`)
 						: accumulatedContent;
 
 					await fetch(
