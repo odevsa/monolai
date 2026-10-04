@@ -184,31 +184,37 @@
 		}
 	}
 
+	let lastResolvedFilesCount = -1;
 	$effect(() => {
-		if (availableFiles.length > 0) {
-			let updated = false;
-			const nextFlags = { ...formFlags };
-			for (const [k, v] of Object.entries(nextFlags)) {
-				const resolved = resolve(v);
-				if (resolved && resolved !== v) {
-					nextFlags[k] = resolved;
-					updated = true;
-				}
-			}
-			if (updated) {
-				formFlags = nextFlags;
-			}
-			customText = flagsToCustomText(formFlags, resolve);
-
-			if (!isEditingExisting && (!hasUserEditedId || !formId.trim())) {
-				const mainFile = formFlags['--model'] || formFlags['-m'] || (availableFiles[0] ? getFilePath(availableFiles[0]) : '');
-				if (mainFile) {
-					const clean = extractCleanModelName(mainFile);
-					if (clean) {
-						formId = clean;
+		const files = availableFiles;
+		if (files.length > 0 && files.length !== lastResolvedFilesCount) {
+			lastResolvedFilesCount = files.length;
+			untrack(() => {
+				let updated = false;
+				const nextFlags = { ...formFlags };
+				for (const [k, v] of Object.entries(nextFlags)) {
+					const resolved = resolve(v);
+					if (resolved && resolved !== v) {
+						nextFlags[k] = resolved;
+						updated = true;
 					}
 				}
-			}
+				if (updated) {
+					formFlags = nextFlags;
+					customText = flagsToCustomText(formFlags, resolve);
+				}
+
+				if (!isEditingExisting && (!hasUserEditedId || !formId.trim())) {
+					const mainFile =
+						formFlags['--model'] || formFlags['-m'] || (files[0] ? getFilePath(files[0]) : '');
+					if (mainFile) {
+						const clean = extractCleanModelName(mainFile);
+						if (clean) {
+							formId = clean;
+						}
+					}
+				}
+			});
 		}
 	});
 

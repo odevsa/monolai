@@ -20,7 +20,18 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
 
     let mut models = Vec::new();
 
-    for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(root)
+        .into_iter()
+        .filter_entry(|e| {
+            // Skip hidden directories like .git, .cache, etc.
+            if e.file_type().is_dir() {
+                !e.file_name().to_string_lossy().starts_with('.')
+            } else {
+                true
+            }
+        })
+        .filter_map(|e| e.ok())
+    {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
@@ -62,6 +73,7 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
 }
 
 /// Check if the model weights file referenced in the flags exists on disk.
+/// Performs fast O(1) path checks without scanning disk hierarchies.
 /// Returns (exists, optional_file_path_found)
 pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) -> (bool, Option<String>) {
     let models_dir = models_dir.as_ref();
@@ -131,13 +143,6 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
         let direct_fname = models_dir.join(fname);
         if direct_fname.is_file() {
             return (true, Some(val));
-        }
-
-        // 4. Recursive search inside models_dir in case it's in a subfolder
-        for entry in WalkDir::new(models_dir).into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() && entry.file_name() == fname {
-                return (true, Some(val));
-            }
         }
     }
 

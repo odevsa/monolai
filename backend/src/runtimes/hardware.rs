@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -220,6 +220,63 @@ fn detect_windows_display_controllers() -> Vec<GpuInfo> {
 #[cfg(target_os = "linux")]
 fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
     let mut list = Vec::new();
+
+    // 1. Fast sysfs scan (< 1ms, completely avoids lspci 2s PCI bus probing)
+    if let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let class_path = path.join("class");
+            if let Ok(class_str) = std::fs::read_to_string(&class_path) {
+                let trimmed = class_str.trim();
+                // 0x03xxxx = Display/VGA/3D controller
+                if trimmed.starts_with("0x03") {
+                    let vendor_path = path.join("vendor");
+                    let vendor_hex = std::fs::read_to_string(&vendor_path)
+                        .unwrap_or_default()
+                        .trim()
+                        .to_lowercase();
+
+                    let (vendor, is_dedicated, default_name) = match vendor_hex.as_str() {
+                        "0x10de" => ("NVIDIA".to_string(), true, "NVIDIA Graphics Controller".to_string()),
+                        "0x1002" => ("AMD".to_string(), true, "AMD Radeon Graphics Controller".to_string()),
+                        "0x8086" => ("Intel".to_string(), false, "Intel Graphics Controller".to_string()),
+                        _ => ("Unknown".to_string(), false, "PCI Display Controller".to_string()),
+                    };
+
+                    let mut mem_total = None;
+                    if vendor == "AMD" {
+                        let card_paths = [
+                            "/sys/class/drm/card0/device/mem_info_vram_total",
+                            "/sys/class/drm/card1/device/mem_info_vram_total",
+                            "/sys/class/drm/card2/device/mem_info_vram_total",
+                        ];
+                        for p in card_paths {
+                            if let Ok(content) = std::fs::read_to_string(p) {
+                                if let Ok(bytes) = content.trim().parse::<u64>() {
+                                    mem_total = Some(bytes);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    list.push(GpuInfo {
+                        name: default_name,
+                        vendor,
+                        memory_total_bytes: mem_total,
+                        driver_version: None,
+                        is_dedicated,
+                    });
+                }
+            }
+        }
+    }
+
+    if !list.is_empty() {
+        return list;
+    }
+
+    // 2. Fallback to lspci only if sysfs failed
     if let Ok(output) = Command::new("lspci").output() {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -534,8 +591,17 @@ impl GpuTracker {
     }
 }
 
+static CACHED_HARDWARE_REPORT: OnceLock<HardwareReport> = OnceLock::new();
+
 /// Detect host system hardware acceleration capabilities.
+/// Result is cached with OnceLock after first detection since hardware configuration is static.
 pub fn detect_hardware() -> HardwareReport {
+    CACHED_HARDWARE_REPORT
+        .get_or_init(detect_hardware_internal)
+        .clone()
+}
+
+fn detect_hardware_internal() -> HardwareReport {
     let os = std::env::consts::OS.to_string();
     let arch = std::env::consts::ARCH.to_string();
 
@@ -581,10 +647,13 @@ pub fn detect_hardware() -> HardwareReport {
         }
     }
 
-    // Check for Vulkan
+    // Check for Vulkan (fast path checks without executing slow vulkaninfo subprocess)
     if Path::new("/usr/share/vulkan/icd.d").exists()
+        || Path::new("/etc/vulkan/icd.d").exists()
         || Path::new("C:\\Windows\\System32\\vulkan-1.dll").exists()
-        || Command::new("vulkaninfo").arg("--summary").output().is_ok()
+        || Path::new("/usr/lib/libvulkan.so.1").exists()
+        || Path::new("/usr/lib64/libvulkan.so.1").exists()
+        || Path::new("/usr/lib/x86_64-linux-gnu/libvulkan.so.1").exists()
     {
         has_vulkan = true;
         available.push("vulkan".to_string());

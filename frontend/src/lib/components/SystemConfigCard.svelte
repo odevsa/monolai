@@ -123,7 +123,7 @@
 	let portSetting = $derived(configStatus?.port ?? 8080);
 
 	async function loadConfigData(silent = false) {
-		if (!silent) isLoading = true;
+		if (!silent && !configStatus) isLoading = true;
 		else isRefreshing = true;
 		fetchError = null;
 

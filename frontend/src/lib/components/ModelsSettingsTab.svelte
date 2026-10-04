@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Box, Plus, Edit2, Trash2, Cpu, RefreshCw, FileText, AlertTriangle } from '@lucide/svelte';
 	import ModelForm from './ModelForm.svelte';
 	import ModelBadge from './ModelBadge.svelte';
@@ -79,7 +80,7 @@
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		loadAllModelsData();
 	});
 
@@ -203,7 +204,7 @@
 			</div>
 		{:else}
 			<div class="flex flex-col gap-3">
-				{#each registeredModels as model}
+				{#each registeredModels as model (model.id)}
 					{@const mainFile = getMainModelFilePath(model)}
 					{@const isMissing = model.file_exists === false}
 					<div

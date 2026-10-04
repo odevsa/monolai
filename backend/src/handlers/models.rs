@@ -70,6 +70,7 @@ pub async fn get_models_handler(
     } else {
         crate::config::get_default_models_dir()
     };
+    drop(status);
 
     for m in &mut models {
         let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &m.flags);
