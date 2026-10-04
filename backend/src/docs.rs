@@ -54,6 +54,7 @@ use utoipa::OpenApi;
             crate::handlers::host::CpuInfo,
             crate::handlers::host::RamInfo,
             crate::handlers::host::OsInfo,
+            crate::handlers::host::VramInfo,
             crate::handlers::host::HostMetricsTick,
             crate::runtimes::installer::RuntimeItem,
             crate::runtimes::installer::InstallProgress,

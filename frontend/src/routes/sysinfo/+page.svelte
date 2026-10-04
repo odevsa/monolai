@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Activity, Box, Cpu, HardDrive, Monitor, Power, RefreshCw, Zap } from '@lucide/svelte';
+	import { Activity, Box, Cpu, HardDrive, MemoryStick, Monitor, Power, RefreshCw, Zap } from '@lucide/svelte';
 	import { MAX_CHART_POINTS } from '$lib';
 	import AreaChart from '$lib/components/AreaChart.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -38,6 +38,13 @@
 		uptime_seconds: number;
 	}
 
+	interface VramInfo {
+		total_bytes: number;
+		used_bytes: number;
+		free_bytes: number;
+		percentage: number;
+	}
+
 	interface SysInfo {
 		cpu: CpuInfo;
 		ram: RamInfo;
@@ -49,6 +56,7 @@
 			driver_version?: string | null;
 			is_dedicated: boolean;
 		} | null;
+		vram?: VramInfo | null;
 		timestamp: number;
 	}
 
@@ -59,6 +67,10 @@
 		ram_free_bytes: number;
 		ram_percentage: number;
 		gpu_usage: number | null;
+		vram_used_bytes?: number | null;
+		vram_total_bytes?: number | null;
+		vram_free_bytes?: number | null;
+		vram_percentage?: number | null;
 		timestamp: number;
 	}
 
@@ -71,6 +83,7 @@
 	let cpuHistory = $state<number[]>([]);
 	let ramHistory = $state<number[]>([]);
 	let gpuHistory = $state<number[]>([]);
+	let vramHistory = $state<number[]>([]);
 
 	let eventSource: EventSource | null = null;
 
@@ -117,6 +130,10 @@
 				if (tick.gpu_usage !== null && tick.gpu_usage !== undefined) {
 					gpuHistory = [...gpuHistory.slice(-(MAX_CHART_POINTS - 1)), tick.gpu_usage];
 				}
+
+				if (tick.vram_percentage !== null && tick.vram_percentage !== undefined) {
+					vramHistory = [...vramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.vram_percentage];
+				}
 			} catch (err) {
 				console.error('Failed to parse SSE metrics tick:', err);
 			}
@@ -149,9 +166,18 @@
 	});
 
 	let isGpuUnavailable = $derived.by(() => {
-		if (sysinfo && sysinfo.gpu === null) return true;
+		if (sysinfo && (!sysinfo.gpu || !sysinfo.gpu.is_dedicated)) return true;
 		if (!sysinfo && latestTick && latestTick.gpu_usage === null) return true;
 		return false;
+	});
+
+	let isVramUnavailable = $derived.by(() => {
+		if (isGpuUnavailable) return true;
+		if (sysinfo?.vram && sysinfo.vram.total_bytes > 0) return false;
+		if (latestTick && latestTick.vram_percentage !== null && latestTick.vram_percentage !== undefined) return false;
+		if (latestTick && latestTick.vram_total_bytes !== null && latestTick.vram_total_bytes !== undefined && latestTick.vram_total_bytes > 0) return false;
+		if (sysinfo?.gpu?.memory_total_bytes && sysinfo.gpu.memory_total_bytes > 0) return false;
+		return true;
 	});
 </script>
 
@@ -190,7 +216,7 @@
 
 		<!-- Real-Time Mountain Charts Section -->
 		<section class="flex flex-col gap-4">
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
+			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
 				<!-- CPU Usage Mountain Chart -->
 				<AreaChart
 					title="CPU Utilization"
@@ -231,6 +257,22 @@
 					maxVal={100}
 					unavailable={isGpuUnavailable}
 					unavailableMessage="No Dedicated GPU Detected"
+				/>
+
+				<!-- VRAM Memory Mountain Chart -->
+				<AreaChart
+					title="VRAM Memory Usage"
+					subtitle={!isVramUnavailable
+						? `${formatBytes(latestTick?.vram_used_bytes ?? sysinfo?.vram?.used_bytes ?? 0)} / ${formatBytes(latestTick?.vram_total_bytes ?? sysinfo?.vram?.total_bytes ?? sysinfo?.gpu?.memory_total_bytes ?? 0)}`
+						: 'Dedicated Video RAM'}
+					currentValue={latestTick?.vram_percentage ?? sysinfo?.vram?.percentage ?? 0}
+					unit="%"
+					color="#f43f5e"
+					icon={MemoryStick}
+					data={vramHistory}
+					maxVal={100}
+					unavailable={isVramUnavailable}
+					unavailableMessage="No Dedicated VRAM Detected"
 				/>
 			</div>
 		</section>
@@ -431,7 +473,7 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu ? 'xl:grid-cols-5' : ''} gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu ? ((sysinfo.vram?.total_bytes ?? sysinfo.gpu.memory_total_bytes) ? 'xl:grid-cols-6' : 'xl:grid-cols-5') : ''} gap-4">
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
@@ -483,6 +525,18 @@
 								title={sysinfo.gpu.name}
 								>{sysinfo.gpu.name}</span
 							>
+						</div>
+					{/if}
+
+					{#if (sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes)}
+						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
+							<span
+								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
+								>Dedicated VRAM</span
+							>
+							<span class="text-sm font-semibold text-[var(--text-primary)]">
+								{formatBytes(sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes ?? 0)}
+							</span>
 						</div>
 					{/if}
 				</div>

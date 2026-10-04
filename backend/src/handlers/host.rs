@@ -42,12 +42,21 @@ pub struct OsInfo {
 use crate::runtimes::hardware::GpuInfo;
 
 #[derive(Serialize, utoipa::ToSchema)]
+pub struct VramInfo {
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub free_bytes: u64,
+    pub percentage: f32,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct SysInfoResponse {
     pub cpu: CpuInfo,
     pub ram: RamInfo,
     pub os: OsInfo,
     #[schema(value_type = Option<Object>)]
     pub gpu: Option<GpuInfo>,
+    pub vram: Option<VramInfo>,
     pub timestamp: u64,
 }
 
@@ -59,6 +68,10 @@ pub struct HostMetricsTick {
     pub ram_free_bytes: u64,
     pub ram_percentage: f32,
     pub gpu_usage: Option<f32>,
+    pub vram_used_bytes: Option<u64>,
+    pub vram_total_bytes: Option<u64>,
+    pub vram_free_bytes: Option<u64>,
+    pub vram_percentage: Option<f32>,
     pub timestamp: u64,
 }
 
@@ -105,6 +118,33 @@ pub async fn sysinfo_handler(State(state): State<AppState>) -> Json<SysInfoRespo
     let uptime = System::uptime();
 
     let gpu = state.gpu_tracker.primary_gpu();
+    let gpu_stats = state.gpu_tracker.current_stats();
+    let vram = match (gpu_stats.vram_total_bytes, gpu_stats.vram_used_bytes) {
+        (Some(total), Some(used)) if total > 0 => {
+            let free = gpu_stats.vram_free_bytes.unwrap_or_else(|| total.saturating_sub(used));
+            let pct = gpu_stats.vram_percentage.unwrap_or_else(|| (used as f32 / total as f32) * 100.0);
+            Some(VramInfo {
+                total_bytes: total,
+                used_bytes: used,
+                free_bytes: free,
+                percentage: pct,
+            })
+        }
+        (Some(total), None) if total > 0 => {
+            Some(VramInfo {
+                total_bytes: total,
+                used_bytes: 0,
+                free_bytes: total,
+                percentage: 0.0,
+            })
+        }
+        _ => gpu.as_ref().and_then(|g| g.memory_total_bytes).map(|total| VramInfo {
+            total_bytes: total,
+            used_bytes: 0,
+            free_bytes: total,
+            percentage: 0.0,
+        }),
+    };
 
     Json(SysInfoResponse {
         cpu: CpuInfo {
@@ -127,6 +167,7 @@ pub async fn sysinfo_handler(State(state): State<AppState>) -> Json<SysInfoRespo
             uptime_seconds: uptime,
         },
         gpu,
+        vram,
         timestamp: ts,
     })
 }
@@ -168,7 +209,7 @@ pub async fn sysinfo_stream_handler(
                     .unwrap_or_default()
                     .as_secs();
 
-                let gpu_usage = state.gpu_tracker.current_usage();
+                let gpu_stats = state.gpu_tracker.current_stats();
 
                 HostMetricsTick {
                     cpu_usage: global_cpu_usage,
@@ -176,7 +217,11 @@ pub async fn sysinfo_stream_handler(
                     ram_total_bytes: total_ram,
                     ram_free_bytes: free_ram,
                     ram_percentage: ram_pct,
-                    gpu_usage,
+                    gpu_usage: gpu_stats.gpu_usage,
+                    vram_used_bytes: gpu_stats.vram_used_bytes,
+                    vram_total_bytes: gpu_stats.vram_total_bytes,
+                    vram_free_bytes: gpu_stats.vram_free_bytes,
+                    vram_percentage: gpu_stats.vram_percentage,
                     timestamp: ts,
                 }
             };

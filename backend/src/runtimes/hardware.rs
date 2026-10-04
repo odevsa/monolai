@@ -22,10 +22,19 @@ pub struct HardwareReport {
     pub detected_gpus: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct GpuUsageStats {
+    pub gpu_usage: Option<f32>,
+    pub vram_used_bytes: Option<u64>,
+    pub vram_total_bytes: Option<u64>,
+    pub vram_free_bytes: Option<u64>,
+    pub vram_percentage: Option<f32>,
+}
+
 pub struct GpuTracker {
     pub gpus: Vec<GpuInfo>,
     pub primary_gpu: Option<GpuInfo>,
-    usage_cache: Mutex<(Option<f32>, Instant)>,
+    usage_cache: Mutex<(GpuUsageStats, Instant)>,
     nvidia_smi_path: Option<PathBuf>,
 }
 
@@ -241,10 +250,23 @@ fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
                         || (is_intel && line_lower.contains("arc"));
                     let name = line.split(':').last().unwrap_or(line).trim().to_string();
 
+                    let mut mem_total = None;
+                    if is_amd {
+                        for c in &["card0", "card1", "card2"] {
+                            let p = format!("/sys/class/drm/{}/device/mem_info_vram_total", c);
+                            if let Ok(content) = std::fs::read_to_string(&p) {
+                                if let Ok(bytes) = content.trim().parse::<u64>() {
+                                    mem_total = Some(bytes);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     list.push(GpuInfo {
                         name,
                         vendor,
-                        memory_total_bytes: None,
+                        memory_total_bytes: mem_total,
                         driver_version: None,
                         is_dedicated,
                     });
@@ -363,7 +385,7 @@ impl GpuTracker {
         Self {
             gpus,
             primary_gpu,
-            usage_cache: Mutex::new((None, Instant::now() - Duration::from_secs(10))),
+            usage_cache: Mutex::new((GpuUsageStats::default(), Instant::now() - Duration::from_secs(10))),
             nvidia_smi_path,
         }
     }
@@ -377,55 +399,138 @@ impl GpuTracker {
         &self.gpus
     }
 
-    pub fn current_usage(&self) -> Option<f32> {
-        let _primary = self.primary_gpu.as_ref()?;
+    pub fn current_stats(&self) -> GpuUsageStats {
+        let primary = match self.primary_gpu.as_ref() {
+            Some(g) => g,
+            None => return GpuUsageStats::default(),
+        };
 
         let mut cache = self.usage_cache.lock().unwrap();
-        if let (Some(val), last_time) = *cache {
-            if last_time.elapsed() < Duration::from_millis(1500) {
-                return Some(val);
-            }
+        if cache.1.elapsed() < Duration::from_millis(1500) {
+            return cache.0.clone();
         }
 
-        // Query nvidia-smi if available
+        // 1. Query nvidia-smi if available
         if let Some(ref smi) = self.nvidia_smi_path {
             if let Ok(output) = run_cmd_no_window(
                 smi,
-                &["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                &[
+                    "--query-gpu=utilization.gpu,memory.used,memory.total,memory.free",
+                    "--format=csv,noheader,nounits",
+                ],
             ) {
                 if output.status.success() {
                     let out_str = String::from_utf8_lossy(&output.stdout);
                     if let Some(line) = out_str.lines().next() {
-                        if let Ok(pct) = line.trim().parse::<f32>() {
-                            *cache = (Some(pct), Instant::now());
-                            return Some(pct);
-                        }
+                        let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+                        let gpu_usage = parts.get(0).and_then(|s| s.parse::<f32>().ok());
+                        let vram_used = parts
+                            .get(1)
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .map(|mib| mib * 1024 * 1024);
+                        let vram_total = parts
+                            .get(2)
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .map(|mib| mib * 1024 * 1024);
+                        let vram_free = parts
+                            .get(3)
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .map(|mib| mib * 1024 * 1024);
+
+                        let vram_percentage = match (vram_used, vram_total) {
+                            (Some(used), Some(total)) if total > 0 => {
+                                Some((used as f32 / total as f32) * 100.0)
+                            }
+                            _ => None,
+                        };
+
+                        let stats = GpuUsageStats {
+                            gpu_usage,
+                            vram_used_bytes: vram_used,
+                            vram_total_bytes: vram_total,
+                            vram_free_bytes: vram_free.or_else(|| {
+                                match (vram_total, vram_used) {
+                                    (Some(t), Some(u)) => Some(t.saturating_sub(u)),
+                                    _ => None,
+                                }
+                            }),
+                            vram_percentage,
+                        };
+                        *cache = (stats.clone(), Instant::now());
+                        return stats;
                     }
                 }
             }
         }
 
-        // Query Linux AMD sysfs if available
+        // 2. Query Linux AMD sysfs if available
         #[cfg(target_os = "linux")]
         {
-            let paths = [
-                "/sys/class/drm/card0/device/gpu_busy_percent",
-                "/sys/class/drm/card1/device/gpu_busy_percent",
+            let card_paths = [
+                "/sys/class/drm/card0/device",
+                "/sys/class/drm/card1/device",
+                "/sys/class/drm/card2/device",
             ];
-            for p in paths {
-                if let Ok(content) = std::fs::read_to_string(p) {
-                    if let Ok(pct) = content.trim().parse::<f32>() {
-                        *cache = (Some(pct), Instant::now());
-                        return Some(pct);
-                    }
+            for base in card_paths {
+                let used_path = format!("{}/mem_info_vram_used", base);
+                let total_path = format!("{}/mem_info_vram_total", base);
+                let busy_path = format!("{}/gpu_busy_percent", base);
+
+                let vram_used = std::fs::read_to_string(&used_path)
+                    .ok()
+                    .and_then(|s| s.trim().parse::<u64>().ok());
+                let vram_total = std::fs::read_to_string(&total_path)
+                    .ok()
+                    .and_then(|s| s.trim().parse::<u64>().ok());
+                let gpu_usage = std::fs::read_to_string(&busy_path)
+                    .ok()
+                    .and_then(|s| s.trim().parse::<f32>().ok());
+
+                if vram_used.is_some() || vram_total.is_some() || gpu_usage.is_some() {
+                    let vram_percentage = match (vram_used, vram_total) {
+                        (Some(u), Some(t)) if t > 0 => Some((u as f32 / t as f32) * 100.0),
+                        _ => None,
+                    };
+                    let vram_free = match (vram_total, vram_used) {
+                        (Some(t), Some(u)) => Some(t.saturating_sub(u)),
+                        _ => None,
+                    };
+
+                    let stats = GpuUsageStats {
+                        gpu_usage: gpu_usage.or(Some(0.0)),
+                        vram_used_bytes: vram_used,
+                        vram_total_bytes: vram_total,
+                        vram_free_bytes: vram_free,
+                        vram_percentage,
+                    };
+                    *cache = (stats.clone(), Instant::now());
+                    return stats;
                 }
             }
         }
 
-        // Dedicated GPU exists, but dynamic utilization counter unavailable on this platform
-        let default_val = 0.0;
-        *cache = (Some(default_val), Instant::now());
-        Some(default_val)
+        // 3. Fallback: if dedicated GPU exists, provide known static total VRAM
+        if primary.is_dedicated {
+            let total = primary.memory_total_bytes;
+            let stats = GpuUsageStats {
+                gpu_usage: Some(0.0),
+                vram_used_bytes: None,
+                vram_total_bytes: total,
+                vram_free_bytes: total,
+                vram_percentage: None,
+            };
+            *cache = (stats.clone(), Instant::now());
+            return stats;
+        }
+
+        let stats = GpuUsageStats::default();
+        *cache = (stats.clone(), Instant::now());
+        stats
+    }
+
+    #[allow(dead_code)]
+    pub fn current_usage(&self) -> Option<f32> {
+        self.current_stats().gpu_usage
     }
 }
 
