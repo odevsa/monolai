@@ -24,6 +24,7 @@
 		has_runtimes: boolean;
 		has_hardware: boolean;
 		created_auto_file: boolean;
+		is_docker?: boolean;
 		loaded_path: string | null;
 		expected_path: string;
 		models_dir: string | null;
@@ -158,6 +159,7 @@
 	}
 
 	function startEdit() {
+		if (configStatus?.is_docker) return;
 		if (configStatus) {
 			editModels = configStatus.models_dir || '';
 			editRuntimes = configStatus.runtimes_dir || '';
@@ -282,15 +284,24 @@
 					<RefreshCw size={13} class={isRefreshing ? 'animate-spin text-[var(--primary)]' : ''} />
 				</button>
 
-				<button
-					type="button"
-					onclick={startEdit}
-					disabled={isLoading || !configStatus}
-					class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--primary)] text-xs text-[var(--text-primary)] font-medium transition cursor-pointer shadow-2xs"
-				>
-					<Edit2 size={13} class="text-[var(--primary)]" />
-					<span>Edit</span>
-				</button>
+				{#if !configStatus?.is_docker}
+					<button
+						type="button"
+						onclick={startEdit}
+						disabled={isLoading || !configStatus}
+						class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--primary)] text-xs text-[var(--text-primary)] font-medium transition cursor-pointer shadow-2xs"
+					>
+						<Edit2 size={13} class="text-[var(--primary)]" />
+						<span>Edit</span>
+					</button>
+				{:else}
+					<div
+						class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-400 text-xs font-semibold"
+						title="Storage paths, host, and port are managed by the Docker container"
+					>
+						<span>Docker Environment</span>
+					</div>
+				{/if}
 			{:else}
 				<button
 					type="button"

@@ -11,9 +11,27 @@
 ![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&style=flat-square)
 
-[Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [API Usage](#api-usage) • [Development](#development) • [Tech Stack](#tech-stack)
+[Features](#features) •
+[Themes](#themes) •
+[Quick Start](#quick-start) •
+[Configuration](#configuration) •
+[API Usage](#api-usage) •
+[Development](#development) •
+[Tech Stack](#tech-stack)
 
 </div>
+
+## Overview
+
+<div align="center">
+  <img src="assets/screenshot-1.png" alt="Chat" width="49%" />
+  <img src="assets/screenshot-2.png" alt="System Info" width="49%" />
+  <br />
+  <img src="assets/screenshot-3.png" alt="Runtimes" width="49%" />
+  <img src="assets/screenshot-4.png" alt="Models" width="49%" />
+</div>
+
+**Monolai** is a **local AI model manager** and **OpenAI-compatible runtime**. It is a **lightweight**, **offline** and **private** tool that allows you to **run local models** (GGUF) on your own hardware with **zero telemetry**.
 
 ## Features
 
@@ -26,6 +44,18 @@
 - **GUI Interfaces**: Native Desktop App (`monolai-gui`) with system tray, background daemon supervisor.
 - **OpenAPI Documentation**: Interactive Swagger UI at `/api/swagger`.
 - **Multi-platform**: Linux, MacOS, Windows and Docker.
+
+## Themes
+
+Monolai features dynamic theme support tailored for different AI model and UI preferences:
+
+<div align="center">
+  <img src="assets/theme-1.png" alt="Theme Preview 1" width="49%" />
+  <img src="assets/theme-2.png" alt="Theme Preview 2" width="49%" />
+  <br /><br />
+  <img src="assets/theme-3.png" alt="Theme Preview 3" width="49%" />
+  <img src="assets/theme-4.png" alt="Theme Preview 4" width="49%" />
+</div>
 
 ## Quick Start
 

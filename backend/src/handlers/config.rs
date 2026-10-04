@@ -1,4 +1,7 @@
-use crate::config::{load_config, save_config, ConfigStatus};
+use crate::config::{
+    get_default_models_dir, get_default_runtimes_dir, is_running_in_docker, load_config,
+    save_config, ConfigStatus,
+};
 use crate::runtimes::hardware::{detect_hardware, HardwareReport};
 use crate::state::AppState;
 use axum::{
@@ -87,21 +90,43 @@ pub async fn save_setup_config_handler(
     State(state): State<AppState>,
     Json(payload): Json<SaveConfigRequest>,
 ) -> Result<Json<SaveConfigResponse>, (StatusCode, String)> {
-    if payload.models.trim().is_empty() {
+    let in_docker = is_running_in_docker();
+    let models = if in_docker {
+        get_default_models_dir().to_string_lossy().to_string()
+    } else {
+        payload.models.trim().to_string()
+    };
+    let runtimes = if in_docker {
+        get_default_runtimes_dir().to_string_lossy().to_string()
+    } else {
+        payload.runtimes.trim().to_string()
+    };
+    let host = if in_docker {
+        Some("0.0.0.0")
+    } else {
+        payload.host.as_deref()
+    };
+    let port = if in_docker {
+        std::env::var("PORT").ok().and_then(|p| p.parse().ok()).or(Some(8080))
+    } else {
+        payload.port
+    };
+
+    if models.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Models directory cannot be empty".to_string()));
     }
-    if payload.runtimes.trim().is_empty() {
+    if runtimes.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Runtimes directory cannot be empty".to_string()));
     }
 
     // Save configuration file to disk
     if let Err(err) = save_config(
         state.cli_config_path.as_deref(),
-        payload.models.trim(),
-        payload.runtimes.trim(),
+        &models,
+        &runtimes,
         payload.hardware.trim(),
-        payload.host.as_deref(),
-        payload.port,
+        host,
+        port,
     ) {
         return Err((StatusCode::INTERNAL_SERVER_ERROR, err));
     }

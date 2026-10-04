@@ -1,9 +1,9 @@
 services:
   monolai:
-    image: odevsa/monolai:latest
+    image: monolai:latest
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker
     container_name: monolai
     restart: unless-stopped
     ports:

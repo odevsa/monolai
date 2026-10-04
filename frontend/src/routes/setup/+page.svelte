@@ -26,6 +26,7 @@
 		has_runtimes: boolean;
 		has_hardware: boolean;
 		created_auto_file: boolean;
+		is_docker?: boolean;
 		loaded_path: string | null;
 		expected_path: string;
 		models_dir: string | null;
@@ -61,7 +62,9 @@
 	let host = $state('0.0.0.0');
 	let port = $state(8080);
 
-	let isStorageConfigured = $derived(!!configStatus?.has_models && !!configStatus?.has_runtimes);
+	let isStorageConfigured = $derived(
+		!!configStatus?.is_docker || (!!configStatus?.has_models && !!configStatus?.has_runtimes)
+	);
 
 	// Copy feedback states
 	let copiedPath = $state(false);
@@ -116,8 +119,14 @@
 	}
 
 	async function saveSetup() {
-		const targetModels = modelsDir.trim() || configStatus?.models_dir || '';
-		const targetRuntimes = runtimesDir.trim() || configStatus?.runtimes_dir || '';
+		const targetModels = configStatus?.is_docker
+			? (configStatus.models_dir || '/app/models')
+			: (modelsDir.trim() || configStatus?.models_dir || '');
+		const targetRuntimes = configStatus?.is_docker
+			? (configStatus.runtimes_dir || '/app/runtimes')
+			: (runtimesDir.trim() || configStatus?.runtimes_dir || '');
+		const targetHost = configStatus?.is_docker ? '0.0.0.0' : host.trim();
+		const parsedPort = configStatus?.is_docker ? (configStatus.port || 8080) : Number(port);
 
 		if (!targetModels) {
 			saveError = 'Please specify a valid Models directory.';
@@ -127,11 +136,10 @@
 			saveError = 'Please specify a valid Runtimes directory.';
 			return;
 		}
-		if (!host.trim()) {
+		if (!targetHost) {
 			saveError = 'Please specify a valid Host address.';
 			return;
 		}
-		const parsedPort = Number(port);
 		if (isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
 			saveError = 'Please specify a valid Port number (1-65535).';
 			return;
@@ -148,7 +156,7 @@
 					models: targetModels,
 					runtimes: targetRuntimes,
 					hardware: selectedHardware,
-					host: host.trim(),
+					host: targetHost,
 					port: parsedPort
 				})
 			});
@@ -408,8 +416,15 @@
 									<CheckCircle2 size={16} />
 								</div>
 								<div class="flex flex-col gap-0.5 min-w-0">
-									<div class="font-semibold text-[var(--text-primary)]">
-										Storage Volumes Configured
+									<div class="flex items-center gap-2">
+										<span class="font-semibold text-[var(--text-primary)]">
+											{configStatus.is_docker ? 'Docker Container Volumes' : 'Storage Volumes Configured'}
+										</span>
+										{#if configStatus.is_docker}
+											<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/25">
+												Fixed Mounts
+											</span>
+										{/if}
 									</div>
 									<ul class="text-[11px] text-[var(--text-muted)] font-mono truncate">
 										<li>Models: {configStatus.models_dir || '/app/models'}</li>
@@ -547,36 +562,48 @@
 
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								<div class="flex flex-col gap-1.5">
-									<label
-										for="host-input"
-										class="text-xs font-semibold text-[var(--text-secondary)]"
-									>
-										Host Address
-									</label>
+									<div class="flex items-center justify-between">
+										<label
+											for="host-input"
+											class="text-xs font-semibold text-[var(--text-secondary)]"
+										>
+											Host Address
+										</label>
+										{#if configStatus?.is_docker}
+											<span class="text-[10px] text-sky-400 font-medium">Locked in Docker</span>
+										{/if}
+									</div>
 									<input
 										id="host-input"
 										type="text"
 										bind:value={host}
+										disabled={configStatus?.is_docker}
 										placeholder="0.0.0.0"
-										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition disabled:opacity-50 disabled:cursor-not-allowed"
 									/>
 								</div>
 
 								<div class="flex flex-col gap-1.5">
-									<label
-										for="port-input"
-										class="text-xs font-semibold text-[var(--text-secondary)]"
-									>
-										HTTP Port
-									</label>
+									<div class="flex items-center justify-between">
+										<label
+											for="port-input"
+											class="text-xs font-semibold text-[var(--text-secondary)]"
+										>
+											HTTP Port
+										</label>
+										{#if configStatus?.is_docker}
+											<span class="text-[10px] text-sky-400 font-medium">Locked in Docker</span>
+										{/if}
+									</div>
 									<input
 										id="port-input"
 										type="number"
 										min="1"
 										max="65535"
 										bind:value={port}
+										disabled={configStatus?.is_docker}
 										placeholder="8080"
-										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition"
+										class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-black/30 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] font-mono transition disabled:opacity-50 disabled:cursor-not-allowed"
 									/>
 								</div>
 							</div>

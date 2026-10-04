@@ -28,6 +28,7 @@
 		has_models: boolean;
 		has_runtimes: boolean;
 		created_auto_file: boolean;
+		is_docker?: boolean;
 		loaded_path: string | null;
 		expected_path: string;
 		models_dir: string | null;

@@ -18,6 +18,7 @@ pub struct ConfigStatus {
     pub has_runtimes: bool,
     pub has_hardware: bool,
     pub created_auto_file: bool,
+    pub is_docker: bool,
     pub loaded_path: Option<String>,
     pub expected_path: String,
     pub models_dir: Option<String>,
@@ -132,6 +133,7 @@ port: {}
 pub fn is_running_in_docker() -> bool {
     std::env::var("DOCKER").map(|v| v == "true" || v == "1").unwrap_or(false)
         || Path::new("/.dockerenv").exists()
+        || Path::new("/run/.containerenv").exists()
         || (std::env::var("MODELS_DIR").as_deref() == Ok("/app/models")
             && std::env::var("RUNTIMES_DIR").as_deref() == Ok("/app/runtimes"))
 }
@@ -199,6 +201,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             has_runtimes: false,
             has_hardware: false,
             created_auto_file,
+            is_docker: in_docker,
             loaded_path: None,
             expected_path: expected_path_str,
             models_dir: Some(models_dir),
@@ -222,6 +225,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 has_runtimes: false,
                 has_hardware: false,
                 created_auto_file,
+                is_docker: in_docker,
                 loaded_path: Some(expected_path_str.clone()),
                 expected_path: expected_path_str,
                 models_dir: None,
@@ -246,6 +250,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 has_runtimes: false,
                 has_hardware: false,
                 created_auto_file,
+                is_docker: in_docker,
                 loaded_path: Some(expected_path_str.clone()),
                 expected_path: expected_path_str,
                 models_dir: None,
@@ -320,6 +325,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         has_runtimes,
         has_hardware,
         created_auto_file,
+        is_docker: in_docker,
         loaded_path: Some(expected_path_str.clone()),
         expected_path: expected_path_str,
         models_dir: resolved_models_dir,
