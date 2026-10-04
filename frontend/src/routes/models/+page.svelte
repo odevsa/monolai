@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import {
 		Box,
 		Plus,
@@ -159,8 +160,25 @@
 		}
 	}
 
+	afterNavigate(() => {
+		isEditingModel = false;
+		editingModel = null;
+	});
+
 	onMount(() => {
 		loadAllModelsData();
+
+		const handleNavModels = () => {
+			if (isEditingModel) {
+				isEditingModel = false;
+				editingModel = null;
+			}
+		};
+
+		window.addEventListener('monolai:nav-models', handleNavModels);
+		return () => {
+			window.removeEventListener('monolai:nav-models', handleNavModels);
+		};
 	});
 
 	function startAddModel() {
@@ -505,11 +523,11 @@
 								</div>
 							</div>
 
-							<!-- Action Buttons: ONLY Edit and Delete with clear colors and no borders -->
+							<!-- Action Buttons: Standardized matching runtimes page -->
 							<div class="flex items-center justify-end gap-2 pt-1">
 								<button
 									type="button"
-									class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer text-sky-400 bg-sky-500/10 border-0 hover:bg-sky-500/20"
+									class="app-btn app-btn-secondary app-btn-sm"
 									onclick={() => startEditModel(model)}
 									title="Edit model"
 								>
@@ -518,7 +536,7 @@
 								</button>
 								<button
 									type="button"
-									class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer text-rose-400 bg-rose-500/10 border-0 hover:bg-rose-500/20"
+									class="app-btn app-btn-danger app-btn-sm"
 									onclick={() => deleteModel(model.id)}
 									title="Delete model"
 								>

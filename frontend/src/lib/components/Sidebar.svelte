@@ -260,7 +260,12 @@
 				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isModelsPage
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
-			onclick={closeMobile}
+			onclick={() => {
+				closeMobile();
+				if (typeof window !== 'undefined') {
+					window.dispatchEvent(new CustomEvent('monolai:nav-models'));
+				}
+			}}
 			title="Models"
 		>
 			<Box size={20} class="shrink-0 {isModelsPage ? 'text-[var(--primary)]' : ''}" />

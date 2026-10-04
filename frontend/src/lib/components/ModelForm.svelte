@@ -308,13 +308,6 @@
 </script>
 
 <div class="model-form-container">
-	<div class="form-header-row">
-		<h4 class="form-title">
-			{isEditingExisting ? 'Edit Model' : 'New Model'}
-		</h4>
-		<button type="button" class="btn-text" onclick={onCancel}> Back to List </button>
-	</div>
-
 	{#if formError}
 		<div class="error-banner">
 			<AlertCircle size={16} />
@@ -394,7 +387,7 @@
 					{#if activeFormTab === 'flags'}
 						<button
 							type="button"
-							class="btn-secondary-sm"
+							class="app-btn app-btn-secondary app-btn-sm"
 							onclick={resetDefaultFlags}
 							title="Reset to default flags"
 						>
@@ -531,7 +524,7 @@
 						</select>
 						<button
 							type="button"
-							class="btn-secondary"
+							class="app-btn app-btn-secondary app-btn-sm"
 							disabled={!selectedAddFlag}
 							onclick={addFlag}
 						>
@@ -558,7 +551,7 @@
 								<span>Copied!</span>
 							{:else}
 								<Copy size={13} />
-								<span>Copy Command</span>
+								<span>Copy</span>
 							{/if}
 						</button>
 					</div>
@@ -580,8 +573,8 @@
 
 		<!-- Actions -->
 		<div class="form-actions-row">
-			<button type="button" class="btn-secondary" onclick={onCancel}> Cancel </button>
-			<button type="button" class="btn-primary" disabled={isSaving} onclick={handleSubmit}>
+			<button type="button" class="app-btn app-btn-secondary app-btn-md" onclick={onCancel}> Cancel </button>
+			<button type="button" class="app-btn app-btn-primary app-btn-md" disabled={isSaving} onclick={handleSubmit}>
 				<Save size={15} />
 				<span>{isSaving ? 'Saving...' : 'Save Model'}</span>
 			</button>
@@ -594,28 +587,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.875rem;
-	}
-
-	.form-header-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.form-title {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.btn-text {
-		background: transparent;
-		border: none;
-		color: var(--primary);
-		font-size: 0.825rem;
-		font-weight: 500;
-		cursor: pointer;
 	}
 
 	.error-banner {
@@ -971,70 +942,6 @@
 		border-top: 1px solid var(--border-color);
 	}
 
-	.btn-primary {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		background: var(--primary);
-		color: white;
-		border: none;
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.875rem;
-		font-size: 0.825rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.btn-primary:hover {
-		opacity: 0.9;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-secondary {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.4rem;
-		white-space: nowrap;
-		flex-shrink: 0;
-		background: var(--bg-hover);
-		color: var(--text-primary);
-		border: 1px solid var(--border-color);
-		border-radius: 0.5rem;
-		padding: 0.45rem 0.85rem;
-		font-size: 0.825rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.btn-secondary:hover {
-		background: var(--bg-surface-hover);
-	}
-
-	.btn-secondary-sm {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		background: transparent;
-		color: var(--text-muted);
-		border: 1px solid var(--border-color);
-		border-radius: 0.375rem;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.btn-secondary-sm:hover {
-		color: var(--text-primary);
-		background: var(--bg-hover);
-	}
 
 	.font-mono {
 		font-family: 'JetBrains Mono', monospace;
