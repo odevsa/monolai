@@ -120,13 +120,13 @@
 
 	async function saveSetup() {
 		const targetModels = configStatus?.is_docker
-			? (configStatus.models_dir || '/app/models')
-			: (modelsDir.trim() || configStatus?.models_dir || '');
+			? configStatus.models_dir || '/app/models'
+			: modelsDir.trim() || configStatus?.models_dir || '';
 		const targetRuntimes = configStatus?.is_docker
-			? (configStatus.runtimes_dir || '/app/runtimes')
-			: (runtimesDir.trim() || configStatus?.runtimes_dir || '');
+			? configStatus.runtimes_dir || '/app/runtimes'
+			: runtimesDir.trim() || configStatus?.runtimes_dir || '';
 		const targetHost = configStatus?.is_docker ? '0.0.0.0' : host.trim();
-		const parsedPort = configStatus?.is_docker ? (configStatus.port || 8080) : Number(port);
+		const parsedPort = configStatus?.is_docker ? configStatus.port || 8080 : Number(port);
 
 		if (!targetModels) {
 			saveError = 'Please specify a valid Models directory.';
@@ -418,10 +418,14 @@
 								<div class="flex flex-col gap-0.5 min-w-0">
 									<div class="flex items-center gap-2">
 										<span class="font-semibold text-[var(--text-primary)]">
-											{configStatus.is_docker ? 'Docker Container Volumes' : 'Storage Volumes Configured'}
+											{configStatus.is_docker
+												? 'Docker Container Volumes'
+												: 'Storage Volumes Configured'}
 										</span>
 										{#if configStatus.is_docker}
-											<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/25">
+											<span
+												class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/25"
+											>
 												Fixed Mounts
 											</span>
 										{/if}
@@ -443,7 +447,11 @@
 									class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
 								>
 									<Zap size={15} class="text-[var(--primary)]" />
-									<span>{isStorageConfigured ? 'Hardware Acceleration' : '3. Hardware Acceleration'}</span>
+									<span
+										>{isStorageConfigured
+											? 'Hardware Acceleration'
+											: '3. Hardware Acceleration'}</span
+									>
 								</span>
 								{#if hardwareReport}
 									<span class="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
@@ -482,7 +490,8 @@
 											<span class="text-[11px] text-[var(--text-muted)] mt-0.5">
 												Supported on host: {hardwareReport.available_accelerations
 													.map(getHardwareName)
-													.join(', ')} ({hardwareReport.os} {hardwareReport.arch})
+													.join(', ')} ({hardwareReport.os}
+												{hardwareReport.arch})
 											</span>
 										</div>
 									</div>
@@ -648,7 +657,7 @@
 									<span>
 										{isStorageConfigured
 											? 'Save Hardware & Continue'
-											: 'Save Configuration & Start Monolai'}
+											: 'Save Configuration & Start'}
 									</span>
 								{/if}
 							</button>

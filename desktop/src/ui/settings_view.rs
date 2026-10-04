@@ -217,7 +217,7 @@ pub fn show_settings_screen(
 
                     ui.checkbox(
                         &mut config.autostart_app,
-                        "Start Monolai Desktop on system startup",
+                        "Start on system startup",
                     );
                     ui.add_space(8.0);
                     ui.checkbox(
@@ -250,7 +250,7 @@ pub fn show_settings_screen(
                 )
                 .clicked()
             {
-                let _ = crate::config::set_autostart_app(config.autostart_app);
+                let _ = crate::config::set_autostart_app(config.autostart_app, config.minimize_on_start);
                 let _ = config.save();
 
                 // If backend is running, notify it immediately via HTTP API so it reloads in real-time

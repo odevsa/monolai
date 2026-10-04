@@ -1,0 +1,14 @@
+# Ensure consistent line endings (LF) across Windows, Linux, and macOS
+* text=auto eol=lf
+
+# Force LF on SQL migrations to prevent sqlx migration checksum mismatches
+*.sql text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.svelte text eol=lf
+*.ts text eol=lf
+*.js text eol=lf

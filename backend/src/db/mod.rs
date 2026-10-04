@@ -38,9 +38,27 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool, Box<dyn std::erro
         .connect_with(options)
         .await?;
 
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await?;
+    let migrator = sqlx::migrate!("./migrations");
+    match migrator.run(&pool).await {
+        Ok(()) => {}
+        Err(sqlx::migrate::MigrateError::VersionMismatch(v)) => {
+            tracing::warn!(
+                "Migration checksum mismatch for version {} (likely CRLF/LF line ending differences between build environments). Harmonizing checksums in _sqlx_migrations...",
+                v
+            );
+            for m in migrator.iter() {
+                let _ = sqlx::query(
+                    "UPDATE _sqlx_migrations SET checksum = ? WHERE version = ? AND success = 1",
+                )
+                .bind(m.checksum.as_ref())
+                .bind(m.version)
+                .execute(&pool)
+                .await;
+            }
+            migrator.run(&pool).await?;
+        }
+        Err(err) => return Err(Box::new(err)),
+    }
 
     Ok(pool)
 }

@@ -90,12 +90,19 @@ Section "Monolai Application" SecCore
   CreateShortcut "$SMPROGRAMS\Monolai\Monolai.lnk" "$INSTDIR\monolai-gui.exe" "" "$INSTDIR\monolai.ico" 0
   CreateShortcut "$SMPROGRAMS\Monolai\Uninstall Monolai.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
+  ; Clean up any obsolete HKLM Run value to prevent duplicate startup
+  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "Monolai"
+
   ; Desktop Shortcut
   CreateShortcut "$DESKTOP\Monolai.lnk" "$INSTDIR\monolai-gui.exe" "" "$INSTDIR\monolai.ico" 0
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext all
+
+  ; Clean up autostart registry entries
+  DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "Monolai"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Monolai"
 
   ; Remove shortcuts
   Delete "$DESKTOP\Monolai.lnk"

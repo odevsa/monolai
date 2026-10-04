@@ -17,10 +17,9 @@ pub struct DesktopApp {
     config: GuiConfig,
     supervisor: ProcessSupervisor,
     tray: Option<TrayManager>,
-    #[cfg(target_os = "linux")]
-    tray_dismiss_at: Option<Instant>,
-    #[cfg(target_os = "linux")]
-    tray_restore_at: Option<Instant>,
+    window_visible: bool,
+    is_quitting: bool,
+    minimize_after: Option<Instant>,
     current_screen: Screen,
     previous_status: ServerStatus,
     alert_message: Option<(String, Instant)>,
@@ -46,20 +45,30 @@ impl DesktopApp {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         let mut config = GuiConfig::load();
         if !GuiConfig::config_path().exists() {
-            let _ = crate::config::set_autostart_app(true);
+            let _ = crate::config::set_autostart_app(true, config.minimize_on_start);
             config.autostart_app = true;
             let _ = config.save();
         } else if crate::config::is_autostart_app_enabled() {
             config.autostart_app = true;
         }
         let supervisor = ProcessSupervisor::new();
-        let tray = match TrayManager::new(cc.egui_ctx.clone()) {
+        let tray = match TrayManager::new(cc.egui_ctx.clone(), supervisor.clone()) {
             Ok(t) => Some(t),
             Err(e) => {
                 eprintln!("Tray manager initialization error: {}", e);
                 None
             }
         };
+
+        #[cfg(target_os = "windows")]
+        {
+            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            if let Ok(handle) = cc.window_handle() {
+                if let RawWindowHandle::Win32(win32_handle) = handle.as_raw() {
+                    components::set_windows_hwnd(win32_handle.hwnd.get() as isize);
+                }
+            }
+        }
         let theme = theme::get_system_theme();
 
         let logo_dark = components::load_png_texture(
@@ -73,14 +82,16 @@ impl DesktopApp {
             include_bytes!("../assets/icons/logo-light-128.png"),
         );
 
+        let start_minimized = std::env::args().any(|a| a == "--minimized");
+        let window_visible = !start_minimized;
+
         let mut app = Self {
             config,
             supervisor,
             tray,
-            #[cfg(target_os = "linux")]
-            tray_dismiss_at: None,
-            #[cfg(target_os = "linux")]
-            tray_restore_at: None,
+            window_visible,
+            is_quitting: false,
+            minimize_after: None,
             current_screen: Screen::Main,
             previous_status: ServerStatus::Stopped,
             alert_message: None,
@@ -105,7 +116,7 @@ impl DesktopApp {
             tray.update_status(is_running, app.config.port);
         }
 
-        if std::env::args().any(|a| a == "--minimized") {
+        if start_minimized {
             components::minimize_window(&cc.egui_ctx);
         }
 
@@ -120,6 +131,16 @@ impl eframe::App for DesktopApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(target_os = "windows")]
+        if components::get_windows_hwnd() == 0 {
+            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            if let Ok(handle) = _frame.window_handle() {
+                if let RawWindowHandle::Win32(win32_handle) = handle.as_raw() {
+                    components::set_windows_hwnd(win32_handle.hwnd.get() as isize);
+                }
+            }
+        }
+
         ctx.request_repaint_after(Duration::from_millis(500));
 
         // Periodic OS Theme Auto-detection
@@ -146,15 +167,20 @@ impl eframe::App for DesktopApp {
                 tray.update_status(is_running, port);
             }
 
-            // Auto minimize when successfully transitioned to Running if configured
+            // Auto minimize when successfully transitioned to Running if configured (with 1s delay for visual feedback)
             if let ServerStatus::Running { .. } = current_status {
                 if self.config.minimize_on_start {
-                    components::minimize_window(ctx);
+                    self.minimize_after = Some(Instant::now() + Duration::from_secs(1));
+                    ctx.request_repaint_after(Duration::from_secs(1));
                 }
+            } else {
+                self.minimize_after = None;
             }
 
             // Auto restore window if service exited unexpectedly
             if let ServerStatus::UnexpectedExit { exit_code } = current_status {
+                self.minimize_after = None;
+                self.window_visible = true;
                 components::restore_window(ctx);
                 let code_msg = exit_code.map(|c| format!(" (exit code: {})", c)).unwrap_or_default();
                 self.alert_message = Some((
@@ -166,6 +192,26 @@ impl eframe::App for DesktopApp {
             self.previous_status = current_status.clone();
         }
 
+        // Trigger delayed minimize to tray after 1-second visual feedback
+        if let Some(target) = self.minimize_after {
+            if Instant::now() >= target {
+                self.minimize_after = None;
+                self.window_visible = false;
+                components::minimize_window(ctx);
+            } else {
+                ctx.request_repaint_after(target.saturating_duration_since(Instant::now()));
+            }
+        }
+
+        // Intercept window close button ("X") to minimize to system tray instead of closing
+        if ctx.input(|i| i.viewport().close_requested()) {
+            if !self.is_quitting {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.window_visible = false;
+                components::minimize_window(ctx);
+            }
+        }
+
         // Handle Tray Actions
         let mut tray_actions = Vec::new();
         if let Some(ref tray) = self.tray {
@@ -174,88 +220,21 @@ impl eframe::App for DesktopApp {
             }
         }
 
-        #[cfg(target_os = "linux")]
-        let mut had_tray_action = false;
         for action in tray_actions {
             match action {
-                crate::tray::TrayAction::Menu(menu_id) => match menu_id.as_str() {
-                    "open_web" => {
-                        let url = format!("http://localhost:{}", self.config.port);
-                        let _ = open::that(url);
-                        #[cfg(target_os = "linux")]
-                        { had_tray_action = true; }
-                    }
-                    "show_panel" => {
-                        components::restore_window(ctx);
-                        #[cfg(target_os = "linux")]
-                        { had_tray_action = true; }
-                    }
-                    "start_server" => {
-                        if let Err(e) = self.supervisor.start(&self.config) {
-                            self.alert_message = Some((e, Instant::now()));
-                        }
-                        #[cfg(target_os = "linux")]
-                        { had_tray_action = true; }
-                    }
-                    "stop_server" => {
-                        let _ = self.supervisor.stop();
-                        #[cfg(target_os = "linux")]
-                        { had_tray_action = true; }
-                    }
-                    "restart_server" => {
-                        let _ = self.supervisor.restart(&self.config);
-                        #[cfg(target_os = "linux")]
-                        { had_tray_action = true; }
-                    }
-                    "quit" => {
-                        let _ = self.supervisor.stop();
-                        self.tray = None;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        #[cfg(target_os = "windows")]
-                        std::process::exit(0);
-                    }
-                    _ => {}
-                },
-                crate::tray::TrayAction::IconDoubleClick | crate::tray::TrayAction::IconClick => {
+                crate::tray::TrayAction::OpenDashboard => {
+                    self.minimize_after = None;
+                    self.window_visible = true;
                     components::restore_window(ctx);
                 }
-            }
-        }
-
-        // Schedule tray dismissal with a short 60ms delay so ksni finishes sending its D-Bus reply,
-        // preventing the 7-second D-Bus RPC deadlock/timeout.
-        #[cfg(target_os = "linux")]
-        if had_tray_action {
-            self.tray_dismiss_at = Some(Instant::now() + Duration::from_millis(60));
-            ctx.request_repaint_after(Duration::from_millis(60));
-        }
-
-        // Dismiss tray after in-flight D-Bus RPC completes
-        #[cfg(target_os = "linux")]
-        if let Some(dismiss_at) = self.tray_dismiss_at {
-            if Instant::now() >= dismiss_at {
-                self.tray = None;
-                self.tray_dismiss_at = None;
-                self.tray_restore_at = Some(Instant::now() + Duration::from_millis(120));
-                ctx.request_repaint_after(Duration::from_millis(120));
-            } else {
-                ctx.request_repaint_after(Duration::from_millis(20));
-            }
-        }
-
-        // Restore tray after dismissal
-        #[cfg(target_os = "linux")]
-        if let Some(restore_at) = self.tray_restore_at {
-            if Instant::now() >= restore_at {
-                let is_running = matches!(self.supervisor.get_status(), ServerStatus::Running { .. });
-                let port = self.config.port;
-                if let Ok(mut tray) = crate::tray::TrayManager::new(ctx.clone()) {
-                    tray.update_status(is_running, port);
-                    self.tray = Some(tray);
+                crate::tray::TrayAction::Quit => {
+                    self.minimize_after = None;
+                    self.is_quitting = true;
+                    let _ = self.supervisor.stop();
+                    self.tray = None;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    std::process::exit(0);
                 }
-                self.tray_restore_at = None;
-            } else {
-                ctx.request_repaint_after(Duration::from_millis(25));
             }
         }
 

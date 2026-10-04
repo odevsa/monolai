@@ -79,7 +79,7 @@
 			{/if}
 
 			<p class="m-0 text-xs text-[var(--text-secondary)] leading-relaxed">
-				To start Monolai, create a configuration file at the target path below or pass <code
+				To start, create a configuration file at the target path below or pass <code
 					class="bg-white/10 px-1.5 py-0.5 rounded font-mono text-xs text-[var(--primary)]"
 					>-c /path/to/config.yaml</code
 				> when running the binary.
