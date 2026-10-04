@@ -77,7 +77,14 @@
 
 	let messagesContainer: HTMLDivElement | null = $state(null);
 	let textareaRef: HTMLTextAreaElement | null = $state(null);
+	let inputSectionRef = $state<HTMLDivElement | null>(null);
+	let inputSectionHeight = $state<number>(110);
 	let scrollbarWidth = $state(0);
+
+	// Mobile virtual keyboard detection state
+	let isKeyboardOpen = $state(false);
+	let isTextareaFocused = $state(false);
+	let baseViewportHeight = 0;
 
 	// Prompt History State (ArrowUp / ArrowDown)
 	let promptHistory = $state<string[]>([]);
@@ -144,33 +151,119 @@
 		}
 	}
 
+	function updateKeyboardStatus() {
+		if (typeof window === 'undefined') return;
+
+		if (inputSectionRef) {
+			inputSectionHeight = inputSectionRef.offsetHeight;
+		}
+
+		const isMobile = window.innerWidth <= 768 || window.matchMedia('(max-width: 768px)').matches;
+		if (!isMobile) {
+			if (isKeyboardOpen) isKeyboardOpen = false;
+			return;
+		}
+
+		const vv = window.visualViewport;
+		if (vv) {
+			if (!isTextareaFocused && vv.height > baseViewportHeight) {
+				baseViewportHeight = vv.height;
+			}
+
+			const heightShrunk = baseViewportHeight > 0 && baseViewportHeight - vv.height > 80;
+			const screenShrunk = window.screen?.height ? window.screen.height - vv.height > 160 : false;
+			const keyboardDetected = isTextareaFocused && (heightShrunk || screenShrunk);
+
+			if (keyboardDetected !== isKeyboardOpen) {
+				isKeyboardOpen = keyboardDetected;
+				if (keyboardDetected && messages.length > 0) {
+					setTimeout(() => {
+						scrollToBottom();
+					}, 60);
+					setTimeout(() => {
+						scrollToBottom();
+					}, 220);
+				}
+			}
+		} else {
+			if (isTextareaFocused !== isKeyboardOpen) {
+				isKeyboardOpen = isTextareaFocused;
+				if (isTextareaFocused && messages.length > 0) {
+					setTimeout(() => {
+						scrollToBottom();
+					}, 60);
+					setTimeout(() => {
+						scrollToBottom();
+					}, 220);
+				}
+			}
+		}
+	}
+
 	function handleTextareaFocus() {
+		isTextareaFocused = true;
+		updateKeyboardStatus();
 		if (typeof window !== 'undefined') {
 			window.scrollTo(0, 0);
 			setTimeout(() => {
 				window.scrollTo(0, 0);
+				updateKeyboardStatus();
 				if (messages.length > 0) {
 					scrollToBottom();
 				}
 			}, 100);
+			setTimeout(() => {
+				updateKeyboardStatus();
+				if (messages.length > 0) {
+					scrollToBottom();
+				}
+			}, 300);
 		}
 	}
 
+	function handleTextareaBlur() {
+		isTextareaFocused = false;
+		setTimeout(() => {
+			updateKeyboardStatus();
+		}, 100);
+	}
+
 	$effect(() => {
-		if (typeof window !== 'undefined' && window.visualViewport) {
+		if (!inputSectionRef) return;
+		const ro = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				inputSectionHeight =
+					entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect?.height ?? inputSectionRef?.offsetHeight ?? 110;
+			}
+		});
+		ro.observe(inputSectionRef);
+		return () => ro.disconnect();
+	});
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			baseViewportHeight = window.visualViewport?.height || window.innerHeight;
+
 			const onVisualResize = () => {
 				if (window.scrollY !== 0) {
 					window.scrollTo(0, 0);
 				}
+				updateKeyboardStatus();
 				if (messages.length > 0) {
 					scrollToBottom();
 				}
 			};
-			window.visualViewport.addEventListener('resize', onVisualResize);
-			window.visualViewport.addEventListener('scroll', onVisualResize);
+
+			if (window.visualViewport) {
+				window.visualViewport.addEventListener('resize', onVisualResize);
+				window.visualViewport.addEventListener('scroll', onVisualResize);
+			}
+			window.addEventListener('resize', updateKeyboardStatus);
+
 			return () => {
 				window.visualViewport?.removeEventListener('resize', onVisualResize);
 				window.visualViewport?.removeEventListener('scroll', onVisualResize);
+				window.removeEventListener('resize', updateKeyboardStatus);
 			};
 		}
 	});
@@ -909,9 +1002,13 @@
 	<title>Monolai - Chat</title>
 </svelte:head>
 
-<div class="chat-page">
+<div class="chat-page" style:--keyboard-input-height="{inputSectionHeight}px">
 	<!-- Messages Container with Smooth Scroll & Upward History -->
-	<div class="page messages-viewport" bind:this={messagesContainer} onscroll={handleScroll}>
+	<div
+		class="page messages-viewport {isKeyboardOpen ? 'keyboard-open' : ''}"
+		bind:this={messagesContainer}
+		onscroll={handleScroll}
+	>
 		{#if messages.length === 0}
 			<!-- Empty State -->
 			<div class="empty-state">
@@ -1024,7 +1121,7 @@
 	</div>
 
 	<!-- Floating Glassmorphism Bottom Input Container -->
-	<div class="input-section" style:right="{scrollbarWidth}px">
+	<div class="input-section" bind:this={inputSectionRef} style:right="{scrollbarWidth}px">
 		{#if showScrollButton}
 			<button
 				type="button"
@@ -1042,6 +1139,7 @@
 				oninput={adjustTextareaHeight}
 				onkeydown={handleKeyDown}
 				onfocus={handleTextareaFocus}
+				onblur={handleTextareaBlur}
 				placeholder="Type a message..."
 				rows="1"
 				class="chat-textarea"></textarea>
@@ -1721,6 +1819,11 @@
 			padding: 4.25rem 1rem 7.5rem 1rem;
 		}
 
+		.messages-viewport.keyboard-open {
+			padding-bottom: max(8rem, calc(var(--keyboard-input-height, 100px) + 1.25rem)) !important;
+			transition: padding-bottom 0.2s ease-out;
+		}
+
 		.input-section {
 			bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
 			padding: 0 1rem;
@@ -2136,7 +2239,7 @@
 		}
 	}
 
-	@media (max-height: 480px) {
+	@media (max-height: 480px) and (orientation: landscape) {
 		.messages-viewport {
 			padding-top: 3.25rem;
 			padding-bottom: 4.75rem;
