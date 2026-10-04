@@ -286,10 +286,7 @@ pub async fn load_model_process(
     cmd.stderr(Stdio::piped());
 
     #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
     // 6. Spawn child process
     let mut child = match cmd.spawn() {
@@ -341,9 +338,8 @@ pub async fn load_model_process(
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stdout: {}", pid, line);
                 let lower = line.to_lowercase();
-                if lower.contains("server listening on")
-                    || lower.contains("http server listening")
-                    || lower.contains("ready")
+                if lower.contains("all slots are idle and ready to serve requests")
+                    || lower.contains("main: model loaded")
                 {
                     log_ready_signal_clone.notify_waiters();
                 }
@@ -358,9 +354,8 @@ pub async fn load_model_process(
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stderr: {}", pid, line);
                 let lower = line.to_lowercase();
-                if lower.contains("server listening on")
-                    || lower.contains("http server listening")
-                    || lower.contains("ready")
+                if lower.contains("all slots are idle and ready to serve requests")
+                    || lower.contains("main: model loaded")
                 {
                     log_ready_signal_clone2.notify_waiters();
                 }
@@ -372,6 +367,7 @@ pub async fn load_model_process(
     let ready_path = "/v1/models";
 
     let readiness_url = format!("http://127.0.0.1:{}{}", allocated_port, ready_path);
+    let health_url = format!("http://127.0.0.1:{}/health", allocated_port);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(500))
         .build()
@@ -403,12 +399,23 @@ pub async fn load_model_process(
             }
         }
 
-        // Check HTTP readiness endpoint
+        // Check HTTP readiness endpoints (/v1/models and /health)
+        // Note: While loading weights, llama-server returns 503 "Loading model".
+        // Only HTTP 2xx indicates that model weights are fully loaded into memory/VRAM and ready for inference!
+        let mut http_ready = false;
         if let Ok(resp) = client.get(&readiness_url).send().await {
             if resp.status().is_success() {
-                is_ready = true;
-                break;
+                http_ready = true;
             }
+        } else if let Ok(resp) = client.get(&health_url).send().await {
+            if resp.status().is_success() {
+                http_ready = true;
+            }
+        }
+
+        if http_ready {
+            is_ready = true;
+            break;
         }
 
         // Wait 500ms or log signal notification
@@ -596,15 +603,15 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
         let port = record.port;
         let runtime = &record.runtime;
 
-        let mut is_alive_os = false;
-        if pid > 0 {
-            #[cfg(unix)]
-            unsafe {
-                if libc::kill(pid as i32, 0) == 0 {
-                    is_alive_os = true;
-                }
-            }
-        }
+        #[cfg(unix)]
+        let is_alive_os = if pid > 0 {
+            unsafe { libc::kill(pid as i32, 0) == 0 }
+        } else {
+            false
+        };
+
+        #[cfg(not(unix))]
+        let is_alive_os = pid > 0;
 
         let mut is_responding_http = false;
         if is_alive_os && port > 0 {
@@ -677,22 +684,49 @@ pub async fn swap_model_process(
         return Err(format!("Model '{}' not found in database", model_id));
     }
 
-    // 2. Check if target model is already running and ready/loading
-    {
-        let mut map = pm.running.lock().await;
-        if let Some(existing) = map.get_mut(model_id) {
-            if matches!(existing.state, ModelState::Ready | ModelState::Loading) {
-                existing.last_active = Instant::now();
-                return Ok(RunningModelStatus {
-                    model_id: existing.model_id.clone(),
-                    runtime_id: existing.runtime_id.clone(),
-                    pid: existing.pid,
-                    port: existing.port,
-                    state: existing.state.clone(),
-                    idle_seconds: 0,
-                });
+    // 2. Check if target model is already running and ready or loading
+    let wait_start = Instant::now();
+    let max_loading_wait = Duration::from_secs(120);
+
+    loop {
+        let (_is_ready, is_loading, is_error) = {
+            let mut map = pm.running.lock().await;
+            if let Some(existing) = map.get_mut(model_id) {
+                match &existing.state {
+                    ModelState::Ready => {
+                        existing.last_active = Instant::now();
+                        return Ok(RunningModelStatus {
+                            model_id: existing.model_id.clone(),
+                            runtime_id: existing.runtime_id.clone(),
+                            pid: existing.pid,
+                            port: existing.port,
+                            state: existing.state.clone(),
+                            idle_seconds: 0,
+                        });
+                    }
+                    ModelState::Loading => (false, true, None),
+                    ModelState::Error(err) => (false, false, Some(err.clone())),
+                    _ => (false, false, None),
+                }
+            } else {
+                (false, false, None)
             }
+        };
+
+        if let Some(err) = is_error {
+            return Err(format!("Model failed to load: {}", err));
         }
+
+        if is_loading {
+            if wait_start.elapsed() >= max_loading_wait {
+                return Err(format!("Timed out waiting for model '{}' to finish loading", model_id));
+            }
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            continue;
+        }
+
+        // Neither ready nor loading, break out of loop to unload any other models and load this one
+        break;
     }
 
     // 3. Unload all running model processes if a different model is active

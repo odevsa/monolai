@@ -313,36 +313,93 @@ pub async fn v1_proxy_handler(
     let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
     let upstream_url = format!("http://127.0.0.1:{}/v1/{}{}", target_port, path, query_suffix);
 
-    // 5. Send proxy request to upstream process
+    // 5. Send proxy request to upstream process with automatic retry if model is still loading
     let client = reqwest::Client::new();
-    let mut req_builder = client.request(method, &upstream_url);
+    let max_retries = 60; // 60 * 500ms = 30 seconds
+    let mut retry_count = 0;
 
-    for (name, value) in &headers {
-        let name_str = name.as_str().to_lowercase();
-        if name_str != "host" && name_str != "content-length" && name_str != "connection" {
-            req_builder = req_builder.header(name, value);
+    let upstream_res = loop {
+        let mut req_builder = client.request(method.clone(), &upstream_url);
+
+        for (name, value) in &headers {
+            let name_str = name.as_str().to_lowercase();
+            if name_str != "host" && name_str != "content-length" && name_str != "connection" {
+                req_builder = req_builder.header(name, value);
+            }
         }
-    }
 
-    if !body_bytes.is_empty() {
-        req_builder = req_builder.body(body_bytes);
-    }
+        if !body_bytes.is_empty() {
+            req_builder = req_builder.body(body_bytes.clone());
+        }
 
-    let upstream_res = match req_builder.send().await {
-        Ok(res) => res,
-        Err(e) => {
-            return (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({
-                    "error": {
-                        "message": format!("Upstream connection error: {}", e),
-                        "type": "bad_gateway",
-                        "param": null,
-                        "code": "upstream_error"
+        match req_builder.send().await {
+            Ok(res) => {
+                if res.status() == StatusCode::SERVICE_UNAVAILABLE && retry_count < max_retries {
+                    let res_headers = res.headers().clone();
+                    match res.bytes().await {
+                        Ok(bytes) => {
+                            let text = String::from_utf8_lossy(&bytes).to_lowercase();
+                            if text.contains("loading model") {
+                                tracing::info!(
+                                    "Upstream returned 'Loading model' (503), waiting and retrying ({}/{})...",
+                                    retry_count + 1,
+                                    max_retries
+                                );
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                retry_count += 1;
+                                continue;
+                            } else {
+                                // Non-'Loading model' 503 error, return it
+                                let mut response_builder = Response::builder().status(StatusCode::SERVICE_UNAVAILABLE);
+                                for (name, value) in &res_headers {
+                                    let name_str = name.as_str().to_lowercase();
+                                    if name_str != "transfer-encoding" && name_str != "connection" {
+                                        response_builder = response_builder.header(name, value);
+                                    }
+                                }
+                                return response_builder
+                                    .body(Body::from(bytes))
+                                    .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response());
+                            }
+                        }
+                        Err(e) => {
+                            return (
+                                StatusCode::SERVICE_UNAVAILABLE,
+                                Json(serde_json::json!({
+                                    "error": {
+                                        "message": format!("Upstream read error: {}", e),
+                                        "type": "upstream_error",
+                                        "param": null,
+                                        "code": "upstream_read_error"
+                                    }
+                                })),
+                            )
+                                .into_response();
+                        }
                     }
-                })),
-            )
-                .into_response();
+                } else {
+                    break res;
+                }
+            }
+            Err(e) => {
+                if retry_count < 10 {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    retry_count += 1;
+                    continue;
+                }
+                return (
+                    StatusCode::BAD_GATEWAY,
+                    Json(serde_json::json!({
+                        "error": {
+                            "message": format!("Upstream connection error: {}", e),
+                            "type": "bad_gateway",
+                            "param": null,
+                            "code": "upstream_error"
+                        }
+                    })),
+                )
+                    .into_response();
+            }
         }
     };
 

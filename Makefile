@@ -3,7 +3,7 @@ ifeq (version,$(firstword $(MAKECMDGOALS)))
   $(eval $(VERSION_ARG):;@:)
 endif
 
-.PHONY: help all dev dev-host dev-frontend dev-backend build build-server build-desktop build-all icons install clean version docker-build docker-up docker-down
+.PHONY: help all dev dev-host dev-frontend dev-backend dev-desktop build build-server build-desktop build-linux build-windows build-mac build-all icons install clean version docker-build docker-up docker-down
 
 .DEFAULT_GOAL := help
 
@@ -17,14 +17,18 @@ help:
 	@printf "%-18s %s\n" "dev-frontend" "Start frontend dev server only"
 	@printf "%-18s %s\n" "dev-backend" "Start backend cargo server only"
 	@printf "%-18s %s\n" "dev-desktop" "Start native Rust desktop GUI app"
-	@printf "%-18s %s\n" "build" "Build both server and desktop release binaries"
-	@printf "%-18s %s\n" "build-server" "Build frontend and release server binary (monolai)"
-	@printf "%-18s %s\n" "build-desktop" "Build native desktop GUI binary (monolai-gui)"
+	@printf "%-18s %s\n" "build" "Build Linux server and desktop release binaries into dist/linux/"
+	@printf "%-18s %s\n" "build-server" "Build frontend and release server binary into dist/linux/"
+	@printf "%-18s %s\n" "build-desktop" "Build native desktop GUI binary into dist/linux/"
+	@printf "%-18s %s\n" "build-linux" "Build Linux release binaries into dist/linux/"
+	@printf "%-18s %s\n" "build-windows" "Cross-compile monolai.exe and monolai-gui.exe into dist/windows/"
+	@printf "%-18s %s\n" "build-mac" "Build macOS release binaries into dist/macos/ (when on macOS)"
+	@printf "%-18s %s\n" "build-all" "Build all supported platform binaries into dist/<os>/"
 	@printf "%-18s %s\n" "icons" "Generate app icons (PNGs, ICO, ICNS) from SVG"
 	@printf "%-18s %s\n" "docker-build" "Build Docker image locally"
 	@printf "%-18s %s\n" "docker-up" "Start services with docker compose"
 	@printf "%-18s %s\n" "docker-down" "Stop services with docker compose"
-	@printf "%-18s %s\n" "clean" "Remove build artifacts"
+	@printf "%-18s %s\n" "clean" "Remove build artifacts and dist/ directory"
 	@printf "%-18s %s\n" "version" "Synchronize project version (usage: make version [x.y.z])"
 
 all: build
@@ -65,13 +69,60 @@ dev-desktop:
 build-server:
 	npm --prefix frontend run build
 	cargo build --manifest-path backend/Cargo.toml --release
+	@mkdir -p dist/linux
+	@cp -f backend/target/release/monolai dist/linux/
 
 build-desktop:
 	cargo build --manifest-path desktop/Cargo.toml --release
+	@mkdir -p dist/linux
+	@cp -f desktop/target/release/monolai-gui dist/linux/
 
-build: build-server build-desktop
+build-linux: build-server build-desktop
+	@echo "=========================================="
+	@echo "Linux build complete! Output in dist/linux/"
+	@echo " - dist/linux/monolai"
+	@echo " - dist/linux/monolai-gui"
+	@echo "=========================================="
 
-build-all: build
+build-windows:
+	npm --prefix frontend run build
+	cargo build --manifest-path backend/Cargo.toml --release --target x86_64-pc-windows-gnu
+	cargo build --manifest-path desktop/Cargo.toml --release --target x86_64-pc-windows-gnu
+	@mkdir -p dist/windows
+	@cp -f backend/target/x86_64-pc-windows-gnu/release/monolai.exe dist/windows/
+	@cp -f desktop/target/x86_64-pc-windows-gnu/release/monolai-gui.exe dist/windows/
+	@echo "=========================================="
+	@echo "Windows build complete! Output in dist/windows/"
+	@echo " - dist/windows/monolai.exe"
+	@echo " - dist/windows/monolai-gui.exe"
+	@echo "=========================================="
+
+build-mac:
+	@if [ "$$(uname -s)" = "Darwin" ]; then \
+		npm --prefix frontend run build && \
+		cargo build --manifest-path backend/Cargo.toml --release && \
+		cargo build --manifest-path desktop/Cargo.toml --release && \
+		mkdir -p dist/macos/Monolai.app/Contents/MacOS dist/macos/Monolai.app/Contents/Resources && \
+		cp -f backend/target/release/monolai dist/macos/ && \
+		cp -f desktop/target/release/monolai-gui dist/macos/ && \
+		cp -f backend/target/release/monolai dist/macos/Monolai.app/Contents/MacOS/ && \
+		cp -f desktop/target/release/monolai-gui dist/macos/Monolai.app/Contents/MacOS/ && \
+		cp -f packaging/macos/Info.plist dist/macos/Monolai.app/Contents/ && \
+		(cp -f packaging/macos/assets/monolai.icns dist/macos/Monolai.app/Contents/Resources/ 2>/dev/null || true) && \
+		echo "==========================================" && \
+		echo "macOS build complete! Output in dist/macos/" && \
+		echo " - dist/macos/monolai" && \
+		echo " - dist/macos/monolai-gui" && \
+		echo " - dist/macos/Monolai.app" && \
+		echo "=========================================="; \
+	else \
+		echo "Notice: Compiling for macOS requires running on macOS or configuring an osxcross SDK." >&2; \
+		exit 1; \
+	fi
+
+build: build-linux
+
+build-all: build-linux build-windows
 
 icons:
 	./packaging/scripts/generate-icons.sh
@@ -86,7 +137,7 @@ docker-down:
 	docker compose down
 
 clean:
-	rm -rf frontend/build frontend/.svelte-kit
+	rm -rf frontend/build frontend/.svelte-kit dist dist-windows
 	cargo clean --manifest-path backend/Cargo.toml
 	cargo clean --manifest-path desktop/Cargo.toml
 

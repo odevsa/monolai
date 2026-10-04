@@ -26,6 +26,9 @@ pub struct DesktopApp {
     alert_message: Option<(String, Instant)>,
     copied_feedback: Option<Instant>,
     config_saved_feedback: Option<Instant>,
+    confirm_clean_storage: Option<Instant>,
+    confirm_factory_reset: Option<Instant>,
+    maintenance_status: Option<(String, bool, Instant)>,
     logo_dark: Option<egui::TextureHandle>,
     logo_light: Option<egui::TextureHandle>,
     theme: Theme,
@@ -83,6 +86,9 @@ impl DesktopApp {
             alert_message: None,
             copied_feedback: None,
             config_saved_feedback: None,
+            confirm_clean_storage: None,
+            confirm_factory_reset: None,
+            maintenance_status: None,
             logo_dark,
             logo_light,
             theme,
@@ -316,7 +322,11 @@ impl eframe::App for DesktopApp {
                             ui,
                             &self.theme,
                             &mut self.config,
+                            &self.supervisor,
                             &mut self.config_saved_feedback,
+                            &mut self.confirm_clean_storage,
+                            &mut self.confirm_factory_reset,
+                            &mut self.maintenance_status,
                         );
                     }
                 }

@@ -43,6 +43,8 @@
 		id: string;
 		role: 'user' | 'assistant';
 		content: string;
+		reasoning?: string;
+		reasoningDuration?: string;
 		tokens?: number;
 		duration?: string;
 		speed?: string;
@@ -94,6 +96,11 @@
 	// Reasoning Effort Selection (Default: Medium, as requested)
 	let selectedReasoning = $state<ReasoningPreset['id']>('medium');
 	let reasoningMenuOpen = $state(false);
+	let collapsedReasoning = $state<Record<string, boolean>>({});
+
+	function toggleReasoningCollapse(msgId: string) {
+		collapsedReasoning[msgId] = !collapsedReasoning[msgId];
+	}
 	let submenuRef: HTMLDivElement | null = $state(null);
 	let submenuDirection = $state<'right' | 'left'>('right');
 
@@ -377,10 +384,22 @@
 						}
 					}
 
+					let content = r.content || '';
+					let reasoning: string | undefined = undefined;
+
+					// Check for stored <think>...</think> tags in content
+					const thinkMatch = content.match(/^<think>([\s\S]*?)<\/think>([\s\S]*)$/);
+					if (thinkMatch) {
+						reasoning = thinkMatch[1].trim();
+						content = thinkMatch[2].trim();
+						collapsedReasoning[r.id] = true;
+					}
+
 					return {
 						id: r.id,
 						role: r.role,
-						content: r.content,
+						content,
+						reasoning,
 						tokens: r.tokens || undefined,
 						duration: r.duration || undefined,
 						speed: r.speed || undefined,
@@ -658,9 +677,17 @@
 		const startTime = performance.now();
 		let tokenCount = 0;
 		let accumulatedContent = '';
+		let accumulatedReasoning = '';
+		let isInsideThinkTag = false;
+		let reasoningStartTime: number | null = null;
+		let reasoningDuration = '';
 		let finalDuration = '0s';
 		let finalSpeed = '0 t/s';
 		let finalStatus = 'COMPLETED';
+
+		// Expand reasoning accordion for this new assistant response
+		collapsedReasoning[assistantMsgId] = false;
+		let hasAutoCollapsedReasoning = false;
 
 		try {
 			// Industry standard Sliding Window Context:
@@ -705,7 +732,7 @@
 					liveUsage.avgSpeed && liveUsage.avgSpeed !== '0.0t/s' ? liveUsage.avgSpeed : '0.0t/s'
 			};
 
-			const res = await fetch('/v1/chat/completions', {
+			let res = await fetch('/v1/chat/completions', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -713,6 +740,33 @@
 				body: JSON.stringify(requestPayload),
 				signal: currentAbortController.signal
 			});
+
+			let loadingRetries = 0;
+			while (!res.ok && res.status === 503 && loadingRetries < 20) {
+				let isModelLoading = false;
+				try {
+					const clone = res.clone();
+					const errJson = await clone.json();
+					if (errJson?.error?.message?.toLowerCase().includes('loading model')) {
+						isModelLoading = true;
+					}
+				} catch {}
+
+				if (!isModelLoading) break;
+
+				loadingRetries++;
+				await new Promise((r) => setTimeout(r, 1000));
+				if (currentAbortController.signal.aborted) break;
+
+				res = await fetch('/v1/chat/completions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(requestPayload),
+					signal: currentAbortController.signal
+				});
+			}
 
 			if (!res.ok) {
 				let errorText = `HTTP ${res.status} ${res.statusText}`;
@@ -759,6 +813,9 @@
 							// Process llama.cpp native timings and OpenAI usage details
 							if (parsed.timings) {
 								const t = parsed.timings;
+								if (t.predicted_n && t.predicted_n > tokenCount) {
+									tokenCount = t.predicted_n;
+								}
 								const speedVal = t.predicted_per_second
 									? `${t.predicted_per_second.toFixed(1)} t/s`
 									: finalSpeed && finalSpeed !== '0 t/s'
@@ -767,15 +824,18 @@
 								liveUsage = {
 									...liveUsage,
 									thisTurnFresh: t.prompt_n ?? liveUsage.thisTurnFresh,
-									thisTurnGenerated: t.predicted_n ?? tokenCount,
+									thisTurnGenerated: tokenCount,
 									avgSpeed: speedVal ?? liveUsage.avgSpeed ?? '0.0t/s'
 								};
 							}
 							if (parsed.usage) {
 								const u = parsed.usage;
+								if (u.completion_tokens && u.completion_tokens > tokenCount) {
+									tokenCount = u.completion_tokens;
+								}
 								const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
 								const prompt = u.prompt_tokens ?? liveUsage.thisTurnPrompt ?? turnPrompt;
-								const generated = u.completion_tokens ?? tokenCount;
+								const generated = tokenCount;
 								liveUsage = {
 									...liveUsage,
 									thisTurnPrompt: prompt,
@@ -789,10 +849,71 @@
 								};
 							}
 
-							const deltaContent = parsed.choices?.[0]?.delta?.content || '';
-							if (deltaContent) {
+							const delta = parsed.choices?.[0]?.delta;
+							const deltaReasoning = delta?.reasoning_content || delta?.reasoning || delta?.thought || '';
+							const deltaContentRaw = delta?.content || '';
+
+							let hasChunkUpdate = false;
+
+							// 1. Handle dedicated reasoning fields (DeepSeek-R1, OpenAI o1/o3, llama.cpp with reasoning flag)
+							if (deltaReasoning) {
+								if (!reasoningStartTime) reasoningStartTime = performance.now();
+								accumulatedReasoning += deltaReasoning;
+								reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
 								tokenCount++;
-								accumulatedContent += deltaContent;
+								hasChunkUpdate = true;
+							}
+
+							// 2. Handle raw content and inline <think> tags
+							if (deltaContentRaw) {
+								tokenCount++;
+								hasChunkUpdate = true;
+
+								let remaining = deltaContentRaw;
+								while (remaining.length > 0) {
+									if (!isInsideThinkTag) {
+										const thinkIdx = remaining.indexOf('<think>');
+										if (thinkIdx !== -1) {
+											accumulatedContent += remaining.slice(0, thinkIdx);
+											remaining = remaining.slice(thinkIdx + 7);
+											isInsideThinkTag = true;
+											if (!reasoningStartTime) reasoningStartTime = performance.now();
+										} else {
+											accumulatedContent += remaining;
+											remaining = '';
+										}
+									} else {
+										const closeIdx = remaining.indexOf('</think>');
+										if (closeIdx !== -1) {
+											accumulatedReasoning += remaining.slice(0, closeIdx);
+											remaining = remaining.slice(closeIdx + 8);
+											isInsideThinkTag = false;
+											if (reasoningStartTime) {
+												reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
+											}
+										} else {
+											accumulatedReasoning += remaining;
+											remaining = '';
+										}
+									}
+								}
+								if (isInsideThinkTag && reasoningStartTime) {
+									reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
+								}
+							}
+
+							if (hasChunkUpdate) {
+								// Auto-collapse reasoning accordion as soon as reasoning is complete and answer content starts streaming
+								if (
+									!hasAutoCollapsedReasoning &&
+									accumulatedReasoning &&
+									!isInsideThinkTag &&
+									accumulatedContent.trim().length > 0
+								) {
+									collapsedReasoning[assistantMsgId] = true;
+									hasAutoCollapsedReasoning = true;
+								}
+
 								const elapsedSec = (performance.now() - startTime) / 1000;
 								finalSpeed =
 									elapsedSec > 0 ? `${(tokenCount / elapsedSec).toFixed(1)} t/s` : '0 t/s';
@@ -810,6 +931,8 @@
 										return {
 											...msg,
 											content: accumulatedContent,
+											reasoning: accumulatedReasoning,
+											reasoningDuration,
 											tokens: tokenCount,
 											duration: finalDuration,
 											speed: finalSpeed
@@ -885,13 +1008,17 @@
 			// Persist final assistant response to DB BEFORE setting isGenerating = false
 			try {
 				if (activeId && assistantMsgId) {
+					const fullStoredContent = accumulatedReasoning
+						? `<think>${accumulatedReasoning}</think>${accumulatedContent}`
+						: accumulatedContent;
+
 					await fetch(
 						`/api/chats/${encodeURIComponent(activeId)}/messages/${encodeURIComponent(assistantMsgId)}`,
 						{
 							method: 'PUT',
 							headers: { 'Content-Type': 'application/json' },
 							body: JSON.stringify({
-								content: accumulatedContent,
+								content: fullStoredContent,
 								tokens: tokenCount,
 								duration: finalDuration,
 								speed:
@@ -906,6 +1033,10 @@
 				}
 			} catch (err) {
 				console.error('Error updating assistant response in DB:', err);
+			}
+
+			if (accumulatedReasoning) {
+				collapsedReasoning[assistantMsgId] = true;
 			}
 
 			isGenerating = false;
@@ -1043,7 +1174,43 @@
 						{:else}
 							<div class="assistant-content">
 								<div class="assistant-text">
-									{#if !msg.content && isGenerating}
+									<!-- Reasoning Accordion if message has thoughts -->
+									{#if msg.reasoning}
+										<div
+											class="reasoning-container mb-3 rounded-xl border border-[var(--border-color)]/60 bg-[var(--bg-surface)] overflow-hidden transition-all duration-150"
+										>
+											<button
+												type="button"
+												class="flex items-center justify-between w-full px-3.5 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-0 bg-transparent select-none"
+												onclick={() => toggleReasoningCollapse(msg.id)}
+												aria-expanded={!collapsedReasoning[msg.id]}
+											>
+												<div class="flex items-center gap-2 font-medium">
+													{#if isGenerating && !msg.content}
+														<Sparkles size={13} class="text-[var(--primary)] animate-pulse shrink-0" />
+														<span class="text-[var(--primary)] font-semibold">Thinking...</span>
+													{:else}
+														<Sparkles size={13} class="text-[var(--text-muted)] shrink-0" />
+														<span>{msg.reasoningDuration ? `Thought for ${msg.reasoningDuration}` : 'Thinking process'}</span>
+													{/if}
+												</div>
+												<ChevronDown
+													size={13}
+													class="text-[var(--text-muted)] transition-transform duration-200 shrink-0 {!collapsedReasoning[msg.id] ? 'rotate-180' : ''}"
+												/>
+											</button>
+
+											{#if !collapsedReasoning[msg.id]}
+												<div
+													class="px-3.5 py-2.5 text-xs text-[var(--text-secondary)] border-t border-[var(--border-color)]/40 bg-[var(--bg-primary)]/40 leading-relaxed font-sans whitespace-pre-wrap max-h-96 overflow-y-auto"
+												>
+													{msg.reasoning}
+												</div>
+											{/if}
+										</div>
+									{/if}
+
+									{#if !msg.content && !msg.reasoning && isGenerating}
 										<div class="typing-dots">
 											<span class="dot"></span>
 											<span class="dot"></span>
@@ -1051,7 +1218,7 @@
 										</div>
 									{:else if !msg.content && msg.status === 'CANCELLED'}
 										<span class="cancelled-text-placeholder">(Cancelled by user)</span>
-									{:else}
+									{:else if msg.content}
 										<MarkdownRenderer content={msg.content} />
 									{/if}
 								</div>
@@ -1125,14 +1292,14 @@
 		{#if showScrollButton}
 			<button
 				type="button"
-				class="scroll-down-btn"
+				class="scroll-down-btn backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60"
 				onclick={scrollToBottom}
 				title="Scroll to bottom"
 			>
 				<ChevronDown size={18} />
 			</button>
 		{/if}
-		<div class="input-card">
+		<div class="input-card backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60">
 			<textarea
 				bind:this={textareaRef}
 				bind:value={inputMessage}
@@ -1618,8 +1785,8 @@
 		height: 34px;
 		border-radius: 50%;
 		background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-		backdrop-filter: blur(16px);
 		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(16px);
 		border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
 		color: var(--text-primary);
 		display: flex;
@@ -1638,8 +1805,8 @@
 
 	.input-card {
 		background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-		backdrop-filter: blur(16px);
 		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(16px);
 		border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
 		border-radius: 1.25rem;
 		padding: 0.75rem 1rem;
@@ -1652,6 +1819,8 @@
 		margin: 0 auto;
 		box-sizing: border-box;
 		pointer-events: auto;
+		transform: translateZ(0);
+		isolation: isolate;
 	}
 
 	.chat-textarea {
@@ -1777,8 +1946,8 @@
 		position: fixed;
 		inset: 0;
 		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(2px);
 		-webkit-backdrop-filter: blur(2px);
+		backdrop-filter: blur(2px);
 		z-index: 45;
 	}
 

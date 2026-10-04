@@ -366,6 +366,72 @@ impl ProcessSupervisor {
         thread::sleep(Duration::from_millis(500));
         self.start(config)
     }
+
+    /// Executes a maintenance flag on the backend binary (e.g. `--clean-storage` or `--factory-reset`).
+    /// If the server is currently running, stops it first, executes the command, and restarts if it was running.
+    pub fn run_maintenance_flag(&self, flag: &str, config: Option<&GuiConfig>) -> Result<String, String> {
+        let binary_path = Self::find_server_binary()?;
+        let was_running = matches!(self.get_status(), ServerStatus::Running { .. });
+
+        if was_running {
+            let _ = self.stop();
+            thread::sleep(Duration::from_millis(300));
+        }
+
+        let mut cmd = Command::new(&binary_path);
+        if let Some(parent) = binary_path.parent() {
+            cmd.current_dir(parent);
+        }
+        cmd.arg(flag);
+
+        if let Some(cfg) = config {
+            cmd.arg("--config").arg(GuiConfig::backend_yaml_path());
+            cmd.env("HOST", &cfg.host);
+            cmd.env("PORT", cfg.port.to_string());
+            cmd.env("HARDWARE", &cfg.hardware);
+            cmd.env("MODELS_DIR", &cfg.models_dir);
+            cmd.env("RUNTIMES_DIR", &cfg.runtimes_dir);
+        }
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        let output = cmd
+            .output()
+            .map_err(|e| format!("Failed to execute {}: {}", binary_path.display(), e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        if !output.status.success() {
+            let err_text = if !stderr.is_empty() {
+                stderr
+            } else if !stdout.is_empty() {
+                stdout
+            } else {
+                format!("Process exited with error code {:?}", output.status.code())
+            };
+            return Err(err_text);
+        }
+
+        if was_running {
+            if let Some(cfg) = config {
+                let _ = self.start(cfg);
+            }
+        }
+
+        let last_line = stdout
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("Operation completed successfully.")
+            .to_string();
+
+        Ok(last_line)
+    }
 }
 
 impl Drop for ProcessSupervisor {

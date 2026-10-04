@@ -41,12 +41,16 @@ pub fn show_settings_header(
     // Header separator line removed as per user request
 }
 
-/// Renders settings cards: Server & Network, Hardware Acceleration, Storage Directories, Behavior, and Save button.
+/// Renders settings cards: Server & Network, Hardware Acceleration, Storage Directories, Behavior, Save button, and Data Management.
 pub fn show_settings_screen(
     ui: &mut Ui,
     theme: &Theme,
     config: &mut GuiConfig,
+    supervisor: &crate::supervisor::ProcessSupervisor,
     config_saved_feedback: &mut Option<Instant>,
+    confirm_clean_storage: &mut Option<Instant>,
+    confirm_factory_reset: &mut Option<Instant>,
+    maintenance_status: &mut Option<(String, bool, Instant)>,
 ) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
@@ -266,6 +270,136 @@ pub fn show_settings_screen(
 
                 *config_saved_feedback = Some(Instant::now());
             }
+
+            ui.add_space(20.0);
+
+            // Group 5: Data Management & Maintenance
+            egui::Frame::none()
+                .fill(theme.bg_surface)
+                .stroke(Stroke::new(1.0_f32, theme.border))
+                .rounding(Rounding::same(8.0))
+                .inner_margin(Margin::same(CARD_PAD))
+                .show(ui, |ui| {
+                    ui.set_width(inner_w);
+                    ui.set_max_width(inner_w);
+
+                    ui.label(
+                        RichText::new("Data Management & Maintenance")
+                            .strong()
+                            .size(13.0)
+                            .color(theme.text_primary),
+                    );
+                    ui.add_space(4.0);
+                    ui.label(
+                        RichText::new("Manage database storage, model tracking, and application configuration.")
+                            .size(11.0)
+                            .color(theme.text_muted),
+                    );
+                    ui.add_space(14.0);
+
+                    // Row 1: Clean Storage
+                    ui.label(RichText::new("Clean Storage").strong().size(12.0).color(theme.text_primary));
+                    ui.add_space(3.0);
+                    ui.label(
+                        RichText::new("Deletes the SQLite database (chat histories, messages, and model cache) and active process cache. Preserves your settings and downloaded models.")
+                            .size(11.0)
+                            .color(theme.text_secondary),
+                    );
+                    ui.add_space(8.0);
+
+                    let clean_confirming = confirm_clean_storage
+                        .map(|t| t.elapsed() < Duration::from_secs(5))
+                        .unwrap_or(false);
+
+                    let (clean_btn_text, clean_btn_fill, clean_btn_color) = if clean_confirming {
+                        ("Click to Confirm: Wipe Storage Database", Color32::from_rgb(220, 38, 38), Color32::WHITE)
+                    } else {
+                        ("Clean Storage", theme.bg_primary, theme.text_primary)
+                    };
+
+                    let clean_btn = ui.add_sized(
+                        [inner_w, CONTROL_H],
+                        egui::Button::new(RichText::new(clean_btn_text).strong().size(12.0).color(clean_btn_color))
+                            .fill(clean_btn_fill)
+                            .stroke(Stroke::new(1.0_f32, if clean_confirming { Color32::from_rgb(220, 38, 38) } else { theme.border }))
+                            .rounding(Rounding::same(6.0)),
+                    );
+
+                    if clean_btn.clicked() {
+                        if clean_confirming {
+                            match supervisor.run_maintenance_flag("--clean-storage", Some(config)) {
+                                Ok(msg) => *maintenance_status = Some((msg, true, Instant::now())),
+                                Err(err) => *maintenance_status = Some((err, false, Instant::now())),
+                            }
+                            *confirm_clean_storage = None;
+                        } else {
+                            *confirm_clean_storage = Some(Instant::now());
+                            *confirm_factory_reset = None;
+                        }
+                    }
+
+                    ui.add_space(14.0);
+                    ui.separator();
+                    ui.add_space(14.0);
+
+                    // Row 2: Factory Reset
+                    ui.label(RichText::new("Factory Reset").strong().size(12.0).color(theme.text_primary));
+                    ui.add_space(3.0);
+                    ui.label(
+                        RichText::new("Performs a complete factory reset. Deletes the database, process cache, and resets your configuration file (config.yaml) to defaults.")
+                            .size(11.0)
+                            .color(theme.text_secondary),
+                    );
+                    ui.add_space(8.0);
+
+                    let reset_confirming = confirm_factory_reset
+                        .map(|t| t.elapsed() < Duration::from_secs(5))
+                        .unwrap_or(false);
+
+                    let (reset_btn_text, reset_btn_fill, reset_btn_color) = if reset_confirming {
+                        ("Click to Confirm: Factory Reset Everything", Color32::from_rgb(185, 28, 28), Color32::WHITE)
+                    } else {
+                        ("Factory Reset", theme.bg_primary, theme.red)
+                    };
+
+                    let reset_btn = ui.add_sized(
+                        [inner_w, CONTROL_H],
+                        egui::Button::new(RichText::new(reset_btn_text).strong().size(12.0).color(reset_btn_color))
+                            .fill(reset_btn_fill)
+                            .stroke(Stroke::new(1.0_f32, if reset_confirming { Color32::from_rgb(185, 28, 28) } else { theme.red }))
+                            .rounding(Rounding::same(6.0)),
+                    );
+
+                    if reset_btn.clicked() {
+                        if reset_confirming {
+                            match supervisor.run_maintenance_flag("--factory-reset", Some(config)) {
+                                Ok(msg) => {
+                                    *config = GuiConfig::default();
+                                    let _ = config.save();
+                                    *maintenance_status = Some((msg, true, Instant::now()));
+                                }
+                                Err(err) => *maintenance_status = Some((err, false, Instant::now())),
+                            }
+                            *confirm_factory_reset = None;
+                        } else {
+                            *confirm_factory_reset = Some(Instant::now());
+                            *confirm_clean_storage = None;
+                        }
+                    }
+
+                    if let Some((msg, is_ok, time)) = maintenance_status {
+                        if time.elapsed() < Duration::from_secs(6) {
+                            ui.add_space(12.0);
+                            let banner_color = if *is_ok { theme.emerald } else { theme.red };
+                            ui.label(
+                                RichText::new(msg.as_str())
+                                    .color(banner_color)
+                                    .strong()
+                                    .size(12.0),
+                            );
+                        }
+                    }
+                });
 
             ui.add_space(16.0);
         });
