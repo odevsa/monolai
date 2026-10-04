@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Box, Plus, Edit2, Trash2, Cpu, RefreshCw, FileText } from '@lucide/svelte';
+	import { Box, Plus, Edit2, Trash2, Cpu, RefreshCw, FileText, AlertTriangle } from '@lucide/svelte';
 	import ModelForm from './ModelForm.svelte';
 	import ModelBadge from './ModelBadge.svelte';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
@@ -10,6 +10,7 @@
 		runtime: string;
 		flags: string;
 		created_at?: string;
+		file_exists?: boolean;
 	}
 
 	interface RuntimeItem {
@@ -54,7 +55,7 @@
 		isLoadingData = true;
 		try {
 			const [modelsRes, runtimesRes, filesRes, manifestsRes] = await Promise.all([
-				fetch('/api/models').then((r) => (r.ok ? r.json() : [])),
+				fetch('/api/models?all=true').then((r) => (r.ok ? r.json() : [])),
 				fetch('/api/runtimes').then((r) => (r.ok ? r.json() : [])),
 				fetch('/api/models/available').then((r) => (r.ok ? r.json() : [])),
 				fetch('/api/runtime-manifests').then((r) => (r.ok ? r.json() : []))
@@ -204,18 +205,38 @@
 			<div class="flex flex-col gap-3">
 				{#each registeredModels as model}
 					{@const mainFile = getMainModelFilePath(model)}
-					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-2xs hover:border-[var(--primary)]/50 transition-all duration-150">
+					{@const isMissing = model.file_exists === false}
+					<div
+						class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl transition-all duration-150 {isMissing
+							? 'bg-[var(--bg-surface)]/40 border border-dashed border-amber-500/40 opacity-75 hover:opacity-100'
+							: 'bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-2xs hover:border-[var(--primary)]/50'}"
+					>
 						<div class="flex flex-col gap-1.5 min-w-0">
 							<div class="flex items-center gap-2 flex-wrap">
 								<ModelBadge model={model.id} variant="inline" />
-								<span class="text-[0.675rem] font-semibold bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] px-2 py-0.5 rounded-md uppercase tracking-wider">
+								<span
+									class="text-[0.675rem] font-semibold bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] px-2 py-0.5 rounded-md uppercase tracking-wider"
+								>
 									{model.runtime}
 								</span>
+								{#if isMissing}
+									<span
+										class="inline-flex items-center gap-1 text-[0.675rem] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md"
+										title="O arquivo de pesos deste modelo não foi encontrado na pasta de modelos."
+									>
+										<AlertTriangle size={12} class="shrink-0 text-amber-500" />
+										<span>Arquivo não encontrado</span>
+									</span>
+								{/if}
 							</div>
 
 							{#if mainFile}
-								<div class="flex items-center gap-1.5 text-[0.725rem] text-[var(--text-muted)] font-mono truncate">
-									<FileText size={13} class="shrink-0 text-[var(--text-muted)] opacity-70" />
+								<div
+									class="flex items-center gap-1.5 text-[0.725rem] font-mono truncate {isMissing
+										? 'text-amber-500/70 line-through'
+										: 'text-[var(--text-muted)]'}"
+								>
+									<FileText size={13} class="shrink-0 opacity-70" />
 									<span class="truncate" title={mainFile}>
 										{mainFile.split('/').pop()}
 									</span>

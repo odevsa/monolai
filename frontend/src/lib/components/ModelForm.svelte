@@ -17,7 +17,8 @@
 		getFileRelativePath,
 		resolveFullPath,
 		flagsToCustomText,
-		customTextToFlags
+		customTextToFlags,
+		extractCleanModelName
 	} from '$lib/utils/model';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 
@@ -85,6 +86,7 @@
 
 	let formId = $state(untrack(() => editingModel?.id || ''));
 	let formRuntime = $state(untrack(() => editingModel?.runtime || runtimes[0]?.id || ''));
+	let hasUserEditedId = $state(false);
 
 	let initialFlags: Record<string, string> = untrack(() => {
 		if (editingModel?.flags) {
@@ -170,6 +172,16 @@
 		}
 
 		updateFlags(defaults);
+
+		if (!isEditingExisting && (!hasUserEditedId || !formId.trim())) {
+			const mainFile = defaults['--model'] || defaults['-m'];
+			if (mainFile) {
+				const clean = extractCleanModelName(mainFile);
+				if (clean) {
+					formId = clean;
+				}
+			}
+		}
 	}
 
 	$effect(() => {
@@ -187,6 +199,16 @@
 				formFlags = nextFlags;
 			}
 			customText = flagsToCustomText(formFlags, resolve);
+
+			if (!isEditingExisting && (!hasUserEditedId || !formId.trim())) {
+				const mainFile = formFlags['--model'] || formFlags['-m'] || (availableFiles[0] ? getFilePath(availableFiles[0]) : '');
+				if (mainFile) {
+					const clean = extractCleanModelName(mainFile);
+					if (clean) {
+						formId = clean;
+					}
+				}
+			}
 		}
 	});
 
@@ -220,7 +242,23 @@
 		}
 
 		updateFlags({ ...formFlags, [selectedAddFlag]: initialVal });
+		if (!isEditingExisting && (!hasUserEditedId || !formId.trim()) && flagDef?.type === 'file' && initialVal) {
+			const clean = extractCleanModelName(initialVal);
+			if (clean) {
+				formId = clean;
+			}
+		}
 		selectedAddFlag = '';
+	}
+
+	function handleFileSelect(flagKey: string, value: string) {
+		updateFlags({ ...formFlags, [flagKey]: value });
+		if (!isEditingExisting && (!hasUserEditedId || !formId.trim())) {
+			const clean = extractCleanModelName(value);
+			if (clean) {
+				formId = clean;
+			}
+		}
 	}
 
 	function removeFlag(flagKey: string) {
@@ -288,6 +326,9 @@
 				id="model-id"
 				type="text"
 				bind:value={formId}
+				oninput={() => {
+					hasUserEditedId = true;
+				}}
 				disabled={isEditingExisting}
 				placeholder="e.g. Qwen3.8:27b-q4-mtp"
 				class="input-control {validateId(formId) && !isEditingExisting && formId
@@ -402,7 +443,7 @@
 									{#if flagDef?.type === 'file'}
 										<select
 											bind:value={formFlags[flagKey]}
-											onchange={() => updateFlags({ ...formFlags })}
+											onchange={(e) => handleFileSelect(flagKey, (e.target as HTMLSelectElement).value)}
 											class="select-control"
 										>
 											{#if availableFiles.length === 0}

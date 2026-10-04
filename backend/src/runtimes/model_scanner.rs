@@ -60,3 +60,86 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     models.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     models
 }
+
+/// Check if the model weights file referenced in the flags exists on disk.
+/// Returns (exists, optional_file_path_found)
+pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) -> (bool, Option<String>) {
+    let models_dir = models_dir.as_ref();
+
+    let flags_map: serde_json::Value = match serde_json::from_str(flags_json) {
+        Ok(v) => v,
+        Err(_) => return (false, None),
+    };
+
+    let obj = match flags_map.as_object() {
+        Some(o) => o,
+        None => return (false, None),
+    };
+
+    // Primary flags where model file is stored
+    let primary_keys = ["--model", "-m", "--weights", "-w", "--model-path", "--checkpoint"];
+    let mut file_val: Option<String> = None;
+
+    for k in primary_keys {
+        if let Some(v) = obj.get(k).and_then(|val| val.as_str()) {
+            let trimmed = v.trim();
+            if !trimmed.is_empty() {
+                file_val = Some(trimmed.to_string());
+                break;
+            }
+        }
+    }
+
+    // Fallback: look for any flag value ending with model extensions
+    if file_val.is_none() {
+        for (_k, v) in obj {
+            if let Some(s) = v.as_str() {
+                let trimmed = s.trim();
+                let lower = trimmed.to_lowercase();
+                if lower.ends_with(".gguf")
+                    || lower.ends_with(".safetensors")
+                    || lower.ends_with(".bin")
+                    || lower.ends_with(".pt")
+                    || lower.ends_with(".onnx")
+                {
+                    file_val = Some(trimmed.to_string());
+                    break;
+                }
+            }
+        }
+    }
+
+    let val = match file_val {
+        Some(v) => v,
+        None => return (false, None),
+    };
+
+    // 1. Direct path check (handling ~ if present)
+    let expanded = crate::config::expand_tilde(&val);
+    if expanded.is_file() {
+        return (true, Some(val));
+    }
+
+    // 2. Relative to models_dir
+    let rel_path = models_dir.join(&val);
+    if rel_path.is_file() {
+        return (true, Some(val));
+    }
+
+    // 3. Just the file name relative to models_dir
+    if let Some(fname) = Path::new(&val).file_name() {
+        let direct_fname = models_dir.join(fname);
+        if direct_fname.is_file() {
+            return (true, Some(val));
+        }
+
+        // 4. Recursive search inside models_dir in case it's in a subfolder
+        for entry in WalkDir::new(models_dir).into_iter().filter_map(|e| e.ok()) {
+            if entry.path().is_file() && entry.file_name() == fname {
+                return (true, Some(val));
+            }
+        }
+    }
+
+    (false, Some(val))
+}

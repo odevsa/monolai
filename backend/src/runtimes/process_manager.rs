@@ -149,6 +149,20 @@ pub async fn load_model_process(
         Err(e) => return Err(format!("Database query error: {}", e)),
     };
 
+    let models_dir_str = config.models.as_deref().unwrap_or("");
+    let models_dir = if models_dir_str.is_empty() {
+        crate::config::get_default_models_dir()
+    } else {
+        crate::config::expand_tilde(models_dir_str)
+    };
+    let (file_exists, file_name) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model_record.flags);
+    if !file_exists {
+        return Err(format!(
+            "Model file '{}' not found on disk. The file may have been moved or deleted.",
+            file_name.unwrap_or_else(|| "unknown".to_string())
+        ));
+    }
+
     let runtime_id = model_record.runtime.clone();
 
     // 2. Resolve installed binary path from directory

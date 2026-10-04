@@ -9,10 +9,11 @@ use crate::runtimes::process_manager::{
 };
 use crate::state::AppState;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
 };
+use serde::Deserialize;
 use std::path::PathBuf;
 
 /// List scanned model files (GGUF, Safetensors) in models directory
@@ -36,11 +37,20 @@ pub async fn available_models_handler(State(state): State<AppState>) -> Json<Vec
     Json(items)
 }
 
-/// List all registered models from database
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct GetModelsQuery {
+    pub all: Option<bool>,
+    pub include_missing: Option<bool>,
+}
+
+/// List registered models from database (defaults to models whose files exist on disk, or all if ?all=true)
 #[utoipa::path(
     get,
     path = "/api/models",
     tag = "Models",
+    params(
+        ("all" = Option<bool>, Query, description = "Include models whose files are missing on disk (default: false)")
+    ),
     responses(
         (status = 200, description = "List of registered models", body = Vec<ModelRecord>),
         (status = 500, description = "Database error", body = String)
@@ -48,11 +58,30 @@ pub async fn available_models_handler(State(state): State<AppState>) -> Json<Vec
 )]
 pub async fn get_models_handler(
     State(state): State<AppState>,
+    Query(query): Query<GetModelsQuery>,
 ) -> Result<Json<Vec<ModelRecord>>, (StatusCode, String)> {
-    get_all_models(&state.db)
+    let mut models = get_all_models(&state.db)
         .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let status = state.config_status.lock().unwrap();
+    let models_dir = if let Some(ref dir_str) = status.models_dir {
+        crate::config::expand_tilde(dir_str)
+    } else {
+        crate::config::get_default_models_dir()
+    };
+
+    for m in &mut models {
+        let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &m.flags);
+        m.file_exists = exists;
+    }
+
+    let include_all = query.all.unwrap_or(false) || query.include_missing.unwrap_or(false);
+    if !include_all {
+        models.retain(|m| m.file_exists);
+    }
+
+    Ok(Json(models))
 }
 
 /// Register a new model configuration
@@ -93,10 +122,20 @@ pub async fn create_model_handler(
 
     payload.id = id;
 
-    insert_model(&state.db, &payload)
+    let mut model = insert_model(&state.db, &payload)
         .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let status = state.config_status.lock().unwrap();
+    let models_dir = if let Some(ref dir_str) = status.models_dir {
+        crate::config::expand_tilde(dir_str)
+    } else {
+        crate::config::get_default_models_dir()
+    };
+    let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model.flags);
+    model.file_exists = exists;
+
+    Ok(Json(model))
 }
 
 /// Update an existing registered model
@@ -126,10 +165,20 @@ pub async fn update_model_handler(
         ));
     }
 
-    update_model(&state.db, &id, &payload)
+    let mut model = update_model(&state.db, &id, &payload)
         .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let status = state.config_status.lock().unwrap();
+    let models_dir = if let Some(ref dir_str) = status.models_dir {
+        crate::config::expand_tilde(dir_str)
+    } else {
+        crate::config::get_default_models_dir()
+    };
+    let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model.flags);
+    model.file_exists = exists;
+
+    Ok(Json(model))
 }
 
 /// Delete a registered model

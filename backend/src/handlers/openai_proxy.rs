@@ -53,8 +53,19 @@ pub async fn v1_models_handler(
         )
     })?;
 
+    let status = state.config_status.lock().unwrap();
+    let models_dir = if let Some(ref dir_str) = status.models_dir {
+        crate::config::expand_tilde(dir_str)
+    } else {
+        crate::config::get_default_models_dir()
+    };
+
     let data = models
         .into_iter()
+        .filter(|m| {
+            let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &m.flags);
+            exists
+        })
         .map(|m| OpenAiModelItem {
             id: m.id,
             object: "model",
@@ -102,6 +113,27 @@ pub async fn v1_model_by_id_handler(
     })?;
 
     if let Some(m) = model {
+        let status = state.config_status.lock().unwrap();
+        let models_dir = if let Some(ref dir_str) = status.models_dir {
+            crate::config::expand_tilde(dir_str)
+        } else {
+            crate::config::get_default_models_dir()
+        };
+        let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &m.flags);
+        if !exists {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": {
+                        "message": format!("Model file for '{}' not found on disk", id),
+                        "type": "invalid_request_error",
+                        "param": "model",
+                        "code": "model_file_not_found"
+                    }
+                })),
+            ));
+        }
+
         Ok(Json(OpenAiModelItem {
             id: m.id,
             object: "model",

@@ -198,3 +198,17 @@ export function customTextToFlags(
 
 	return flagsObj;
 }
+
+/**
+ * Extracts the full model name from a file path without directory and without extension.
+ * e.g. "/path/to/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf" => "qwen2.5-coder-7b-instruct-q4_k_m"
+ */
+export function extractCleanModelName(filePath: string): string {
+	if (!filePath) return '';
+	const fileName = filePath.split(/[/\\]/).pop() || filePath;
+	const lastDotIndex = fileName.lastIndexOf('.');
+	if (lastDotIndex > 0) {
+		return fileName.slice(0, lastDotIndex).trim();
+	}
+	return fileName.trim();
+}

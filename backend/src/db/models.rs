@@ -7,6 +7,8 @@ pub struct ModelRecord {
     pub runtime: String,
     pub flags: String,
     pub created_at: String,
+    #[sqlx(default)]
+    pub file_exists: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
