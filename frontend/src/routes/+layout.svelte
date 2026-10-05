@@ -20,6 +20,8 @@
 		closeChatTab
 	} from '$lib/headerStore';
 	import { resolveEffectiveTheme, getThemeType, type ThemeId } from '$lib/themes';
+	import FeatureGate from '$lib/components/FeatureGate.svelte';
+	import { refreshFeatures } from '$lib/featuresStore';
 
 	let { children } = $props();
 
@@ -61,6 +63,7 @@
 	);
 	let isSysinfoPage = $derived(currentPath.startsWith('/sysinfo'));
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
+	let isImagePage = $derived(currentPath.startsWith('/image'));
 
 	async function deleteActiveChat(id: string) {
 		const confirmed = await askConfirm(
@@ -130,6 +133,7 @@
 	});
 
 	onMount(() => {
+		refreshFeatures();
 		if (typeof window !== 'undefined' && window.visualViewport) {
 			const resetScroll = () => {
 				if (window.scrollY !== 0) {
@@ -207,57 +211,61 @@
 				>
 					<div class="flex items-center gap-2 pointer-events-auto">
 						{#if isChatPage}
-							<div class="flex items-center gap-1.5 pointer-events-auto max-w-full flex-nowrap">
-								{#each $chatTabs as tab (tab.id)}
-									<a
-										href="/chat/{tab.id}"
-										class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg transition-all duration-150 select-none max-w-[130px] whitespace-nowrap shrink min-w-0 no-underline hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] {tab.active
-											? 'bg-[var(--bg-surface)]/90 border-[var(--border-hover)]'
-											: ''}"
-										onclick={() => selectChatTab(tab.id)}
-										title={tab.title}
-									>
-										<span class="truncate block min-w-0">{tab.title}</span>
-										{#if $chatTabs.length > 1}
-											<button
-												type="button"
-												class="flex items-center justify-center p-0 border-0 bg-transparent text-[var(--text-muted)] cursor-pointer rounded hover:text-[var(--text-primary)]"
-												onclick={(e) => {
-													e.stopPropagation();
-													e.preventDefault();
-													closeChatTab(tab.id);
-												}}
-												title="Close tab"
-											>
-												<X size={13} />
-											</button>
-										{/if}
-									</a>
-								{/each}
+							<FeatureGate features={['chat']} showCard={false}>
+								<div class="flex items-center gap-1.5 pointer-events-auto max-w-full flex-nowrap">
+									{#each $chatTabs as tab (tab.id)}
+										<a
+											href="/chat/{tab.id}"
+											class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg transition-all duration-150 select-none max-w-[130px] whitespace-nowrap shrink min-w-0 no-underline hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] {tab.active
+												? 'bg-[var(--bg-surface)]/90 border-[var(--border-hover)]'
+												: ''}"
+											onclick={() => selectChatTab(tab.id)}
+											title={tab.title}
+										>
+											<span class="truncate block min-w-0">{tab.title}</span>
+											{#if $chatTabs.length > 1}
+												<button
+													type="button"
+													class="flex items-center justify-center p-0 border-0 bg-transparent text-[var(--text-muted)] cursor-pointer rounded hover:text-[var(--text-primary)]"
+													onclick={(e) => {
+														e.stopPropagation();
+														e.preventDefault();
+														closeChatTab(tab.id);
+													}}
+													title="Close tab"
+												>
+													<X size={13} />
+												</button>
+											{/if}
+										</a>
+									{/each}
 
-								<button
-									type="button"
-									class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 pointer-events-auto hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shrink-0"
-									onclick={addChatTab}
-									title="New Tab"
-								>
-									<Plus size={16} />
-								</button>
-							</div>
+									<button
+										type="button"
+										class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 pointer-events-auto hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shrink-0"
+										onclick={addChatTab}
+										title="New Tab"
+									>
+										<Plus size={16} />
+									</button>
+								</div>
+							</FeatureGate>
 						{/if}
 					</div>
 
 					<div class="flex items-center gap-2 pointer-events-auto">
 						{#if isChatPage && activeChatIdFromUrl}
-							<button
-								type="button"
-								class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 shrink-0 hover:text-red-500 hover:bg-red-500/15 hover:border-red-500/30"
-								onclick={() => deleteActiveChat(activeChatIdFromUrl)}
-								title="Delete chat"
-								aria-label="Delete chat"
-							>
-								<Trash2 size={15} />
-							</button>
+							<FeatureGate features={['chat']} showCard={false}>
+								<button
+									type="button"
+									class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 shrink-0 hover:text-red-500 hover:bg-red-500/15 hover:border-red-500/30"
+									onclick={() => deleteActiveChat(activeChatIdFromUrl)}
+									title="Delete chat"
+									aria-label="Delete chat"
+								>
+									<Trash2 size={15} />
+								</button>
+							</FeatureGate>
 						{/if}
 						{#if isSysinfoPage}
 							<div

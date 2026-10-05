@@ -21,11 +21,17 @@
 		extractCleanModelName
 	} from '$lib/utils/model';
 	import { copyToClipboard } from '$lib/utils/clipboard';
+	import Select from '$lib/components/Select.svelte';
 
 	interface RuntimeItem {
 		id: string;
 		name: string;
-		binary_path: string;
+		version?: string;
+		description?: string;
+		features?: string[];
+		is_installed?: boolean;
+		installed_path?: string | null;
+		binary_path?: string;
 	}
 
 	interface ModelFileItem {
@@ -52,6 +58,7 @@
 		id: string;
 		name: string;
 		description: string;
+		binary_name?: string;
 		flags: ManifestFlag[];
 	}
 
@@ -84,9 +91,36 @@
 
 	let isEditingExisting = $derived(!!editingModel);
 
+	let installedRuntimes = $derived(
+		runtimes.filter((r) => r.is_installed || (isEditingExisting && r.id === editingModel?.runtime))
+	);
+
+	let installedRuntimeOptions = $derived(
+		installedRuntimes.map((rt) => {
+			const manifest = getManifestForRuntime(rt.id);
+			const displayName = manifest?.name || rt.name || rt.id;
+			return {
+				value: rt.id,
+				label: `${displayName} (${rt.id})`
+			};
+		})
+	);
+
 	let formId = $state(untrack(() => editingModel?.id || ''));
-	let formRuntime = $state(untrack(() => editingModel?.runtime || runtimes[0]?.id || ''));
+	let formRuntime = $state(
+		untrack(() => {
+			if (editingModel?.runtime) return editingModel.runtime;
+			const firstInstalled = runtimes.find((r) => r.is_installed);
+			return firstInstalled?.id || runtimes[0]?.id || '';
+		})
+	);
 	let hasUserEditedId = $state(false);
+
+	$effect(() => {
+		if (!formRuntime && installedRuntimes.length > 0) {
+			formRuntime = installedRuntimes[0].id;
+		}
+	});
 
 	let initialFlags: Record<string, string> = untrack(() => {
 		if (editingModel?.flags) {
@@ -133,8 +167,7 @@
 	});
 
 	let currentBinaryPath = $derived(
-		runtimes.find((p) => p.id === formRuntime)?.binary_path ||
-			(formRuntime?.includes('sd') ? '/usr/bin/sd-server' : '/usr/bin/llama-server')
+		`./${currentManifest?.binary_name || (formRuntime?.includes('sd') ? 'sd-server' : 'llama-server')}`
 	);
 
 	async function copyFullCommand() {
@@ -225,14 +258,33 @@
 		}
 	});
 
-	function handleRuntimeChange(e: Event) {
-		const target = e.target as HTMLSelectElement;
-		formRuntime = target.value;
+	function handleRuntimeChange(val: string) {
+		formRuntime = val;
 		loadDefaultFlags(formRuntime);
 	}
 
 	function resetDefaultFlags() {
 		loadDefaultFlags(formRuntime);
+	}
+
+	function getFileOptions(currentValue: string) {
+		if (availableFiles.length === 0) {
+			return [{ value: '', label: 'No files found in models directory' }];
+		}
+		const opts = availableFiles.map((fileItem) => ({
+			value: getFilePath(fileItem),
+			label: getFileRelativePath(fileItem)
+		}));
+		if (currentValue && !availableFiles.some((f) => getFilePath(f) === currentValue)) {
+			opts.push({
+				value: currentValue,
+				label: getFileRelativePath({
+					absolute_path: currentValue,
+					relative_path: currentValue
+				})
+			});
+		}
+		return opts;
 	}
 
 	function addFlag() {
@@ -248,7 +300,12 @@
 		}
 
 		updateFlags({ ...formFlags, [selectedAddFlag]: initialVal });
-		if (!isEditingExisting && (!hasUserEditedId || !formId.trim()) && flagDef?.type === 'file' && initialVal) {
+		if (
+			!isEditingExisting &&
+			(!hasUserEditedId || !formId.trim()) &&
+			flagDef?.type === 'file' &&
+			initialVal
+		) {
 			const clean = extractCleanModelName(initialVal);
 			if (clean) {
 				formId = clean;
@@ -289,6 +346,22 @@
 		const idError = validateId(formId);
 		if (idError && !isEditingExisting) {
 			formError = idError;
+			return;
+		}
+
+		if (installedRuntimes.length === 0) {
+			formError = 'No installed runtimes found. Please install a runtime in the Runtimes tab first.';
+			return;
+		}
+
+		if (!formRuntime || !formRuntime.trim()) {
+			formError = 'Runtime Engine is required. Please select an installed runtime.';
+			return;
+		}
+
+		const isRuntimeInstalled = installedRuntimes.some((r) => r.id === formRuntime);
+		if (!isRuntimeInstalled) {
+			formError = `The selected runtime (${formRuntime}) is not installed. Please install it first.`;
 			return;
 		}
 
@@ -348,16 +421,27 @@
 			<label class="form-label" for="model-runtime">
 				Runtime Engine <span class="required-star">*</span>
 			</label>
-			<select
-				id="model-runtime"
-				value={formRuntime}
-				onchange={handleRuntimeChange}
-				class="select-control"
-			>
-				{#each runtimes as rt}
-					<option value={rt.id}>{rt.name} ({rt.id})</option>
-				{/each}
-			</select>
+			{#if installedRuntimeOptions.length > 0}
+				<Select
+					bind:value={formRuntime}
+					options={installedRuntimeOptions}
+					onchange={handleRuntimeChange}
+					placeholder="Select an installed runtime..."
+					ariaLabel="Runtime Engine"
+				/>
+			{:else}
+				<div
+					class="p-3 text-xs rounded-xl bg-[var(--bg-primary)] border border-amber-500/30 text-amber-500 flex items-center justify-between gap-3"
+				>
+					<span>No installed runtimes found. Please install a runtime in the Runtimes tab.</span>
+					<a
+						href="/runtimes"
+						class="app-btn app-btn-secondary app-btn-sm shrink-0 whitespace-nowrap !no-underline"
+					>
+						Runtimes
+					</a>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Sub-Tabs: Form Flags vs Custom Text -->
@@ -440,41 +524,24 @@
 
 								<div class="flag-input-wrapper">
 									{#if flagDef?.type === 'file'}
-										<select
+										<Select
 											bind:value={formFlags[flagKey]}
-											onchange={(e) => handleFileSelect(flagKey, (e.target as HTMLSelectElement).value)}
-											class="select-control"
-										>
-											{#if availableFiles.length === 0}
-												<option value="">No files found in models directory</option>
-											{:else}
-												{#each availableFiles as fileItem}
-													{@const fullPath = getFilePath(fileItem)}
-													{@const relPath = getFileRelativePath(fileItem)}
-													<option value={fullPath}>
-														{relPath}
-													</option>
-												{/each}
-												{#if formFlags[flagKey] && !availableFiles.some((f) => getFilePath(f) === formFlags[flagKey])}
-													<option value={formFlags[flagKey]}>
-														{getFileRelativePath({
-															absolute_path: formFlags[flagKey],
-															relative_path: formFlags[flagKey]
-														})}
-													</option>
-												{/if}
-											{/if}
-										</select>
+											options={getFileOptions(formFlags[flagKey])}
+											onchange={(val) => handleFileSelect(flagKey, val)}
+											placeholder="Select model file..."
+											ariaLabel={flagDef.name || flagKey}
+										/>
 									{:else if flagDef?.type === 'enum' && flagDef.options}
-										<select
+										<Select
 											bind:value={formFlags[flagKey]}
-											onchange={() => updateFlags({ ...formFlags })}
-											class="select-control"
-										>
-											{#each flagDef.options as opt}
-												<option value={opt}>{opt}</option>
-											{/each}
-										</select>
+											options={flagDef.options.map((opt) => ({ value: opt, label: opt }))}
+											onchange={(val) => {
+												formFlags[flagKey] = val;
+												updateFlags({ ...formFlags });
+											}}
+											placeholder="Select option..."
+											ariaLabel={flagDef.name || flagKey}
+										/>
 									{:else if flagDef?.type === 'bool'}
 										<label class="bool-checkbox-label">
 											<input
@@ -514,14 +581,19 @@
 				<!-- Add Optional Flag -->
 				{#if unusedFlags().length > 0}
 					<div class="add-flag-row">
-						<select bind:value={selectedAddFlag} class="select-control">
-							<option value="">Select an optional flag to add...</option>
-							{#each unusedFlags() as optFlag}
-								<option value={optFlag.flag}>
-									{optFlag.flag} — {optFlag.name || optFlag.description}
-								</option>
-							{/each}
-						</select>
+						<Select
+							class="flex-1 min-w-0"
+							bind:value={selectedAddFlag}
+							options={[
+								{ value: '', label: 'Select an optional flag to add...' },
+								...unusedFlags().map((optFlag) => ({
+									value: optFlag.flag,
+									label: `${optFlag.flag} — ${optFlag.name || optFlag.description}`
+								}))
+							]}
+							placeholder="Select an optional flag to add..."
+							ariaLabel="Add Optional Flag"
+						/>
 						<button
 							type="button"
 							class="app-btn app-btn-secondary app-btn-sm"
@@ -573,8 +645,16 @@
 
 		<!-- Actions -->
 		<div class="form-actions-row">
-			<button type="button" class="app-btn app-btn-secondary app-btn-md" onclick={onCancel}> Cancel </button>
-			<button type="button" class="app-btn app-btn-primary app-btn-md" disabled={isSaving} onclick={handleSubmit}>
+			<button type="button" class="app-btn app-btn-secondary app-btn-md" onclick={onCancel}>
+				Cancel
+			</button>
+			<button
+				type="button"
+				class="app-btn app-btn-primary app-btn-md"
+				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
+				onclick={handleSubmit}
+				title={installedRuntimes.length === 0 ? 'Cannot save model without an installed runtime' : 'Save Model'}
+			>
 				<Save size={15} />
 				<span>{isSaving ? 'Saving...' : 'Save Model'}</span>
 			</button>
@@ -624,7 +704,6 @@
 	}
 
 	.input-control,
-	.select-control,
 	.textarea-control {
 		width: 100%;
 		background: var(--bg-primary);
@@ -644,7 +723,6 @@
 	}
 
 	.input-control:focus,
-	.select-control:focus,
 	.textarea-control:focus {
 		border-color: var(--primary);
 	}
@@ -847,7 +925,7 @@
 		margin-top: 0.25rem;
 	}
 
-	.add-flag-row select {
+	.add-flag-row :global(.relative) {
 		flex: 1;
 		min-width: 0;
 	}
@@ -941,7 +1019,6 @@
 		padding-top: 0.75rem;
 		border-top: 1px solid var(--border-color);
 	}
-
 
 	.font-mono {
 		font-family: 'JetBrains Mono', monospace;

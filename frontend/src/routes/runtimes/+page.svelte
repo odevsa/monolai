@@ -17,6 +17,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import Select from '$lib/components/Select.svelte';
+	import { refreshFeatures } from '$lib/featuresStore';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
 	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
 
@@ -132,6 +133,7 @@
 						delete activeEventSources[runtimeId];
 						// Refresh full state
 						fetchRuntimes();
+						refreshFeatures(true);
 					} else if (progress.status === 'error') {
 						sse.close();
 						delete activeEventSources[runtimeId];
@@ -216,6 +218,7 @@
 			}
 
 			await fetchRuntimes();
+			refreshFeatures(true);
 		} catch (err: any) {
 			alert(`Error uninstalling runtime: ${err?.message || err}`);
 		}

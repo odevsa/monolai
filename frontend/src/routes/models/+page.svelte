@@ -23,6 +23,7 @@
 	import { getMainModelFilePath } from '$lib/utils/model';
 	import { formatBytes } from '$lib/utils/format';
 	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { refreshFeatures } from '$lib/featuresStore';
 	import { runningModels, type RunningModelStatus } from '$lib/runningModelsStore';
 
 	interface ModelRecord {
@@ -112,7 +113,11 @@
 		if (q) {
 			list = list.filter((m) => {
 				const mainFile = getMainModelFilePath(m).toLowerCase();
-				return m.id.toLowerCase().includes(q) || mainFile.includes(q) || m.runtime.toLowerCase().includes(q);
+				return (
+					m.id.toLowerCase().includes(q) ||
+					mainFile.includes(q) ||
+					m.runtime.toLowerCase().includes(q)
+				);
 			});
 		}
 
@@ -145,13 +150,6 @@
 			runtimes = runtimesRes;
 			availableFiles = filesRes;
 			runtimeManifests = manifestsRes;
-
-			if (runtimes.length === 0) {
-				runtimes = [
-					{ id: 'llama-cpp', name: 'LLaMA C++ Server', binary_path: '/usr/bin/llama-server' },
-					{ id: 'sd-cpp', name: 'Stable Diffusion C++ Server', binary_path: '/usr/bin/sd-server' }
-				];
-			}
 		} catch (e: any) {
 			error = e.message || 'Failed to load models data from server';
 			console.error('Error loading models data:', e);
@@ -206,7 +204,11 @@
 		}
 	}
 
-	async function handleSaveModel(payload: { id: string; runtime: string; flags: Record<string, string> }) {
+	async function handleSaveModel(payload: {
+		id: string;
+		runtime: string;
+		flags: Record<string, string>;
+	}) {
 		const isExisting = !!editingModel;
 		const url = isExisting ? `/api/models/${encodeURIComponent(payload.id)}` : '/api/models';
 		const method = isExisting ? 'PUT' : 'POST';
@@ -223,6 +225,7 @@
 		}
 
 		await loadAllModelsData(true);
+		refreshFeatures(true);
 		isEditingModel = false;
 		editingModel = null;
 	}
@@ -247,6 +250,7 @@
 			}
 
 			await loadAllModelsData(true);
+			refreshFeatures(true);
 		} catch (e: any) {
 			await showAlert(e.message || 'Error deleting model', 'Error', 'danger');
 		}
@@ -262,11 +266,14 @@
 	}
 
 	function getFileInfo(filePath: string, files: ModelFileItem[]) {
-		if (!filePath) return { fileName: 'No file configured', format: 'GGUF', sizeFormatted: undefined };
+		if (!filePath)
+			return { fileName: 'No file configured', format: 'GGUF', sizeFormatted: undefined };
 		const fileName = filePath.split(/[/\\]/).pop() || filePath;
 		const match = files.find((f) => {
 			const p = f.path || f.absolute_path || f.relative_path || '';
-			return p === filePath || p.endsWith(fileName) || f.name === fileName || f.filename === fileName;
+			return (
+				p === filePath || p.endsWith(fileName) || f.name === fileName || f.filename === fileName
+			);
 		});
 
 		const ext = fileName.split('.').pop()?.toUpperCase() || 'GGUF';
@@ -327,7 +334,9 @@
 			<!-- Dedicated Form Container (Borderless solid panel) -->
 			<div class="bg-[var(--bg-surface)] rounded-2xl border-0 shadow-xs p-5 sm:p-7">
 				<div class="flex items-center gap-2.5 pb-4 mb-5 border-b border-[var(--border-color)]">
-					<div class="w-8 h-8 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0">
+					<div
+						class="w-8 h-8 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0"
+					>
 						<Box size={16} />
 					</div>
 					<div>
@@ -351,10 +360,15 @@
 			</div>
 		{:else}
 			<!-- Search & Filter Controls Bar (Standardized Custom Selectboxes, Borderless) -->
-			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2 bg-[var(--bg-surface)] border-0 rounded-xl shadow-xs">
+			<div
+				class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2 bg-[var(--bg-surface)] border-0 rounded-xl shadow-xs"
+			>
 				<!-- Search Input -->
 				<div class="relative flex-1 min-w-[180px]">
-					<Search size={14} class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+					<Search
+						size={14}
+						class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
+					/>
 					<input
 						type="text"
 						bind:value={searchQuery}
@@ -396,20 +410,29 @@
 
 			<!-- Models Catalog Grid -->
 			{#if isLoadingData && registeredModels.length === 0}
-				<div class="flex flex-col items-center justify-center gap-3 p-16 text-[var(--text-muted)] text-sm">
-					<div class="w-8 h-8 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"></div>
+				<div
+					class="flex flex-col items-center justify-center gap-3 p-16 text-[var(--text-muted)] text-sm"
+				>
+					<div
+						class="w-8 h-8 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
+					></div>
 					<p class="m-0 text-xs">Loading registered models...</p>
 				</div>
 			{:else if registeredModels.length === 0}
 				<!-- Zero Models Registered Empty State -->
-				<div class="bg-[var(--bg-surface)] border-0 rounded-2xl p-10 flex flex-col items-center justify-center gap-3.5 text-center shadow-xs">
-					<div class="w-14 h-14 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0 shadow-xs">
+				<div
+					class="bg-[var(--bg-surface)] border-0 rounded-2xl p-10 flex flex-col items-center justify-center gap-3.5 text-center shadow-xs"
+				>
+					<div
+						class="w-14 h-14 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0 shadow-xs"
+					>
 						<Box size={28} />
 					</div>
 					<div class="flex flex-col gap-1 max-w-[420px]">
 						<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">No Registered Models</h3>
 						<p class="m-0 text-xs text-[var(--text-muted)] leading-relaxed">
-							Register your GGUF or SafeTensors weights from disk to start serving local LLM inference.
+							Register your GGUF or SafeTensors weights from disk to start serving local LLM
+							inference.
 						</p>
 					</div>
 					<button
@@ -418,16 +441,22 @@
 						onclick={startAddModel}
 					>
 						<Plus size={15} />
-						<span>Register First Model</span>
+						<span>New Model</span>
 					</button>
 				</div>
 			{:else if filteredModels.length === 0}
 				<!-- Search Yielded No Results -->
-				<div class="bg-[var(--bg-surface)] border-0 rounded-2xl p-8 flex flex-col items-center justify-center gap-2.5 text-center shadow-xs">
-					<div class="w-10 h-10 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] flex items-center justify-center">
+				<div
+					class="bg-[var(--bg-surface)] border-0 rounded-2xl p-8 flex flex-col items-center justify-center gap-2.5 text-center shadow-xs"
+				>
+					<div
+						class="w-10 h-10 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] flex items-center justify-center"
+					>
 						<Search size={18} />
 					</div>
-					<h4 class="m-0 text-sm font-bold text-[var(--text-primary)]">No models match your search</h4>
+					<h4 class="m-0 text-sm font-bold text-[var(--text-primary)]">
+						No models match your search
+					</h4>
 					<p class="m-0 text-xs text-[var(--text-muted)]">
 						Try adjusting your filters or search keywords.
 					</p>
@@ -463,13 +492,17 @@
 								<div class="flex items-center justify-between gap-2">
 									<div class="flex items-center gap-1.5 min-w-0">
 										<ModelBadge model={model.id} variant="inline" />
-										<span class="px-2 py-0.5 rounded text-[0.68rem] font-medium bg-[var(--bg-primary)] text-[var(--text-muted)] border-0 shrink-0">
+										<span
+											class="px-2 py-0.5 rounded text-[0.68rem] font-medium bg-[var(--bg-primary)] text-[var(--text-muted)] border-0 shrink-0"
+										>
 											{model.runtime}
 										</span>
 									</div>
 
 									{#if isRunning}
-										<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold bg-emerald-500/15 text-emerald-400 border-0 shrink-0">
+										<span
+											class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold bg-emerald-500/15 text-emerald-400 border-0 shrink-0"
+										>
 											<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
 											<span>Running :{runningInfo?.port}</span>
 										</span>
@@ -485,7 +518,9 @@
 								</div>
 
 								<!-- Model ID with copy shortcut -->
-								<div class="flex items-center gap-1.5 text-xs font-mono font-semibold text-[var(--text-primary)] min-w-0">
+								<div
+									class="flex items-center gap-1.5 text-xs font-mono font-semibold text-[var(--text-primary)] min-w-0"
+								>
 									<span class="truncate" title={model.id}>{model.id}</span>
 									<button
 										type="button"
@@ -503,8 +538,14 @@
 							</div>
 
 							<!-- File information (Borderless compact pill) -->
-							<div class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-primary)] border-0">
-								<div class="flex items-center gap-1.5 min-w-0 font-mono {isMissing ? 'text-amber-500/80 line-through' : 'text-[var(--text-secondary)]'}">
+							<div
+								class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-primary)] border-0"
+							>
+								<div
+									class="flex items-center gap-1.5 min-w-0 font-mono {isMissing
+										? 'text-amber-500/80 line-through'
+										: 'text-[var(--text-secondary)]'}"
+								>
 									<FileText size={13} class="shrink-0 text-[var(--text-muted)]" />
 									<span class="truncate text-[0.72rem]" title={mainFile || fileDetails.fileName}>
 										{fileDetails.fileName}
@@ -517,7 +558,9 @@
 											{fileDetails.sizeFormatted}
 										</span>
 									{/if}
-									<span class="px-1.5 py-0.2 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border-0">
+									<span
+										class="px-1.5 py-0.2 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border-0"
+									>
 										{fileDetails.format}
 									</span>
 								</div>

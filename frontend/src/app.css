@@ -500,7 +500,7 @@
 	transition: background-color 0.2s ease;
 }
 
-.app-card:hover {
+.app-card.app-card-hover:hover {
 	background-color: color-mix(in srgb, var(--bg-surface) 95%, white 5%);
 }
 

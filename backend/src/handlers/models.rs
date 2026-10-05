@@ -121,7 +121,13 @@ pub async fn create_model_handler(
         ));
     }
 
+    let runtime = payload.runtime.trim().to_string();
+    if runtime.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Runtime engine cannot be empty.".into()));
+    }
+
     payload.id = id;
+    payload.runtime = runtime;
 
     let mut model = insert_model(&state.db, &payload)
         .await
@@ -165,6 +171,13 @@ pub async fn update_model_handler(
             format!("Model with ID '{}' not found.", id),
         ));
     }
+
+    let runtime = payload.runtime.trim().to_string();
+    if runtime.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Runtime engine cannot be empty.".into()));
+    }
+    let mut payload = payload;
+    payload.runtime = runtime;
 
     let mut model = update_model(&state.db, &id, &payload)
         .await

@@ -17,11 +17,14 @@
 		X,
 		Power,
 		Plus,
-		Trash2
+		Trash2,
+		Image as ImageIcon
 	} from '@lucide/svelte';
 	import { chatTabs, syncRecentChats, runtimesRefreshFn } from '$lib/headerStore';
 	import { askConfirm } from '$lib/confirmStore';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
+	import FeatureGate from '$lib/components/FeatureGate.svelte';
+	import { featuresStore, checkFeature } from '$lib/featuresStore';
 	import {
 		runningModels,
 		unloadingModelIds,
@@ -50,6 +53,9 @@
 
 	let loadedModels = $derived($runningModels);
 	let unloadingIds = $derived($unloadingModelIds);
+	let isChatAvailable = $derived(
+		$featuresStore.isInitialized && checkFeature($featuresStore, 'chat').isSatisfied
+	);
 
 	let conversations = $state<{ id: string; title: string }[]>([]);
 
@@ -97,13 +103,18 @@
 
 	$effect(() => {
 		const stopPolling = startRunningStatePolling(3000);
-		fetchChats();
-		const interval = setInterval(() => {
+		if (isChatPage && isChatAvailable) {
 			fetchChats();
-		}, 3000);
+			const interval = setInterval(() => {
+				fetchChats();
+			}, 3000);
+			return () => {
+				stopPolling();
+				clearInterval(interval);
+			};
+		}
 		return () => {
 			stopPolling();
-			clearInterval(interval);
 		};
 	});
 
@@ -128,6 +139,7 @@
 	let isChatPage = $derived(
 		currentPath === '/chat' || currentPath === '/' || currentPath.startsWith('/chat')
 	);
+	let isImagePage = $derived(currentPath.startsWith('/image'));
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
 	let isModelsPage = $derived(currentPath.startsWith('/models'));
@@ -213,6 +225,23 @@
 			<MessageSquare size={20} class="shrink-0 {isChatPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
 				<span>Chat</span>
+			{/if}
+		</a>
+
+		<!-- Image Action (below Chat) -->
+		<a
+			href="/image"
+			class="flex items-center rounded-xl transition-all duration-150 box-border no-underline border-0 cursor-pointer {!isExpanded
+				? 'w-10 h-10 mx-auto justify-center'
+				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isImagePage
+				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
+				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
+			onclick={closeMobile}
+			title="Image"
+		>
+			<ImageIcon size={20} class="shrink-0 {isImagePage ? 'text-[var(--primary)]' : ''}" />
+			{#if isExpanded}
+				<span>Image</span>
 			{/if}
 		</a>
 
@@ -388,7 +417,8 @@
 	{#if isExpanded}
 		<div class="flex-1 min-h-0 p-3 overflow-y-auto flex flex-col">
 			{#if isChatPage}
-				<div class="flex flex-col gap-3">
+				<FeatureGate features={['chat']} showCard={false}>
+					<div class="flex flex-col gap-3">
 					<div class="flex items-center justify-between px-1">
 						<span
 							class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider"
@@ -455,7 +485,8 @@
 						{/if}
 					</div>
 				</div>
-			{:else if isSysInfoPage}
+			</FeatureGate>
+		{:else if isSysInfoPage}
 				<div class="flex flex-col gap-3">
 					<div
 						class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider px-1"

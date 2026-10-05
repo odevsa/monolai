@@ -40,6 +40,7 @@
 		max-width: 100%;
 		min-width: 0;
 		vertical-align: middle;
+		overflow: hidden;
 	}
 
 	.model-badge-container.badge {
@@ -68,6 +69,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		min-width: 0;
+		flex-shrink: 1;
 	}
 
 	.model-tag {
@@ -81,5 +83,6 @@
 		color: var(--text-secondary);
 		line-height: 1.1;
 		white-space: nowrap;
+		flex-shrink: 0;
 	}
 </style>

@@ -23,7 +23,7 @@ use crate::{
             get_models_handler, get_running_models_handler, load_model_handler, swap_model_handler,
             unload_all_models_handler, unload_model_handler, update_model_handler,
         },
-        openai_proxy::{v1_model_by_id_handler, v1_models_handler, v1_proxy_handler},
+        openai_proxy::{sdcpp_proxy_handler, v1_model_by_id_handler, v1_models_handler, v1_proxy_handler},
         runtime_manifests::{get_runtime_manifest_by_id_handler, get_runtime_manifests_handler},
         runtimes::{
             install_runtime_handler, install_stream_handler, runtimes_handler,
@@ -45,6 +45,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/health", get(health_handler))
         .nest("/api", api_router())
         .nest("/v1", openai_router())
+        .nest("/sdcpp", sdcpp_router())
         .merge(swagger_router())
         .fallback(static_handler)
         .layer(CorsLayer::permissive())
@@ -121,6 +122,11 @@ fn openai_router() -> Router<AppState> {
         .route("/models", get(v1_models_handler))
         .route("/models/:id", get(v1_model_by_id_handler))
         .route("/*path", any(v1_proxy_handler))
+}
+
+/// Stable Diffusion C++ proxy routes (/sdcpp/*)
+fn sdcpp_router() -> Router<AppState> {
+    Router::new().route("/*path", any(sdcpp_proxy_handler))
 }
 
 /// Swagger UI and OpenAPI documentation routes

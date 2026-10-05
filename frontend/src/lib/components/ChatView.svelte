@@ -991,10 +991,11 @@
 
 								// 1. Auto-scroll reasoning container if reasoning updated and user hasn't scrolled up inside it
 								if (deltaReasoning || isInsideThinkTag) {
-									if (autoScrollReasoning[assistantMsgId] !== false) {
+									const shouldAutoScroll = (autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false;
+									if (shouldAutoScroll) {
 										await tick();
 										const rContainer = reasoningContainers[assistantMsgId];
-										if (rContainer && autoScrollReasoning[assistantMsgId] !== false) {
+										if (rContainer && (autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false) {
 											rContainer.scrollTop = rContainer.scrollHeight;
 										}
 									}
@@ -2053,6 +2054,7 @@
 		max-width: min(500px, calc(100vw - 2rem));
 		max-height: 65vh;
 		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	@media (max-width: 639px) {
@@ -2112,6 +2114,7 @@
 			max-width: calc(100vw - 2rem) !important;
 			max-height: 55vh;
 			overflow-y: auto;
+			overflow-x: hidden;
 			border-radius: 1rem;
 			box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
 			z-index: 50;
@@ -2166,10 +2169,13 @@
 		font-size: 0.875rem;
 		cursor: pointer;
 		width: 100%;
+		max-width: 100%;
+		min-width: 0;
 		text-align: left;
 		transition: background-color 0.15s ease;
 		box-sizing: border-box;
 		white-space: nowrap;
+		overflow: hidden;
 	}
 
 	.popover-item:hover:not(:disabled),
@@ -2194,6 +2200,13 @@
 		font-weight: 500;
 	}
 
+	.model-menu .popover-item {
+		gap: 0.75rem;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
+	}
+
 	.model-menu .popover-item.selected {
 		background-color: var(--primary-light);
 	}
@@ -2208,7 +2221,21 @@
 		align-items: center;
 		gap: 0.5rem;
 		min-width: 0;
-		flex-shrink: 0;
+		flex: 1 1 auto;
+		overflow: hidden;
+	}
+
+	.model-menu .item-left :global(.model-badge-container) {
+		max-width: 100%;
+		min-width: 0;
+		overflow: hidden;
+	}
+
+	.model-menu .item-left :global(.model-name-text) {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.mini-tag {

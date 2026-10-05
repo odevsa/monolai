@@ -422,6 +422,111 @@ pub async fn v1_proxy_handler(
         .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response())
 }
 
+/// Wildcard proxy handler for native Stable Diffusion endpoints (/sdcpp/*path)
+pub async fn sdcpp_proxy_handler(
+    State(state): State<AppState>,
+    Path(path): Path<String>,
+    req: Request,
+) -> Response {
+    let (parts, body) = req.into_parts();
+    let method = parts.method;
+    let headers = parts.headers;
+    let uri = parts.uri;
+
+    let body_bytes = match axum::body::to_bytes(body, 50 * 1024 * 1024).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": { "message": format!("Failed to read request body: {}", e) }
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Find running sd-cpp model or start the first available sd-cpp model
+    let target_port: u16 = {
+        let running_list = get_all_running_status(&state.process_manager).await;
+        let ready_sd = running_list
+            .into_iter()
+            .find(|m| (m.runtime_id == "sd-cpp" || m.runtime_id.contains("sd")) && m.state == ModelState::Ready && m.port > 0);
+
+        if let Some(m) = ready_sd {
+            mark_model_active(&state.process_manager, &m.model_id).await;
+            m.port
+        } else {
+            let all_models = get_all_models(&state.db).await.unwrap_or_default();
+            let sd_model = all_models.into_iter().find(|m| m.runtime == "sd-cpp" || m.runtime.contains("sd"));
+            if let Some(m) = sd_model {
+                let config = state.config.lock().unwrap().clone();
+                match swap_model_process(&state.process_manager, &state.db, &config, &m.id).await {
+                    Ok(running) => running.port,
+                    Err(e) => {
+                        return (
+                            StatusCode::BAD_GATEWAY,
+                            Json(serde_json::json!({
+                                "error": { "message": format!("Failed to start sd-cpp model: {}", e) }
+                            })),
+                        )
+                            .into_response();
+                    }
+                }
+            } else {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({
+                        "error": { "message": "No Stable Diffusion model registered or currently running." }
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    };
+
+    let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
+    let upstream_url = format!("http://127.0.0.1:{}/sdcpp/{}{}", target_port, path, query_suffix);
+
+    let client = reqwest::Client::new();
+    let mut req_builder = client.request(method, &upstream_url);
+
+    for (name, value) in &headers {
+        let name_str = name.as_str().to_lowercase();
+        if name_str != "host" && name_str != "content-length" && name_str != "connection" {
+            req_builder = req_builder.header(name, value);
+        }
+    }
+
+    if !body_bytes.is_empty() {
+        req_builder = req_builder.body(body_bytes);
+    }
+
+    match req_builder.send().await {
+        Ok(upstream_res) => {
+            let status = upstream_res.status();
+            let mut response_builder = Response::builder().status(status);
+            for (name, value) in upstream_res.headers() {
+                let name_str = name.as_str().to_lowercase();
+                if name_str != "transfer-encoding" && name_str != "connection" {
+                    response_builder = response_builder.header(name, value);
+                }
+            }
+            let body_stream = upstream_res.bytes_stream();
+            response_builder
+                .body(Body::from_stream(body_stream))
+                .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response())
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            Json(serde_json::json!({
+                "error": { "message": format!("Upstream connection error: {}", e) }
+            })),
+        )
+            .into_response(),
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct OpenAiChatMessage {
     /// Role of the message author ("system", "user", "assistant")
@@ -517,4 +622,64 @@ pub async fn v1_completions_doc() {}
 )]
 #[allow(dead_code)]
 pub async fn v1_embeddings_doc() {}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct OpenAiImageGenerationRequest {
+    /// A text description of the desired image(s).
+    pub prompt: String,
+    /// ID of the model to use for image generation.
+    #[serde(default)]
+    pub model: Option<String>,
+    /// The number of images to generate (default: 1).
+    #[serde(default)]
+    pub n: Option<u32>,
+    /// The size of the generated images (e.g. "512x512", "1024x1024").
+    #[serde(default)]
+    pub size: Option<String>,
+    /// Format in which the generated images are returned ("url" or "b64_json").
+    #[serde(default)]
+    pub response_format: Option<String>,
+    /// Optional negative prompt describing what to avoid in the image.
+    #[serde(default)]
+    pub negative_prompt: Option<String>,
+    /// Number of denoising steps (default: 20).
+    #[serde(default)]
+    pub steps: Option<u32>,
+    /// Classifier-Free Guidance (CFG) scale (default: 7.5).
+    #[serde(default)]
+    pub cfg_scale: Option<f32>,
+    /// Random seed for reproducible generation (-1 for random).
+    #[serde(default)]
+    pub seed: Option<i64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct OpenAiImageData {
+    #[serde(default)]
+    pub b64_json: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct OpenAiImageGenerationResponse {
+    pub created: u64,
+    pub data: Vec<OpenAiImageData>,
+}
+
+/// Create images using local diffusion model (OpenAI standard POST /v1/images/generations)
+#[utoipa::path(
+    post,
+    path = "/v1/images/generations",
+    tag = "OpenAI Compatibility",
+    request_body = OpenAiImageGenerationRequest,
+    responses(
+        (status = 200, description = "Generated image(s) response in OpenAI standard format", body = OpenAiImageGenerationResponse),
+        (status = 400, description = "Invalid request payload or missing prompt/model"),
+        (status = 502, description = "Upstream runtime process connection error")
+    )
+)]
+#[allow(dead_code)]
+pub async fn v1_images_generations_doc() {}
+
 

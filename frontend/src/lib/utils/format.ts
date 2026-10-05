@@ -45,3 +45,24 @@ export function formatTimeoutDuration(seconds: number): string {
 	}
 	return `${mins}m ${secs}s (${seconds}s)`;
 }
+
+/**
+ * Formats seconds into a human-readable elapsed time string.
+ * Under 60s: e.g. "14.2s"
+ * 60s or more: e.g. "2m 11.5s", "1m 05.2s"
+ */
+export function formatElapsedTime(seconds: number): string {
+	if (isNaN(seconds) || seconds < 0) return '0.0s';
+	if (seconds < 60) {
+		return `${seconds.toFixed(1)}s`;
+	}
+	const hours = Math.floor(seconds / 3600);
+	const mins = Math.floor((seconds % 3600) / 60);
+	const remSecs = (seconds % 60).toFixed(1);
+	const sStr = Number(remSecs) < 10 ? `0${remSecs}` : remSecs;
+	if (hours > 0) {
+		const mStr = mins < 10 ? `0${mins}` : `${mins}`;
+		return `${hours}h ${mStr}m ${sStr}s`;
+	}
+	return `${mins}m ${sStr}s`;
+}

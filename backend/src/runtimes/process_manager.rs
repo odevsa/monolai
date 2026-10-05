@@ -266,11 +266,22 @@ pub async fn load_model_process(
     let mut cmd = Command::new(&binary_path);
     let mut port_injected = false;
 
+    // Detect if target binary is Stable Diffusion server (which uses --listen-port instead of --port)
+    let is_sd_server = runtime_id == "sd-cpp"
+        || manifest.binary_name == "sd-server"
+        || binary_path.ends_with("sd-server");
+    let port_flag = if is_sd_server { "--listen-port" } else { "--port" };
+
+    // Set working directory to the directory containing binary_path so dynamic libraries (.so) are resolved
+    if let Some(parent) = std::path::Path::new(&binary_path).parent() {
+        cmd.current_dir(parent);
+    }
+
     for (k, v) in &parsed_flags {
         let val_substituted = v.replace("${PORT}", &allocated_port.to_string());
-        if k == "--port" || k == "-p" {
+        if k == "--port" || k == "--listen-port" || k == "-p" {
             port_injected = true;
-            cmd.arg(k).arg(&val_substituted);
+            cmd.arg(port_flag).arg(&val_substituted);
         } else if v.trim().is_empty() {
             cmd.arg(k);
         } else {
@@ -279,7 +290,7 @@ pub async fn load_model_process(
     }
 
     if !port_injected {
-        cmd.arg("--port").arg(allocated_port.to_string());
+        cmd.arg(port_flag).arg(allocated_port.to_string());
     }
 
     cmd.stdout(Stdio::piped());
@@ -331,15 +342,28 @@ pub async fn load_model_process(
     // Monitor stdout/stderr for log lines & readiness signal
     let log_ready_signal = Arc::new(tokio::sync::Notify::new());
     let log_ready_signal_clone = log_ready_signal.clone();
+    let last_logs = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let last_logs_out = last_logs.clone();
+    let last_logs_err = last_logs.clone();
 
     tokio::spawn(async move {
         if let Some(out) = stdout {
             let mut reader = BufReader::new(out).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stdout: {}", pid, line);
+                {
+                    let mut logs = last_logs_out.lock().unwrap();
+                    if logs.len() >= 10 {
+                        logs.remove(0);
+                    }
+                    logs.push(line.clone());
+                }
                 let lower = line.to_lowercase();
                 if lower.contains("all slots are idle and ready to serve requests")
                     || lower.contains("main: model loaded")
+                    || lower.contains("server is listening")
+                    || lower.contains("listening at")
+                    || lower.contains("listening on")
                 {
                     log_ready_signal_clone.notify_waiters();
                 }
@@ -353,9 +377,19 @@ pub async fn load_model_process(
             let mut reader = BufReader::new(err).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stderr: {}", pid, line);
+                {
+                    let mut logs = last_logs_err.lock().unwrap();
+                    if logs.len() >= 10 {
+                        logs.remove(0);
+                    }
+                    logs.push(line.clone());
+                }
                 let lower = line.to_lowercase();
                 if lower.contains("all slots are idle and ready to serve requests")
                     || lower.contains("main: model loaded")
+                    || lower.contains("server is listening")
+                    || lower.contains("listening at")
+                    || lower.contains("listening on")
                 {
                     log_ready_signal_clone2.notify_waiters();
                 }
@@ -368,6 +402,7 @@ pub async fn load_model_process(
 
     let readiness_url = format!("http://127.0.0.1:{}{}", allocated_port, ready_path);
     let health_url = format!("http://127.0.0.1:{}/health", allocated_port);
+    let sdcpp_url = format!("http://127.0.0.1:{}/sdcpp/v1/capabilities", allocated_port);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(500))
         .build()
@@ -392,14 +427,21 @@ pub async fn load_model_process(
         {
             let mut child_guard = child_ref.lock().await;
             if let Ok(Some(status)) = child_guard.try_wait() {
+                tokio::time::sleep(Duration::from_millis(150)).await;
+                let logs = last_logs.lock().unwrap();
+                let detail = if logs.is_empty() {
+                    String::new()
+                } else {
+                    format!(": {}", logs.join(" | "))
+                };
                 return Err(fail_with(format!(
-                    "Child process exited prematurely with status: {}",
-                    status
+                    "Child process exited prematurely with status: {}{}",
+                    status, detail
                 )));
             }
         }
 
-        // Check HTTP readiness endpoints (/v1/models and /health)
+        // Check HTTP readiness endpoints (/v1/models, /health, /sdcpp/v1/capabilities)
         // Note: While loading weights, llama-server returns 503 "Loading model".
         // Only HTTP 2xx indicates that model weights are fully loaded into memory/VRAM and ready for inference!
         let mut http_ready = false;
@@ -408,6 +450,10 @@ pub async fn load_model_process(
                 http_ready = true;
             }
         } else if let Ok(resp) = client.get(&health_url).send().await {
+            if resp.status().is_success() {
+                http_ready = true;
+            }
+        } else if let Ok(resp) = client.get(&sdcpp_url).send().await {
             if resp.status().is_success() {
                 http_ready = true;
             }

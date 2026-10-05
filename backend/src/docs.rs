@@ -43,6 +43,7 @@ use utoipa::OpenApi;
         crate::handlers::openai_proxy::v1_chat_completions_doc,
         crate::handlers::openai_proxy::v1_completions_doc,
         crate::handlers::openai_proxy::v1_embeddings_doc,
+        crate::handlers::openai_proxy::v1_images_generations_doc,
     ),
     components(
         schemas(
@@ -79,10 +80,13 @@ use utoipa::OpenApi;
             crate::handlers::openai_proxy::OpenAiChatCompletionRequest,
             crate::handlers::openai_proxy::OpenAiCompletionRequest,
             crate::handlers::openai_proxy::OpenAiEmbeddingRequest,
+            crate::handlers::openai_proxy::OpenAiImageGenerationRequest,
+            crate::handlers::openai_proxy::OpenAiImageData,
+            crate::handlers::openai_proxy::OpenAiImageGenerationResponse,
         )
     ),
     tags(
-        (name = "OpenAI Compatibility", description = "OpenAI compatible /v1 API endpoints (chat, completions, embeddings, models)"),
+        (name = "OpenAI Compatibility", description = "OpenAI compatible /v1 API endpoints (chat, completions, embeddings, image generations, models)"),
         (name = "Health", description = "Application health check endpoints"),
         (name = "Host", description = "System hardware & resource monitoring endpoints"),
         (name = "Config", description = "Server configuration, directories & hardware detection"),
