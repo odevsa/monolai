@@ -1,12 +1,13 @@
-use crate::config::{
+use crate::core::config::{
     get_default_models_dir, get_default_runtimes_dir, is_running_in_docker, load_config,
     save_config, ConfigStatus,
 };
-use crate::runtimes::hardware::{detect_hardware, HardwareReport};
+use crate::core::error::{AppError, AppResult};
+use crate::domain::HardwareReport;
+use crate::infrastructure::hardware::detect_hardware;
 use crate::state::AppState;
 use axum::{
     extract::State,
-    http::StatusCode,
     response::Json,
 };
 use serde::{Deserialize, Serialize};
@@ -49,12 +50,12 @@ pub async fn config_status_handler(State(state): State<AppState>) -> Json<Config
     let (fresh_config, fresh_status) = load_config(state.cli_config_path.as_deref());
 
     {
-        let mut cfg = state.config.lock().unwrap();
+        let mut cfg = state.config.write().await;
         *cfg = fresh_config;
     }
 
     {
-        let mut st = state.config_status.lock().unwrap();
+        let mut st = state.config_status.write().await;
         *st = fresh_status.clone();
     }
 
@@ -89,7 +90,7 @@ pub async fn hardware_detect_handler() -> Json<HardwareReport> {
 pub async fn save_setup_config_handler(
     State(state): State<AppState>,
     Json(payload): Json<SaveConfigRequest>,
-) -> Result<Json<SaveConfigResponse>, (StatusCode, String)> {
+) -> AppResult<Json<SaveConfigResponse>> {
     let in_docker = is_running_in_docker();
     let models = if in_docker {
         get_default_models_dir().to_string_lossy().to_string()
@@ -113,34 +114,31 @@ pub async fn save_setup_config_handler(
     };
 
     if models.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Models directory cannot be empty".to_string()));
+        return Err(AppError::bad_request("Models directory cannot be empty"));
     }
     if runtimes.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Runtimes directory cannot be empty".to_string()));
+        return Err(AppError::bad_request("Runtimes directory cannot be empty"));
     }
 
-    // Save configuration file to disk
-    if let Err(err) = save_config(
+    save_config(
         state.cli_config_path.as_deref(),
         &models,
         &runtimes,
         payload.hardware.trim(),
         host,
         port,
-    ) {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, err));
-    }
+    )
+    .map_err(AppError::internal)?;
 
-    // Reload configuration in memory
     let (fresh_config, fresh_status) = load_config(state.cli_config_path.as_deref());
 
     {
-        let mut cfg = state.config.lock().unwrap();
+        let mut cfg = state.config.write().await;
         *cfg = fresh_config;
     }
 
     {
-        let mut st = state.config_status.lock().unwrap();
+        let mut st = state.config_status.write().await;
         *st = fresh_status.clone();
     }
 

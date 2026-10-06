@@ -1,35 +1,8 @@
-use serde::{Deserialize, Serialize};
+use crate::domain::{GpuInfo, GpuUsageStats, HardwareReport};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-
-#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct GpuInfo {
-    pub name: String,
-    pub vendor: String,
-    pub memory_total_bytes: Option<u64>,
-    pub driver_version: Option<String>,
-    pub is_dedicated: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct HardwareReport {
-    pub os: String,
-    pub arch: String,
-    pub available_accelerations: Vec<String>,
-    pub recommended_acceleration: String,
-    pub detected_gpus: Vec<String>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct GpuUsageStats {
-    pub gpu_usage: Option<f32>,
-    pub vram_used_bytes: Option<u64>,
-    pub vram_total_bytes: Option<u64>,
-    pub vram_free_bytes: Option<u64>,
-    pub vram_percentage: Option<f32>,
-}
 
 pub struct GpuTracker {
     pub gpus: Vec<GpuInfo>,
@@ -221,14 +194,12 @@ fn detect_windows_display_controllers() -> Vec<GpuInfo> {
 fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
     let mut list = Vec::new();
 
-    // 1. Fast sysfs scan (< 1ms, completely avoids lspci 2s PCI bus probing)
     if let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
             let class_path = path.join("class");
             if let Ok(class_str) = std::fs::read_to_string(&class_path) {
                 let trimmed = class_str.trim();
-                // 0x03xxxx = Display/VGA/3D controller
                 if trimmed.starts_with("0x03") {
                     let vendor_path = path.join("vendor");
                     let vendor_hex = std::fs::read_to_string(&vendor_path)
@@ -276,7 +247,6 @@ fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
         return list;
     }
 
-    // 2. Fallback to lspci only if sysfs failed
     if let Ok(output) = Command::new("lspci").output() {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -367,13 +337,11 @@ impl GpuTracker {
         let nvidia_smi_path = find_nvidia_smi();
         let mut gpus = Vec::new();
 
-        // 1. Try nvidia-smi if found
         if let Some(ref smi) = nvidia_smi_path {
             let smi_gpus = query_nvidia_smi_gpus(smi);
             gpus.extend(smi_gpus);
         }
 
-        // 2. Query Windows display controllers (NVIDIA, AMD, Intel)
         let win_gpus = detect_windows_display_controllers();
         for g in win_gpus {
             let exists = gpus.iter().any(|existing| {
@@ -386,7 +354,6 @@ impl GpuTracker {
             }
         }
 
-        // 3. Query Linux PCI display devices
         let linux_gpus = detect_linux_pci_gpus();
         for g in linux_gpus {
             let exists = gpus.iter().any(|existing| {
@@ -399,13 +366,11 @@ impl GpuTracker {
             }
         }
 
-        // 4. Query macOS display devices
         let mac_gpus = detect_macos_gpus();
         for g in mac_gpus {
             gpus.push(g);
         }
 
-        // 5. Driver / filesystem fallbacks
         if gpus.is_empty() {
             if Path::new("/proc/driver/nvidia").exists()
                 || Path::new("/dev/nvidia0").exists()
@@ -429,7 +394,6 @@ impl GpuTracker {
             }
         }
 
-        // Prioritize dedicated GPUs, then VRAM
         let mut sorted = gpus.clone();
         sorted.sort_by(|a, b| {
             b.is_dedicated
@@ -451,11 +415,6 @@ impl GpuTracker {
         self.primary_gpu.clone()
     }
 
-    #[allow(dead_code)]
-    pub fn all_gpus(&self) -> &[GpuInfo] {
-        &self.gpus
-    }
-
     pub fn current_stats(&self) -> GpuUsageStats {
         let primary = match self.primary_gpu.as_ref() {
             Some(g) => g,
@@ -467,7 +426,6 @@ impl GpuTracker {
             return cache.0.clone();
         }
 
-        // 1. Query nvidia-smi if available
         if let Some(ref smi) = self.nvidia_smi_path {
             if let Ok(output) = run_cmd_no_window(
                 smi,
@@ -520,7 +478,6 @@ impl GpuTracker {
             }
         }
 
-        // 2. Query Linux AMD sysfs if available
         #[cfg(target_os = "linux")]
         {
             let card_paths = [
@@ -566,7 +523,6 @@ impl GpuTracker {
             }
         }
 
-        // 3. Fallback: if dedicated GPU exists, provide known static total VRAM
         if primary.is_dedicated {
             let total = primary.memory_total_bytes;
             let stats = GpuUsageStats {
@@ -584,17 +540,10 @@ impl GpuTracker {
         *cache = (stats.clone(), Instant::now());
         stats
     }
-
-    #[allow(dead_code)]
-    pub fn current_usage(&self) -> Option<f32> {
-        self.current_stats().gpu_usage
-    }
 }
 
 static CACHED_HARDWARE_REPORT: OnceLock<HardwareReport> = OnceLock::new();
 
-/// Detect host system hardware acceleration capabilities.
-/// Result is cached with OnceLock after first detection since hardware configuration is static.
 pub fn detect_hardware() -> HardwareReport {
     CACHED_HARDWARE_REPORT
         .get_or_init(detect_hardware_internal)
@@ -647,7 +596,6 @@ fn detect_hardware_internal() -> HardwareReport {
         }
     }
 
-    // Check for Vulkan (fast path checks without executing slow vulkaninfo subprocess)
     if Path::new("/usr/share/vulkan/icd.d").exists()
         || Path::new("/etc/vulkan/icd.d").exists()
         || Path::new("C:\\Windows\\System32\\vulkan-1.dll").exists()
@@ -670,7 +618,6 @@ fn detect_hardware_internal() -> HardwareReport {
         available.push("rocm".to_string());
     }
 
-    // Determine recommended acceleration
     let recommended = if has_nvidia {
         "cuda".to_string()
     } else if has_amd {
@@ -692,7 +639,6 @@ fn detect_hardware_internal() -> HardwareReport {
     }
 }
 
-/// Resolve the active acceleration string according to user config and host capabilities.
 pub fn resolve_target_acceleration(configured_hw: Option<&str>) -> String {
     let report = detect_hardware();
     match configured_hw {

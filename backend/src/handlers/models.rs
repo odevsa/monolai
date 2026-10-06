@@ -1,12 +1,5 @@
-use crate::db::models::{
-    delete_model, get_all_models, get_model_by_id, insert_model, update_model, CreateModelPayload,
-    ModelRecord,
-};
-use crate::runtimes::model_scanner::{scan_models, ModelItem};
-use crate::runtimes::process_manager::{
-    get_all_running_status, load_model_process, swap_model_process, unload_all_model_processes,
-    unload_model_process, RunningModelStatus,
-};
+use crate::core::error::AppResult;
+use crate::domain::{CreateModelPayload, ModelItem, ModelRecord, RunningModelStatus};
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
@@ -14,7 +7,12 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use std::path::PathBuf;
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct GetModelsQuery {
+    pub all: Option<bool>,
+    pub include_missing: Option<bool>,
+}
 
 /// List scanned model files (GGUF, Safetensors) in models directory
 #[utoipa::path(
@@ -26,24 +24,11 @@ use std::path::PathBuf;
     )
 )]
 pub async fn available_models_handler(State(state): State<AppState>) -> Json<Vec<ModelItem>> {
-    let status = state.config_status.lock().unwrap();
-    let models_dir = if let Some(ref dir_str) = status.models_dir {
-        PathBuf::from(dir_str)
-    } else {
-        crate::config::get_default_models_dir()
-    };
-
-    let items = scan_models(models_dir);
+    let items = state.model_service.get_available_models().await;
     Json(items)
 }
 
-#[derive(Debug, Deserialize, utoipa::IntoParams)]
-pub struct GetModelsQuery {
-    pub all: Option<bool>,
-    pub include_missing: Option<bool>,
-}
-
-/// List registered models from database (defaults to models whose files exist on disk, or all if ?all=true)
+/// List registered models from database
 #[utoipa::path(
     get,
     path = "/api/models",
@@ -59,29 +44,9 @@ pub struct GetModelsQuery {
 pub async fn get_models_handler(
     State(state): State<AppState>,
     Query(query): Query<GetModelsQuery>,
-) -> Result<Json<Vec<ModelRecord>>, (StatusCode, String)> {
-    let mut models = get_all_models(&state.db)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let status = state.config_status.lock().unwrap();
-    let models_dir = if let Some(ref dir_str) = status.models_dir {
-        crate::config::expand_tilde(dir_str)
-    } else {
-        crate::config::get_default_models_dir()
-    };
-    drop(status);
-
-    for m in &mut models {
-        let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &m.flags);
-        m.file_exists = exists;
-    }
-
+) -> AppResult<Json<Vec<ModelRecord>>> {
     let include_all = query.all.unwrap_or(false) || query.include_missing.unwrap_or(false);
-    if !include_all {
-        models.retain(|m| m.file_exists);
-    }
-
+    let models = state.model_service.get_models(include_all).await?;
     Ok(Json(models))
 }
 
@@ -99,49 +64,9 @@ pub async fn get_models_handler(
 )]
 pub async fn create_model_handler(
     State(state): State<AppState>,
-    Json(mut payload): Json<CreateModelPayload>,
-) -> Result<Json<ModelRecord>, (StatusCode, String)> {
-    let id = payload.id.trim().to_string();
-
-    if id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Model ID cannot be empty.".into()));
-    }
-
-    if id.contains(' ') || id.contains('\t') || id.contains('\n') {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Model ID cannot contain spaces.".into(),
-        ));
-    }
-
-    if let Ok(Some(_)) = get_model_by_id(&state.db, &id).await {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("A model with ID '{}' already exists.", id),
-        ));
-    }
-
-    let runtime = payload.runtime.trim().to_string();
-    if runtime.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Runtime engine cannot be empty.".into()));
-    }
-
-    payload.id = id;
-    payload.runtime = runtime;
-
-    let mut model = insert_model(&state.db, &payload)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let status = state.config_status.lock().unwrap();
-    let models_dir = if let Some(ref dir_str) = status.models_dir {
-        crate::config::expand_tilde(dir_str)
-    } else {
-        crate::config::get_default_models_dir()
-    };
-    let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model.flags);
-    model.file_exists = exists;
-
+    Json(payload): Json<CreateModelPayload>,
+) -> AppResult<Json<ModelRecord>> {
+    let model = state.model_service.create_model(payload).await?;
     Ok(Json(model))
 }
 
@@ -164,34 +89,8 @@ pub async fn update_model_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(payload): Json<CreateModelPayload>,
-) -> Result<Json<ModelRecord>, (StatusCode, String)> {
-    if get_model_by_id(&state.db, &id).await.ok().flatten().is_none() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            format!("Model with ID '{}' not found.", id),
-        ));
-    }
-
-    let runtime = payload.runtime.trim().to_string();
-    if runtime.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Runtime engine cannot be empty.".into()));
-    }
-    let mut payload = payload;
-    payload.runtime = runtime;
-
-    let mut model = update_model(&state.db, &id, &payload)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let status = state.config_status.lock().unwrap();
-    let models_dir = if let Some(ref dir_str) = status.models_dir {
-        crate::config::expand_tilde(dir_str)
-    } else {
-        crate::config::get_default_models_dir()
-    };
-    let (exists, _) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model.flags);
-    model.file_exists = exists;
-
+) -> AppResult<Json<ModelRecord>> {
+    let model = state.model_service.update_model(&id, payload).await?;
     Ok(Json(model))
 }
 
@@ -211,11 +110,9 @@ pub async fn update_model_handler(
 pub async fn delete_model_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    delete_model(&state.db, &id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<StatusCode> {
+    state.model_service.delete_model(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Load a model process by ID
@@ -234,12 +131,9 @@ pub async fn delete_model_handler(
 pub async fn load_model_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<RunningModelStatus>, (StatusCode, String)> {
-    let config = state.config.lock().unwrap().clone();
-    load_model_process(&state.process_manager, &state.db, &config, &id)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+) -> AppResult<Json<RunningModelStatus>> {
+    let status = state.model_service.load_model(&id).await?;
+    Ok(Json(status))
 }
 
 /// Swap to a specific model (unloads others, then loads target model)
@@ -258,12 +152,9 @@ pub async fn load_model_handler(
 pub async fn swap_model_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<RunningModelStatus>, (StatusCode, String)> {
-    let config = state.config.lock().unwrap().clone();
-    swap_model_process(&state.process_manager, &state.db, &config, &id)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+) -> AppResult<Json<RunningModelStatus>> {
+    let status = state.model_service.swap_model(&id).await?;
+    Ok(Json(status))
 }
 
 /// Unload a model process by ID
@@ -282,11 +173,9 @@ pub async fn swap_model_handler(
 pub async fn unload_model_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    unload_model_process(&state.process_manager, &state.db, &id)
-        .await
-        .map(|_| StatusCode::OK)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+) -> AppResult<StatusCode> {
+    state.model_service.unload_model(&id).await?;
+    Ok(StatusCode::OK)
 }
 
 /// Unload all running model processes
@@ -301,11 +190,9 @@ pub async fn unload_model_handler(
 )]
 pub async fn unload_all_models_handler(
     State(state): State<AppState>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    unload_all_model_processes(&state.process_manager, &state.db)
-        .await
-        .map(|_| StatusCode::OK)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+) -> AppResult<StatusCode> {
+    state.model_service.unload_all_models().await?;
+    Ok(StatusCode::OK)
 }
 
 /// Get running state of all active model processes
@@ -320,8 +207,6 @@ pub async fn unload_all_models_handler(
 pub async fn get_running_models_handler(
     State(state): State<AppState>,
 ) -> Json<Vec<RunningModelStatus>> {
-    let list = get_all_running_status(&state.process_manager).await;
+    let list = state.model_service.get_running_models().await;
     Json(list)
 }
-
-

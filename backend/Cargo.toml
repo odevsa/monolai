@@ -29,6 +29,5 @@ flate2 = "1.0"
 tar = "0.4"
 utoipa = { version = "5.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "reqwest"] }
-
-
-
+uuid = { version = "1.10", features = ["v4", "fast-rng", "serde"] }
+thiserror = "1.0"

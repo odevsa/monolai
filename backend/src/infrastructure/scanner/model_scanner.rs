@@ -1,16 +1,6 @@
-use serde::Serialize;
+use crate::domain::ModelItem;
 use std::path::Path;
 use walkdir::WalkDir;
-
-#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
-pub struct ModelItem {
-    pub name: String,
-    pub filename: String,
-    pub relative_path: String,
-    pub absolute_path: String,
-    pub format: String,
-    pub size_bytes: u64,
-}
 
 pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     let root = root_dir.as_ref();
@@ -23,7 +13,6 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     for entry in WalkDir::new(root)
         .into_iter()
         .filter_entry(|e| {
-            // Skip hidden directories like .git, .cache, etc.
             if e.file_type().is_dir() {
                 !e.file_name().to_string_lossy().starts_with('.')
             } else {
@@ -72,9 +61,6 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     models
 }
 
-/// Check if the model weights file referenced in the flags exists on disk.
-/// Performs fast O(1) path checks without scanning disk hierarchies.
-/// Returns (exists, optional_file_path_found)
 pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) -> (bool, Option<String>) {
     let models_dir = models_dir.as_ref();
 
@@ -88,7 +74,6 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
         None => return (false, None),
     };
 
-    // Primary flags where model file is stored
     let primary_keys = ["--model", "-m", "--weights", "-w", "--model-path", "--checkpoint"];
     let mut file_val: Option<String> = None;
 
@@ -102,7 +87,6 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
         }
     }
 
-    // Fallback: look for any flag value ending with model extensions
     if file_val.is_none() {
         for (_k, v) in obj {
             if let Some(s) = v.as_str() {
@@ -126,19 +110,16 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
         None => return (false, None),
     };
 
-    // 1. Direct path check (handling ~ if present)
-    let expanded = crate::config::expand_tilde(&val);
+    let expanded = crate::core::config::expand_tilde(&val);
     if expanded.is_file() {
         return (true, Some(val));
     }
 
-    // 2. Relative to models_dir
     let rel_path = models_dir.join(&val);
     if rel_path.is_file() {
         return (true, Some(val));
     }
 
-    // 3. Just the file name relative to models_dir
     if let Some(fname) = Path::new(&val).file_name() {
         let direct_fname = models_dir.join(fname);
         if direct_fname.is_file() {
@@ -147,4 +128,23 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
     }
 
     (false, Some(val))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_model_file_not_found() {
+        let (exists, path) = check_model_file_exists("/tmp/nonexistent", "{\"--model\": \"fake.gguf\"}");
+        assert!(!exists);
+        assert_eq!(path, Some("fake.gguf".to_string()));
+    }
+
+    #[test]
+    fn test_check_model_file_empty_flags() {
+        let (exists, path) = check_model_file_exists("/tmp", "{}");
+        assert!(!exists);
+        assert_eq!(path, None);
+    }
 }

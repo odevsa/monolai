@@ -1,11 +1,15 @@
-pub mod chats;
-pub mod models;
-pub mod settings;
+pub mod chat_repo;
+pub mod model_repo;
+pub mod setting_repo;
 
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use std::path::Path;
 use std::str::FromStr;
+
+pub use chat_repo::ChatRepository;
+pub use model_repo::ModelRepository;
+pub use setting_repo::SettingRepository;
 
 /// Initialize SQLite pool and execute embedded migrations.
 pub async fn init_db(database_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error + Send + Sync>> {
@@ -43,7 +47,7 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool, Box<dyn std::erro
         Ok(()) => {}
         Err(sqlx::migrate::MigrateError::VersionMismatch(v)) => {
             tracing::warn!(
-                "Migration checksum mismatch for version {} (likely CRLF/LF line ending differences between build environments). Harmonizing checksums in _sqlx_migrations...",
+                "Migration checksum mismatch for version {} (likely CRLF/LF line ending differences between environments). Harmonizing checksums in _sqlx_migrations...",
                 v
             );
             for m in migrator.iter() {

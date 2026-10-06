@@ -1,8 +1,11 @@
-use crate::config::AppConfig;
-use crate::db::models::get_model_by_id;
-use crate::runtimes::manifest_loader::get_manifest_for_runtime;
+use crate::core::config::AppConfig;
+use crate::core::error::{AppError, AppResult};
+use crate::domain::{ModelState, RunningModelStatus};
+use crate::infrastructure::db::{ModelRepository, SettingRepository};
+use crate::infrastructure::downloader::find_installed_binary;
+use crate::infrastructure::process::manifests::get_manifest_for_runtime;
+use crate::infrastructure::scanner::check_model_file_exists;
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -12,15 +15,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
-#[serde(tag = "status", content = "message")]
-pub enum ModelState {
-    Idle,
-    Loading,
-    Ready,
-    Error(String),
-}
-
 pub struct RunningModel {
     pub model_id: String,
     pub runtime_id: String,
@@ -29,16 +23,6 @@ pub struct RunningModel {
     pub state: ModelState,
     pub last_active: Instant,
     pub child: Option<Arc<Mutex<Child>>>,
-}
-
-#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
-pub struct RunningModelStatus {
-    pub model_id: String,
-    pub runtime_id: String,
-    pub pid: u32,
-    pub port: u16,
-    pub state: ModelState,
-    pub idle_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,6 +85,27 @@ impl ProcessManager {
             db_dir,
         }
     }
+
+    pub async fn get_all_running_status(&self) -> Vec<RunningModelStatus> {
+        let map = self.running.lock().await;
+        map.values()
+            .map(|m| RunningModelStatus {
+                model_id: m.model_id.clone(),
+                runtime_id: m.runtime_id.clone(),
+                pid: m.pid,
+                port: m.port,
+                state: m.state.clone(),
+                idle_seconds: m.last_active.elapsed().as_secs(),
+            })
+            .collect()
+    }
+
+    pub async fn mark_model_active(&self, model_id: &str) {
+        let mut map = self.running.lock().await;
+        if let Some(m) = map.get_mut(model_id) {
+            m.last_active = Instant::now();
+        }
+    }
 }
 
 pub fn allocate_available_port() -> Result<u16, String> {
@@ -114,76 +119,51 @@ pub fn allocate_available_port() -> Result<u16, String> {
     Ok(port)
 }
 
-pub async fn get_all_running_status(pm: &ProcessManager) -> Vec<RunningModelStatus> {
-    let map = pm.running.lock().await;
-    map.values()
-        .map(|m| RunningModelStatus {
-            model_id: m.model_id.clone(),
-            runtime_id: m.runtime_id.clone(),
-            pid: m.pid,
-            port: m.port,
-            state: m.state.clone(),
-            idle_seconds: m.last_active.elapsed().as_secs(),
-        })
-        .collect()
-}
-
-#[allow(dead_code)]
-pub async fn mark_model_active(pm: &ProcessManager, model_id: &str) {
-    let mut map = pm.running.lock().await;
-    if let Some(m) = map.get_mut(model_id) {
-        m.last_active = Instant::now();
-    }
-}
-
 pub async fn load_model_process(
     pm: &ProcessManager,
-    db: &SqlitePool,
+    model_repo: &ModelRepository,
+    setting_repo: &SettingRepository,
     config: &AppConfig,
     model_id: &str,
-) -> Result<RunningModelStatus, String> {
-    // 1. Query model record from SQLite DB first (if non-existent, do nothing)
-    let model_record = match get_model_by_id(db, model_id).await {
-        Ok(Some(m)) => m,
-        Ok(None) => return Err(format!("Model '{}' not found in database", model_id)),
-        Err(e) => return Err(format!("Database query error: {}", e)),
+) -> AppResult<RunningModelStatus> {
+    let model_record = match model_repo.get_by_id(model_id).await? {
+        Some(m) => m,
+        None => return Err(AppError::not_found(format!("Model '{}' not found in database", model_id))),
     };
 
     let models_dir_str = config.models.as_deref().unwrap_or("");
     let models_dir = if models_dir_str.is_empty() {
-        crate::config::get_default_models_dir()
+        crate::core::config::get_default_models_dir()
     } else {
-        crate::config::expand_tilde(models_dir_str)
+        crate::core::config::expand_tilde(models_dir_str)
     };
-    let (file_exists, file_name) = crate::runtimes::model_scanner::check_model_file_exists(&models_dir, &model_record.flags);
+
+    let (file_exists, file_name) = check_model_file_exists(&models_dir, &model_record.flags);
     if !file_exists {
-        return Err(format!(
+        return Err(AppError::bad_request(format!(
             "Model file '{}' not found on disk. The file may have been moved or deleted.",
             file_name.unwrap_or_else(|| "unknown".to_string())
-        ));
+        )));
     }
 
     let runtime_id = model_record.runtime.clone();
-
-    // 2. Resolve installed binary path from directory
     let runtimes_dir_str = config.runtimes.as_deref().unwrap_or("");
-    let runtimes_dir = crate::config::expand_tilde(runtimes_dir_str);
+    let runtimes_dir = crate::core::config::expand_tilde(runtimes_dir_str);
 
-    let manifest = get_manifest_for_runtime(&runtime_id).ok_or_else(|| {
-        format!("Runtime manifest for '{}' not found", runtime_id)
+    let manifest = get_manifest_for_runtime(None, &runtime_id).ok_or_else(|| {
+        AppError::not_found(format!("Runtime manifest for '{}' not found", runtime_id))
     })?;
 
-    let binary_path = match crate::runtimes::installer::find_installed_binary(&runtimes_dir, &manifest) {
+    let binary_path = match find_installed_binary(&runtimes_dir, &manifest) {
         Some(path) => path.to_string_lossy().to_string(),
         None => {
-            return Err(format!(
-                "Runtime '{}' is not installed yet. Please install it from the Runtimes store before running this model.",
+            return Err(AppError::bad_request(format!(
+                "Runtime '{}' is not installed yet. Please install it before running this model.",
                 runtime_id
-            ));
+            )));
         }
     };
 
-    // 3. Check current running state
     {
         let mut map = pm.running.lock().await;
         if let Some(existing) = map.get_mut(model_id) {
@@ -213,7 +193,6 @@ pub async fn load_model_process(
             }
         }
 
-        // Insert initial loading state
         map.insert(
             model_id.to_string(),
             RunningModel {
@@ -228,7 +207,6 @@ pub async fn load_model_process(
         );
     }
 
-    // Helper to cleanup and set error state on process launch/ready failure
     let fail_with = |err_msg: String| {
         let pm_clone = pm.clone();
         let id_clone = model_id.to_string();
@@ -249,30 +227,25 @@ pub async fn load_model_process(
                 },
             );
         });
-        err_msg
+        AppError::internal(err_msg)
     };
 
-    // 4. Allocate dynamic port
     let allocated_port = match allocate_available_port() {
         Ok(p) => p,
         Err(e) => return Err(fail_with(e)),
     };
 
-
-    // 5. Parse flags & build CLI command
     let parsed_flags: HashMap<String, String> = serde_json::from_str(&model_record.flags)
         .unwrap_or_default();
 
     let mut cmd = Command::new(&binary_path);
     let mut port_injected = false;
 
-    // Detect if target binary is Stable Diffusion server (which uses --listen-port instead of --port)
     let is_sd_server = runtime_id == "sd-cpp"
         || manifest.binary_name == "sd-server"
         || binary_path.ends_with("sd-server");
     let port_flag = if is_sd_server { "--listen-port" } else { "--port" };
 
-    // Set working directory to the directory containing binary_path so dynamic libraries (.so) are resolved
     if let Some(parent) = std::path::Path::new(&binary_path).parent() {
         cmd.current_dir(parent);
     }
@@ -297,9 +270,8 @@ pub async fn load_model_process(
     cmd.stderr(Stdio::piped());
 
     #[cfg(windows)]
-    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    cmd.creation_flags(0x08000000);
 
-    // 6. Spawn child process
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -315,14 +287,12 @@ pub async fn load_model_process(
         None => return Err(fail_with("Failed to retrieve child process PID".into())),
     };
 
-    // Record process entry in processes.json for orphan tracking
     save_active_process_to_json(&pm.db_dir, model_id, &runtime_id, pid, allocated_port);
 
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
     let child_ref = Arc::new(Mutex::new(child));
 
-    // Update in-memory state
     {
         let mut map = pm.running.lock().await;
         map.insert(
@@ -339,7 +309,6 @@ pub async fn load_model_process(
         );
     }
 
-    // Monitor stdout/stderr for log lines & readiness signal
     let log_ready_signal = Arc::new(tokio::sync::Notify::new());
     let log_ready_signal_clone = log_ready_signal.clone();
     let last_logs = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
@@ -397,10 +366,7 @@ pub async fn load_model_process(
         }
     });
 
-    // 7. Perform readiness check (HTTP polling + log signal fallback)
-    let ready_path = "/v1/models";
-
-    let readiness_url = format!("http://127.0.0.1:{}{}", allocated_port, ready_path);
+    let readiness_url = format!("http://127.0.0.1:{}/v1/models", allocated_port);
     let health_url = format!("http://127.0.0.1:{}/health", allocated_port);
     let sdcpp_url = format!("http://127.0.0.1:{}/sdcpp/v1/capabilities", allocated_port);
     let client = reqwest::Client::builder()
@@ -408,22 +374,11 @@ pub async fn load_model_process(
         .build()
         .unwrap_or_default();
 
-    // Read readiness timeout from settings DB table, default 120s
-    let readiness_timeout_secs: u64 = match sqlx::query_scalar::<_, String>(
-        "SELECT value FROM settings WHERE key = 'readiness_timeout'",
-    )
-    .fetch_optional(db)
-    .await
-    {
-        Ok(Some(val)) => val.parse().unwrap_or(120),
-        _ => 120,
-    };
-
+    let readiness_timeout_secs: u64 = setting_repo.get_parsed("readiness_timeout", 120).await;
     let start_time = Instant::now();
     let mut is_ready = false;
 
     while start_time.elapsed() < Duration::from_secs(readiness_timeout_secs) {
-        // Check if child process exited prematurely
         {
             let mut child_guard = child_ref.lock().await;
             if let Ok(Some(status)) = child_guard.try_wait() {
@@ -441,9 +396,6 @@ pub async fn load_model_process(
             }
         }
 
-        // Check HTTP readiness endpoints (/v1/models, /health, /sdcpp/v1/capabilities)
-        // Note: While loading weights, llama-server returns 503 "Loading model".
-        // Only HTTP 2xx indicates that model weights are fully loaded into memory/VRAM and ready for inference!
         let mut http_ready = false;
         if let Ok(resp) = client.get(&readiness_url).send().await {
             if resp.status().is_success() {
@@ -464,7 +416,6 @@ pub async fn load_model_process(
             break;
         }
 
-        // Wait 500ms or log signal notification
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(500)) => {},
             _ = log_ready_signal.notified() => {
@@ -490,8 +441,7 @@ pub async fn load_model_process(
         }
     }
 
-    // Timed out: kill process & return error
-    let _ = unload_model_process(pm, db, model_id).await;
+    let _ = unload_model_process(pm, setting_repo, model_id).await;
     Err(fail_with(format!(
         "Readiness check timed out after {}s for model '{}'",
         readiness_timeout_secs, model_id
@@ -500,10 +450,9 @@ pub async fn load_model_process(
 
 pub async fn unload_model_process(
     pm: &ProcessManager,
-    db: &SqlitePool,
+    setting_repo: &SettingRepository,
     model_id: &str,
-) -> Result<(), String> {
-    // Clean up record from processes.json
+) -> AppResult<()> {
     remove_active_process_from_json(&pm.db_dir, model_id);
 
     let target_child = {
@@ -515,16 +464,7 @@ pub async fn unload_model_process(
         }
     };
 
-    // Read unload timeout from settings DB, default 10s
-    let unload_timeout_secs: u64 = match sqlx::query_scalar::<_, String>(
-        "SELECT value FROM settings WHERE key = 'unload_timeout'",
-    )
-    .fetch_optional(db)
-    .await
-    {
-        Ok(Some(val)) => val.parse().unwrap_or(10),
-        _ => 10,
-    };
+    let unload_timeout_secs: u64 = setting_repo.get_parsed("unload_timeout", 10).await;
 
     if target_child.pid > 0 {
         #[cfg(unix)]
@@ -569,47 +509,36 @@ pub async fn unload_model_process(
     Ok(())
 }
 
-pub async fn unload_all_model_processes(pm: &ProcessManager, db: &SqlitePool) -> Result<(), String> {
+pub async fn unload_all_model_processes(
+    pm: &ProcessManager,
+    setting_repo: &SettingRepository,
+) -> AppResult<()> {
     let running_ids: Vec<String> = {
         let map = pm.running.lock().await;
         map.keys().cloned().collect()
     };
 
     for id in running_ids {
-        let _ = unload_model_process(pm, db, &id).await;
+        let _ = unload_model_process(pm, setting_repo, &id).await;
     }
 
     Ok(())
 }
 
-pub fn start_idle_auto_unload_loop(pm: ProcessManager, db: SqlitePool) {
+pub fn start_idle_auto_unload_loop(
+    pm: ProcessManager,
+    setting_repo: SettingRepository,
+) {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(10)).await;
 
-            let enabled: bool = match sqlx::query_scalar::<_, String>(
-                "SELECT value FROM settings WHERE key = 'idle_auto_unload_enabled'",
-            )
-            .fetch_optional(&db)
-            .await
-            {
-                Ok(Some(val)) => val.parse().unwrap_or(true),
-                _ => true,
-            };
-
+            let enabled: bool = setting_repo.get_parsed("idle_auto_unload_enabled", true).await;
             if !enabled {
                 continue;
             }
 
-            let timeout_secs: u64 = match sqlx::query_scalar::<_, String>(
-                "SELECT value FROM settings WHERE key = 'idle_timeout_seconds'",
-            )
-            .fetch_optional(&db)
-            .await
-            {
-                Ok(Some(val)) => val.parse().unwrap_or(300),
-                _ => 300,
-            };
+            let timeout_secs: u64 = setting_repo.get_parsed("idle_timeout_seconds", 300).await;
 
             let expired_models: Vec<String> = {
                 let map = pm.running.lock().await;
@@ -628,7 +557,7 @@ pub fn start_idle_auto_unload_loop(pm: ProcessManager, db: SqlitePool) {
                     id,
                     timeout_secs
                 );
-                let _ = unload_model_process(&pm, &db, &id).await;
+                let _ = unload_model_process(&pm, &setting_repo, &id).await;
             }
         }
     });
@@ -721,16 +650,15 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
 
 pub async fn swap_model_process(
     pm: &ProcessManager,
-    db: &SqlitePool,
+    model_repo: &ModelRepository,
+    setting_repo: &SettingRepository,
     config: &AppConfig,
     model_id: &str,
-) -> Result<RunningModelStatus, String> {
-    // 1. Verify model exists in DB first
-    if get_model_by_id(db, model_id).await.ok().flatten().is_none() {
-        return Err(format!("Model '{}' not found in database", model_id));
+) -> AppResult<RunningModelStatus> {
+    if model_repo.get_by_id(model_id).await?.is_none() {
+        return Err(AppError::not_found(format!("Model '{}' not found in database", model_id)));
     }
 
-    // 2. Check if target model is already running and ready or loading
     let wait_start = Instant::now();
     let max_loading_wait = Duration::from_secs(120);
 
@@ -760,28 +688,23 @@ pub async fn swap_model_process(
         };
 
         if let Some(err) = is_error {
-            return Err(format!("Model failed to load: {}", err));
+            return Err(AppError::internal(format!("Model failed to load: {}", err)));
         }
 
         if is_loading {
             if wait_start.elapsed() >= max_loading_wait {
-                return Err(format!("Timed out waiting for model '{}' to finish loading", model_id));
+                return Err(AppError::internal(format!(
+                    "Timed out waiting for model '{}' to finish loading",
+                    model_id
+                )));
             }
             tokio::time::sleep(Duration::from_millis(300)).await;
             continue;
         }
 
-        // Neither ready nor loading, break out of loop to unload any other models and load this one
         break;
     }
 
-    // 3. Unload all running model processes if a different model is active
-    unload_all_model_processes(pm, db).await?;
-
-    // 4. Load target model
-    load_model_process(pm, db, config, model_id).await
+    unload_all_model_processes(pm, setting_repo).await?;
+    load_model_process(pm, model_repo, setting_repo, config, model_id).await
 }
-
-
-
-

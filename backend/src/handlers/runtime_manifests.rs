@@ -1,9 +1,8 @@
-use crate::runtimes::manifest_loader::{
-    get_manifest_for_runtime, get_runtime_manifests, RuntimeManifest,
-};
+use crate::core::error::{AppError, AppResult};
+use crate::domain::RuntimeManifest;
+use crate::state::AppState;
 use axum::{
-    extract::Path,
-    http::StatusCode,
+    extract::{Path, State},
     response::Json,
 };
 
@@ -16,8 +15,10 @@ use axum::{
         (status = 200, description = "List of all supported runtime manifests", body = Vec<RuntimeManifest>)
     )
 )]
-pub async fn get_runtime_manifests_handler() -> Json<Vec<RuntimeManifest>> {
-    Json(get_runtime_manifests())
+pub async fn get_runtime_manifests_handler(
+    State(state): State<AppState>,
+) -> Json<Vec<RuntimeManifest>> {
+    Json(state.runtime_service.manifests())
 }
 
 /// Get manifest for a specific runtime ID
@@ -34,14 +35,12 @@ pub async fn get_runtime_manifests_handler() -> Json<Vec<RuntimeManifest>> {
     )
 )]
 pub async fn get_runtime_manifest_by_id_handler(
+    State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<RuntimeManifest>, (StatusCode, String)> {
-    if let Some(manifest) = get_manifest_for_runtime(&id) {
+) -> AppResult<Json<RuntimeManifest>> {
+    if let Some(manifest) = state.runtime_service.manifest_by_id(&id) {
         Ok(Json(manifest))
     } else {
-        Err((
-            StatusCode::NOT_FOUND,
-            format!("Runtime manifest for '{}' not found", id),
-        ))
+        Err(AppError::not_found(format!("Runtime manifest for '{}' not found", id)))
     }
 }

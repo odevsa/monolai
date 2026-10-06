@@ -1343,6 +1343,7 @@ dependencies = [
  "sqlx",
  "sysinfo",
  "tar",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tower-http 0.5.2",
@@ -1350,6 +1351,7 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
+ "uuid",
  "walkdir",
  "zip",
 ]
@@ -1664,7 +1666,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2950,6 +2952,19 @@ dependencies = [
  "url",
  "utoipa",
  "zip",
+]
+
+[[package]]
+name = "uuid"
+version = "1.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97277d36b9c3ace13e58fa6e753f8b0bbbf302a18dd193240d70f9e29681059a"
+dependencies = [
+ "getrandom 0.4.3",
+ "js-sys",
+ "rand 0.10.3",
+ "serde_core",
+ "wasm-bindgen",
 ]
 
 [[package]]

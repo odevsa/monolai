@@ -1,20 +1,24 @@
-use crate::config::{AppConfig, ConfigStatus};
-use crate::runtimes::hardware::GpuTracker;
-use crate::runtimes::installer::RuntimeInstallerManager;
-use crate::runtimes::process_manager::ProcessManager;
+use crate::core::config::{AppConfig, ConfigStatus, PathResolver};
+use crate::infrastructure::db::SettingRepository;
+use crate::services::{
+    ChatService, HostService, ModelService, ProxyService, RuntimeService,
+};
 use sqlx::SqlitePool;
-use std::sync::{Arc, Mutex};
-use sysinfo::System;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AppState {
-    pub sys: Arc<Mutex<System>>,
-    pub config: Arc<Mutex<AppConfig>>,
-    pub config_status: Arc<Mutex<ConfigStatus>>,
-    pub cli_config_path: Option<String>,
     pub db: SqlitePool,
-    pub process_manager: ProcessManager,
-    pub installer_manager: Arc<RuntimeInstallerManager>,
-    pub gpu_tracker: Arc<GpuTracker>,
+    pub config: Arc<RwLock<AppConfig>>,
+    pub config_status: Arc<RwLock<ConfigStatus>>,
+    pub path_resolver: Arc<PathResolver>,
+    pub cli_config_path: Option<String>,
+    pub model_service: Arc<ModelService>,
+    pub chat_service: Arc<ChatService>,
+    pub runtime_service: Arc<RuntimeService>,
+    pub host_service: Arc<HostService>,
+    pub proxy_service: Arc<ProxyService>,
+    pub setting_repo: SettingRepository,
 }
-

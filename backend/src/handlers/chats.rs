@@ -1,6 +1,5 @@
-use crate::db::chats::{
-    clear_chat_messages, delete_chat, delete_chat_message, get_all_chats, get_chat_by_id,
-    get_chat_messages, insert_chat, insert_chat_message, update_chat_message, update_chat_title,
+use crate::core::error::AppResult;
+use crate::domain::{
     ChatMessageRecord, ChatRecord, CreateChatMessagePayload, CreateChatPayload,
     UpdateChatMessagePayload, UpdateChatPayload,
 };
@@ -23,11 +22,9 @@ use axum::{
 )]
 pub async fn get_chats_handler(
     State(state): State<AppState>,
-) -> Result<Json<Vec<ChatRecord>>, (StatusCode, String)> {
-    get_all_chats(&state.db)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<Vec<ChatRecord>>> {
+    let chats = state.chat_service.get_all_chats().await?;
+    Ok(Json(chats))
 }
 
 /// Create a new chat conversation
@@ -44,16 +41,9 @@ pub async fn get_chats_handler(
 pub async fn create_chat_handler(
     State(state): State<AppState>,
     Json(payload): Json<CreateChatPayload>,
-) -> Result<Json<ChatRecord>, (StatusCode, String)> {
-    let id = payload
-        .id
-        .unwrap_or_else(generate_uuid_v4);
-    let title = payload.title.unwrap_or_else(|| "New Chat".to_string());
-
-    insert_chat(&state.db, &id, &title)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<ChatRecord>> {
+    let chat = state.chat_service.create_chat(payload).await?;
+    Ok(Json(chat))
 }
 
 /// Rename/update a chat conversation
@@ -74,11 +64,9 @@ pub async fn update_chat_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateChatPayload>,
-) -> Result<Json<ChatRecord>, (StatusCode, String)> {
-    update_chat_title(&state.db, &id, &payload.title)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<ChatRecord>> {
+    let chat = state.chat_service.update_chat(&id, payload).await?;
+    Ok(Json(chat))
 }
 
 /// Delete a chat conversation and all its messages
@@ -97,11 +85,9 @@ pub async fn update_chat_handler(
 pub async fn delete_chat_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    delete_chat(&state.db, &id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<StatusCode> {
+    state.chat_service.delete_chat(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// List all messages in a chat conversation
@@ -113,21 +99,19 @@ pub async fn delete_chat_handler(
         ("id" = String, Path, description = "Chat ID")
     ),
     responses(
-        (status = 200, description = "Messages for the chat", body = Vec<ChatMessageRecord>),
+        (status = 200, description = "List of chat messages", body = Vec<ChatMessageRecord>),
         (status = 500, description = "Database error", body = String)
     )
 )]
 pub async fn get_chat_messages_handler(
     State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<Vec<ChatMessageRecord>>, (StatusCode, String)> {
-    get_chat_messages(&state.db, &id)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    Path(chat_id): Path<String>,
+) -> AppResult<Json<Vec<ChatMessageRecord>>> {
+    let messages = state.chat_service.get_chat_messages(&chat_id).await?;
+    Ok(Json(messages))
 }
 
-/// Add a message to a chat conversation
+/// Append a new message to a chat conversation
 #[utoipa::path(
     post,
     path = "/api/chats/{id}/messages",
@@ -143,27 +127,20 @@ pub async fn get_chat_messages_handler(
 )]
 pub async fn create_chat_message_handler(
     State(state): State<AppState>,
-    Path(id): Path<String>,
+    Path(chat_id): Path<String>,
     Json(payload): Json<CreateChatMessagePayload>,
-) -> Result<Json<ChatMessageRecord>, (StatusCode, String)> {
-    // Ensure chat exists, or create default chat if missing
-    if get_chat_by_id(&state.db, &id).await.ok().flatten().is_none() {
-        let _ = insert_chat(&state.db, &id, "New Chat").await;
-    }
-
-    insert_chat_message(&state.db, &id, &payload)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<ChatMessageRecord>> {
+    let message = state.chat_service.create_chat_message(&chat_id, payload).await?;
+    Ok(Json(message))
 }
 
 /// Update an existing chat message
 #[utoipa::path(
     put,
-    path = "/api/chats/{chat_id}/messages/{msg_id}",
+    path = "/api/chats/{id}/messages/{msg_id}",
     tag = "Chats",
     params(
-        ("chat_id" = String, Path, description = "Chat ID"),
+        ("id" = String, Path, description = "Chat ID"),
         ("msg_id" = String, Path, description = "Message ID")
     ),
     request_body = UpdateChatMessagePayload,
@@ -176,20 +153,18 @@ pub async fn update_chat_message_handler(
     State(state): State<AppState>,
     Path((_chat_id, msg_id)): Path<(String, String)>,
     Json(payload): Json<UpdateChatMessagePayload>,
-) -> Result<Json<ChatMessageRecord>, (StatusCode, String)> {
-    update_chat_message(&state.db, &msg_id, &payload)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<ChatMessageRecord>> {
+    let message = state.chat_service.update_chat_message(&msg_id, payload).await?;
+    Ok(Json(message))
 }
 
 /// Delete a specific chat message
 #[utoipa::path(
     delete,
-    path = "/api/chats/{chat_id}/messages/{msg_id}",
+    path = "/api/chats/{id}/messages/{msg_id}",
     tag = "Chats",
     params(
-        ("chat_id" = String, Path, description = "Chat ID"),
+        ("id" = String, Path, description = "Chat ID"),
         ("msg_id" = String, Path, description = "Message ID")
     ),
     responses(
@@ -200,11 +175,9 @@ pub async fn update_chat_message_handler(
 pub async fn delete_chat_message_handler(
     State(state): State<AppState>,
     Path((_chat_id, msg_id)): Path<(String, String)>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    delete_chat_message(&state.db, &msg_id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<StatusCode> {
+    state.chat_service.delete_chat_message(&msg_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Clear all messages in a chat conversation
@@ -223,23 +196,7 @@ pub async fn delete_chat_message_handler(
 pub async fn clear_chat_messages_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    clear_chat_messages(&state.db, &id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
-}
-
-fn generate_uuid_v4() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let r1 = (now & 0xFFFFFFFF) as u32;
-    let r2 = ((now >> 32) & 0xFFFF) as u16;
-    let r3 = (((now >> 48) & 0x0FFF) as u16) | 0x4000;
-    let r4 = (0x8000 | (now & 0x3FFF)) as u16;
-    let r5 = (now >> 16) as u64;
-    format!("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}", r1, r2, r3, r4, r5)
+) -> AppResult<StatusCode> {
+    state.chat_service.clear_chat_messages(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
