@@ -9,36 +9,15 @@
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import { PanelLeftOpen, Plus, X, RefreshCw, Trash2 } from '@lucide/svelte';
-	import {
-		chatTabs,
-		sysinfoConnected,
-		sysinfoReconnectFn,
-		runtimesRefreshing,
-		runtimesRefreshFn,
-		addChatTab,
-		selectChatTab,
-		closeChatTab
-	} from '$lib/headerStore';
+	import { t } from '$lib/i18n';
+	import { configApi, chatsApi } from '$lib/api';
+	import type { ConfigStatus } from '$lib/types/config';
+	import { headerState, selectChatTab, closeChatTab, addChatTab } from '$lib/state/header.svelte';
 	import { resolveEffectiveTheme, getThemeType, type ThemeId } from '$lib/themes';
 	import FeatureGate from '$lib/components/FeatureGate.svelte';
 	import { refreshFeatures } from '$lib/featuresStore';
 
 	let { children } = $props();
-
-	interface ConfigStatus {
-		is_valid: boolean;
-		has_models: boolean;
-		has_runtimes: boolean;
-		created_auto_file: boolean;
-		is_docker?: boolean;
-		loaded_path: string | null;
-		expected_path: string;
-		models_dir: string | null;
-		host?: string;
-		port?: number;
-		error_message: string | null;
-		example_yaml: string;
-	}
 
 	let themeMode = $state<ThemeId>('system');
 	let systemPrefersDark = $state(false);
@@ -67,20 +46,20 @@
 
 	async function deleteActiveChat(id: string) {
 		const confirmed = await askConfirm(
-			'Are you sure you want to delete this conversation?',
-			'Delete Conversation',
+			t('chat.deleteChatConfirmMsg'),
+			t('chat.deleteChatConfirmTitle'),
 			'danger',
-			'Delete',
-			'Cancel'
+			t('common.delete'),
+			t('common.cancel')
 		);
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'DELETE' });
+			await chatsApi.delete(id);
 		} catch (err) {
 			console.error('Failed to delete active chat:', err);
 		}
-		chatTabs.update((tabs) => tabs.filter((t) => t.id !== id));
+		headerState.chatTabs = headerState.chatTabs.filter((t) => t.id !== id);
 		if (typeof window !== 'undefined') {
 			goto('/chat');
 		}
@@ -88,11 +67,8 @@
 
 	async function checkConfigStatus() {
 		try {
-			const res = await fetch('/api/config/status');
-			if (res.ok) {
-				const status: ConfigStatus = await res.json();
-				configStatus = status;
-			}
+			const status = await configApi.getStatus();
+			configStatus = status;
 		} catch (err) {
 			console.error('Failed to fetch config status:', err);
 		}
@@ -178,7 +154,7 @@
 		<!-- Mobile Floating Sidebar Open Button -->
 		<button
 			type="button"
-			class="md:hidden fixed top-3.5 left-3.5 w-9 h-9 flex items-center justify-center bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] cursor-pointer z-[90] transition-all duration-150 hover:bg-[var(--bg-surface-hover)] hover:border-[var(--border-hover)]"
+			class="md:hidden fixed top-3.5 left-3.5 w-10 h-10 flex items-center justify-center bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-xl text-[var(--text-primary)] cursor-pointer z-[90] transition-all duration-150 hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shadow-xs"
 			onclick={() => (mobileSidebarOpen = true)}
 			onmouseenter={() => (isMobileLogoHovered = true)}
 			onmouseleave={() => (isMobileLogoHovered = false)}
@@ -186,9 +162,9 @@
 			title="Open Sidebar"
 		>
 			{#if isMobileLogoHovered}
-				<PanelLeftOpen size={20} />
+				<PanelLeftOpen size={21} />
 			{:else}
-				<Logo size={20} />
+				<Logo size={22} />
 			{/if}
 		</button>
 
@@ -200,20 +176,18 @@
 				onOpenSettings={() => (settingsOpen = true)}
 			/>
 
-			<main
-				class="flex-1 h-full min-h-0 relative {isChatPage
-					? 'overflow-hidden'
-					: 'overflow-auto'} bg-[var(--bg-primary)]"
+			<div
+				class="flex-1 h-full min-h-0 relative flex flex-col bg-[var(--bg-primary)] overflow-hidden"
 			>
 				<!-- Route-dependent Floating Header Container -->
 				<header
-					class="absolute top-3.5 md:top-[21px] left-3.5 right-3.5 flex items-center justify-between z-50 pointer-events-none md:ml-0 ml-13"
+					class="absolute top-3.5 md:top-[21px] left-3.5 right-3.5 flex items-center justify-between z-50 pointer-events-none md:ml-0 ml-14"
 				>
 					<div class="flex items-center gap-2 pointer-events-auto">
 						{#if isChatPage}
 							<FeatureGate features={['chat']} showCard={false}>
 								<div class="flex items-center gap-1.5 pointer-events-auto max-w-full flex-nowrap">
-									{#each $chatTabs as tab (tab.id)}
+									{#each headerState.chatTabs as tab (tab.id)}
 										<a
 											href="/chat/{tab.id}"
 											class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg transition-all duration-150 select-none max-w-[130px] whitespace-nowrap shrink min-w-0 no-underline hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] {tab.active
@@ -223,7 +197,7 @@
 											title={tab.title}
 										>
 											<span class="truncate block min-w-0">{tab.title}</span>
-											{#if $chatTabs.length > 1}
+											{#if headerState.chatTabs.length > 1}
 												<button
 													type="button"
 													class="flex items-center justify-center p-0 border-0 bg-transparent text-[var(--text-muted)] cursor-pointer rounded hover:text-[var(--text-primary)]"
@@ -232,7 +206,7 @@
 														e.preventDefault();
 														closeChatTab(tab.id);
 													}}
-													title="Close tab"
+													title={t('chat.closeTab')}
 												>
 													<X size={13} />
 												</button>
@@ -244,7 +218,7 @@
 										type="button"
 										class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 pointer-events-auto hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shrink-0"
 										onclick={addChatTab}
-										title="New Tab"
+										title={t('chat.newTab')}
 									>
 										<Plus size={16} />
 									</button>
@@ -260,8 +234,8 @@
 									type="button"
 									class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 shrink-0 hover:text-red-500 hover:bg-red-500/15 hover:border-red-500/30"
 									onclick={() => deleteActiveChat(activeChatIdFromUrl)}
-									title="Delete chat"
-									aria-label="Delete chat"
+									title={t('chat.deleteChat')}
+									aria-label={t('chat.deleteChat')}
 								>
 									<Trash2 size={15} />
 								</button>
@@ -272,19 +246,21 @@
 								class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg pointer-events-auto"
 							>
 								<span
-									class="w-2 h-2 rounded-full shrink-0 transition-all duration-200 {$sysinfoConnected
+									class="w-2 h-2 rounded-full shrink-0 transition-all duration-200 {headerState.sysinfoConnected
 										? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] animate-pulse'
 										: 'bg-red-500'}"
 								></span>
 								<span class="truncate">
-									{$sysinfoConnected ? 'Stream Active' : 'Connecting...'}
+									{headerState.sysinfoConnected
+										? t('sysinfo.streamActive')
+										: t('sysinfo.connecting')}
 								</span>
-								{#if !$sysinfoConnected && $sysinfoReconnectFn}
+								{#if !headerState.sysinfoConnected && headerState.sysinfoReconnectFn}
 									<button
 										type="button"
 										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-[var(--text-muted)] cursor-pointer rounded hover:text-[var(--text-primary)]"
-										onclick={() => $sysinfoReconnectFn?.()}
-										title="Reconnect Stream"
+										onclick={() => headerState.sysinfoReconnectFn?.()}
+										title={t('sysinfo.reconnectStream')}
 									>
 										<RefreshCw size={13} class="animate-spin" />
 									</button>
@@ -295,24 +271,28 @@
 							<button
 								type="button"
 								class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg pointer-events-auto transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] cursor-pointer"
-								onclick={() => $runtimesRefreshFn?.()}
-								disabled={$runtimesRefreshing}
-								title="Refresh runtimes list"
+								onclick={() => headerState.runtimesRefreshFn?.()}
+								disabled={headerState.runtimesRefreshing}
+								title={t('runtimes.refreshList')}
 							>
 								<RefreshCw
 									size={13}
-									class={$runtimesRefreshing ? 'animate-spin text-[var(--primary)]' : ''}
+									class={headerState.runtimesRefreshing ? 'animate-spin text-[var(--primary)]' : ''}
 								/>
-								<span>Refresh</span>
+								<span>{t('common.refresh')}</span>
 							</button>
 						{/if}
 					</div>
 				</header>
 
-				<div class="w-full h-full relative">
+				<main
+					class="flex-1 w-full h-full min-h-0 relative {isChatPage
+						? 'overflow-hidden'
+						: 'overflow-y-auto'} bg-[var(--bg-primary)]"
+				>
 					{@render children()}
-				</div>
-			</main>
+				</main>
+			</div>
 		</div>
 
 		<!-- Settings Dialog Modal & Global Confirm Dialog -->

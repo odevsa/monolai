@@ -68,7 +68,9 @@
 <div class="relative {open ? 'z-30' : 'z-10'} {className}" bind:this={containerRef}>
 	<button
 		type="button"
-		class="flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg cursor-pointer transition-colors duration-150 box-border bg-[var(--bg-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border-0 select-none {disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}"
+		class="flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg cursor-pointer transition-colors duration-150 box-border bg-[var(--bg-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border-0 select-none {disabled
+			? 'opacity-50 cursor-not-allowed pointer-events-none'
+			: ''}"
 		onclick={toggleOpen}
 		{disabled}
 		aria-expanded={open}
@@ -79,7 +81,9 @@
 		</span>
 		<ChevronDown
 			size={13}
-			class="transition-transform duration-150 text-[var(--text-muted)] shrink-0 {open ? 'rotate-180' : ''}"
+			class="transition-transform duration-150 text-[var(--text-muted)] shrink-0 {open
+				? 'rotate-180'
+				: ''}"
 		/>
 	</button>
 
@@ -90,7 +94,8 @@
 			{#each options as opt (opt.value)}
 				<button
 					type="button"
-					class="flex items-center justify-between w-full max-w-full min-w-0 px-2.5 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-colors duration-120 text-left border-0 {value === opt.value
+					class="flex items-center justify-between w-full max-w-full min-w-0 px-2.5 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-colors duration-120 text-left border-0 {value ===
+					opt.value
 						? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 						: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
 					onclick={() => selectOption(opt.value)}

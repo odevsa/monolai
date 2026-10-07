@@ -19,33 +19,10 @@
 	} from '@lucide/svelte';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import CodeBlock from '$lib/components/CodeBlock.svelte';
-
-	interface ConfigStatus {
-		is_valid: boolean;
-		has_models: boolean;
-		has_runtimes: boolean;
-		has_hardware: boolean;
-		created_auto_file: boolean;
-		is_docker?: boolean;
-		loaded_path: string | null;
-		expected_path: string;
-		models_dir: string | null;
-		runtimes_dir: string | null;
-		hardware: string;
-		host: string;
-		port: number;
-		error_message: string | null;
-		example_yaml: string;
-		cli_command_example: string;
-	}
-
-	interface HardwareReport {
-		os: string;
-		arch: string;
-		available_accelerations: string[];
-		recommended_acceleration: string;
-		detected_gpus: string[];
-	}
+	import { configApi, hostApi } from '$lib/api';
+	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
+	import { t } from '$lib/i18n';
+	import { Button, Alert, Card, Input } from '$lib/components/ds';
 
 	let activeTab = $state<'wizard' | 'manual'>('wizard');
 	let configStatus = $state<ConfigStatus | null>(null);
@@ -75,13 +52,12 @@
 	async function fetchConfigData() {
 		try {
 			rechecking = true;
-			const [statusRes, hwRes] = await Promise.all([
-				fetch('/api/config/status'),
-				fetch('/api/hardware/detect')
+			const [status, hw] = await Promise.all([
+				configApi.getStatus().catch(() => null),
+				hostApi.detectHardware().catch(() => null)
 			]);
 
-			if (statusRes.ok) {
-				const status: ConfigStatus = await statusRes.json();
+			if (status) {
 				configStatus = status;
 
 				if (status.is_valid) {
@@ -106,8 +82,7 @@
 				}
 			}
 
-			if (hwRes.ok) {
-				const hw: HardwareReport = await hwRes.json();
+			if (hw) {
 				hardwareReport = hw;
 			}
 		} catch (err) {
@@ -149,22 +124,13 @@
 			saving = true;
 			saveError = null;
 
-			const res = await fetch('/api/config/setup', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					models: targetModels,
-					runtimes: targetRuntimes,
-					hardware: selectedHardware,
-					host: targetHost,
-					port: parsedPort
-				})
+			await configApi.setup({
+				models_dir: targetModels,
+				runtimes_dir: targetRuntimes,
+				hardware: selectedHardware,
+				host: targetHost,
+				port: parsedPort
 			});
-
-			if (!res.ok) {
-				const msg = await res.text();
-				throw new Error(msg || 'Failed to save configuration');
-			}
 
 			if (checkConfigFromLayout) {
 				await checkConfigFromLayout();
@@ -707,7 +673,7 @@
 									>{configStatus.cli_command_example}</span
 								>
 								<button
-									onclick={() => copyToClipboard(configStatus!.cli_command_example, 'cli')}
+									onclick={() => copyToClipboard(configStatus?.cli_command_example || '', 'cli')}
 									class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-[var(--text-primary)] flex items-center gap-1.5 transition cursor-pointer shrink-0 ml-2 text-xs"
 								>
 									{#if copiedCli}

@@ -12,9 +12,7 @@
 	let open = $state(false);
 	let containerRef = $state<HTMLDivElement | null>(null);
 
-	let currentTheme = $derived(
-		THEMES.find((t) => t.id === themeMode) || THEMES[0]
-	);
+	let currentTheme = $derived(THEMES.find((t) => t.id === themeMode) || THEMES[0]);
 
 	function toggleOpen() {
 		open = !open;
@@ -72,7 +70,10 @@
 			{#each THEMES as theme (theme.id)}
 				<button
 					type="button"
-					class="flex items-center justify-between w-full px-2.5 py-1.5 text-xs font-medium rounded-md cursor-pointer transition-colors duration-120 text-left border-0 {themeMode === theme.id ? 'text-[var(--primary)] bg-[var(--primary-light)]' : 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
+					class="flex items-center justify-between w-full px-2.5 py-1.5 text-xs font-medium rounded-md cursor-pointer transition-colors duration-120 text-left border-0 {themeMode ===
+					theme.id
+						? 'text-[var(--primary)] bg-[var(--primary-light)]'
+						: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
 					onclick={() => selectTheme(theme.id)}
 				>
 					<div class="flex items-center gap-2 min-w-0">

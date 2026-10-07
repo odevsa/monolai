@@ -5,6 +5,7 @@
 		Check,
 		ChevronDown,
 		ChevronRight,
+		CircleAlert,
 		CircleX,
 		Clock,
 		Copy,
@@ -28,6 +29,10 @@
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import ContextIndicator from '$lib/components/ContextIndicator.svelte';
 	import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
+	import { streamChatCompletion } from '$lib/api/openai';
+	import { chatsApi, modelsApi, runtimesApi, settingsApi, getFeatureModels } from '$lib/api';
+	import { runningModelsState } from '$lib/runningModelsStore';
+	import { t } from '$lib/i18n';
 	import {
 		DEFAULT_SYSTEM_PROMPT,
 		REASONING_PRESETS,
@@ -152,12 +157,9 @@
 
 	async function loadSystemPrompt() {
 		try {
-			const res = await fetch('/api/settings');
-			if (res.ok) {
-				const settings = await res.json();
-				if (settings.system_prompt && settings.system_prompt.trim()) {
-					systemPrompt = settings.system_prompt.trim();
-				}
+			const settings = await settingsApi.getAll();
+			if (settings?.system_prompt && settings.system_prompt.trim()) {
+				systemPrompt = settings.system_prompt.trim();
 			}
 		} catch {
 			// Fallback to default
@@ -268,7 +270,10 @@
 		const ro = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				inputSectionHeight =
-					entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect?.height ?? inputSectionRef?.offsetHeight ?? 110;
+					entry.borderBoxSize?.[0]?.blockSize ??
+					entry.contentRect?.height ??
+					inputSectionRef?.offsetHeight ??
+					110;
 			}
 		});
 		ro.observe(inputSectionRef);
@@ -335,26 +340,10 @@
 		}
 	}
 
-	// Load chat models and retrieve saved model from localStorage
+	// Load chat models using the official OpenAI SDK and retrieve saved model from localStorage
 	async function loadChatModels() {
 		try {
-			const [modelsRes, manifestsRes] = await Promise.all([
-				fetch('/api/models').then((r) => (r.ok ? r.json() : [])),
-				fetch('/api/runtime-manifests').then((r) => (r.ok ? r.json() : []))
-			]);
-
-			const manifests: RuntimeManifestItem[] = manifestsRes;
-			const models: RegisteredModel[] = modelsRes;
-
-			const filtered = models.filter((m) => {
-				const manifest = manifests.find((man) => man.id.toLowerCase() === m.runtime.toLowerCase());
-				if (manifest && manifest.features && Array.isArray(manifest.features)) {
-					return manifest.features.includes('chat');
-				}
-				return m.runtime.toLowerCase().includes('chat') || m.runtime.toLowerCase() === 'llama-cpp';
-			});
-
-			registeredChatModels = filtered.length > 0 ? filtered : models;
+			registeredChatModels = await getFeatureModels(['chat']);
 
 			const savedModel =
 				typeof localStorage !== 'undefined' ? localStorage.getItem('monolai:selected_model') : null;
@@ -367,7 +356,7 @@
 				}
 			}
 		} catch (err) {
-			console.error('Error fetching chat models:', err);
+			console.error('Error fetching chat models via OpenAI SDK:', err);
 		}
 	}
 
@@ -398,9 +387,8 @@
 		}
 
 		try {
-			const res = await fetch(`/api/chats/${encodeURIComponent(targetChatId)}/messages`);
-			if (res.ok) {
-				const records = await res.json();
+			const records = await chatsApi.getMessages(targetChatId);
+			if (records) {
 				messages = records.map((r: any) => {
 					let tags: string[] | undefined = undefined;
 
@@ -477,9 +465,8 @@
 	// Sync top 5 header tabs with backend chats
 	async function refreshHeaderTabs(targetId?: string) {
 		try {
-			const res = await fetch('/api/chats');
-			if (res.ok) {
-				const chats = await res.json();
+			const chats = await chatsApi.list();
+			if (chats) {
 				syncRecentChats(chats, targetId || sessionChatId);
 			}
 		} catch (e) {
@@ -521,11 +508,40 @@
 		}
 	}
 
+	let wasInterruptedByUnload = $state(false);
+	let wasStoppedByUser = $state(false);
+
+	function handleModelUnloadInterruption(unloadedModelId?: string) {
+		if (!isGenerating) return;
+		if (!unloadedModelId || unloadedModelId === '*' || unloadedModelId === selectedModel) {
+			wasInterruptedByUnload = true;
+			if (currentAbortController) {
+				currentAbortController.abort('INTERRUPTED');
+			}
+		}
+	}
+
+	$effect(() => {
+		if (isGenerating && selectedModel) {
+			if (runningModelsState.unloadingModelIds.has(selectedModel)) {
+				handleModelUnloadInterruption(selectedModel);
+			}
+		}
+	});
+
 	onMount(() => {
 		loadChatModels();
 		loadPromptHistory();
 		loadSystemPrompt();
 		document.addEventListener('click', handleClickOutside);
+
+		const onUnloadEvent = (e: Event) => {
+			const customEvent = e as CustomEvent<{ modelId?: string }>;
+			handleModelUnloadInterruption(customEvent.detail?.modelId);
+		};
+		if (typeof window !== 'undefined') {
+			window.addEventListener('monolai:model-unload', onUnloadEvent);
+		}
 
 		const updateTheme = () => {
 			const theme = document.documentElement.getAttribute('data-theme');
@@ -542,6 +558,9 @@
 
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
+			if (typeof window !== 'undefined') {
+				window.removeEventListener('monolai:model-unload', onUnloadEvent);
+			}
 			observer.disconnect();
 		};
 	});
@@ -632,6 +651,8 @@
 
 		let activeId = sessionChatId || chatId;
 		isGenerating = true;
+		wasInterruptedByUnload = false;
+		wasStoppedByUser = false;
 
 		if (!activeId) {
 			activeId = generateUUID();
@@ -663,6 +684,14 @@
 		// Optimistically add user & assistant messages to UI and clear input textarea immediately
 		messages = [...messages, userMsg, assistantMsg];
 		inputMessage = '';
+		if (textareaRef) {
+			textareaRef.style.height = 'auto';
+		}
+		tick().then(() => {
+			if (textareaRef) {
+				textareaRef.style.height = 'auto';
+			}
+		});
 		autoScrollChat = true;
 		scrollToBottom();
 		textareaRef?.focus();
@@ -780,240 +809,218 @@
 					liveUsage.avgSpeed && liveUsage.avgSpeed !== '0.0t/s' ? liveUsage.avgSpeed : '0.0t/s'
 			};
 
-			let res = await fetch('/v1/chat/completions', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(requestPayload),
+			const stream = await streamChatCompletion({
+				...requestPayload,
 				signal: currentAbortController.signal
 			});
 
-			let loadingRetries = 0;
-			while (!res.ok && res.status === 503 && loadingRetries < 20) {
-				let isModelLoading = false;
-				try {
-					const clone = res.clone();
-					const errJson = await clone.json();
-					if (errJson?.error?.message?.toLowerCase().includes('loading model')) {
-						isModelLoading = true;
-					}
-				} catch {}
-
-				if (!isModelLoading) break;
-
-				loadingRetries++;
-				await new Promise((r) => setTimeout(r, 1000));
-				if (currentAbortController.signal.aborted) break;
-
-				res = await fetch('/v1/chat/completions', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(requestPayload),
-					signal: currentAbortController.signal
-				});
-			}
-
-			if (!res.ok) {
-				let errorText = `HTTP ${res.status} ${res.statusText}`;
-				try {
-					const errJson = await res.json();
-					if (errJson?.error?.message) {
-						errorText = errJson.error.message;
-					}
-				} catch {
-					// Fallback
+			for await (const chunk of stream) {
+				if (
+					wasInterruptedByUnload ||
+					currentAbortController?.signal.reason === 'INTERRUPTED' ||
+					runningModelsState.unloadingModelIds.has(selectedModel)
+				) {
+					wasInterruptedByUnload = true;
+					break;
 				}
-				throw new Error(errorText);
-			}
+				if (
+					wasStoppedByUser ||
+					currentAbortController?.signal.reason === 'USER_CANCELLED' ||
+					currentAbortController?.signal.aborted
+				) {
+					wasStoppedByUser = true;
+					break;
+				}
 
-			if (!res.body) {
-				throw new Error('No response body returned by server proxy.');
-			}
+				const parsed = chunk as any;
 
-			const reader = res.body.getReader();
-			const decoder = new TextDecoder('utf-8');
-			let buffer = '';
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
-				buffer = lines.pop() || '';
-
-				for (const line of lines) {
-					const trimmed = line.trim();
-					if (!trimmed || trimmed.startsWith(':')) continue;
-
-					if (trimmed === 'data: [DONE]') {
-						break;
+				// Process llama.cpp native timings and OpenAI usage details
+				if (parsed.timings) {
+					const t = parsed.timings;
+					if (t.predicted_n && t.predicted_n > tokenCount) {
+						tokenCount = t.predicted_n;
 					}
+					const speedVal = t.predicted_per_second
+						? `${t.predicted_per_second.toFixed(1)} t/s`
+						: finalSpeed && finalSpeed !== '0 t/s'
+							? finalSpeed
+							: undefined;
+					liveUsage = {
+						...liveUsage,
+						thisTurnFresh: t.prompt_n ?? liveUsage.thisTurnFresh,
+						thisTurnGenerated: tokenCount,
+						avgSpeed: speedVal ?? liveUsage.avgSpeed ?? '0.0t/s'
+					};
+				}
+				if (parsed.usage) {
+					const u = parsed.usage;
+					if (u.completion_tokens && u.completion_tokens > tokenCount) {
+						tokenCount = u.completion_tokens;
+					}
+					const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
+					const prompt = u.prompt_tokens ?? liveUsage.thisTurnPrompt ?? turnPrompt;
+					const generated = tokenCount;
+					liveUsage = {
+						...liveUsage,
+						thisTurnPrompt: prompt,
+						thisTurnCached: cached > 0 ? cached : (liveUsage.thisTurnCached ?? turnCached),
+						thisTurnFresh:
+							cached > 0 ? Math.max(1, prompt - cached) : (liveUsage.thisTurnFresh ?? turnFresh),
+						thisTurnGenerated: generated,
+						kvCacheTotal: u.total_tokens ?? prompt + generated
+					};
+				}
 
-					if (trimmed.startsWith('data: ')) {
-						const jsonStr = trimmed.slice(6);
-						try {
-							const parsed = JSON.parse(jsonStr);
+				const delta = parsed.choices?.[0]?.delta;
+				const deltaReasoning = delta?.reasoning_content || delta?.reasoning || delta?.thought || '';
+				const deltaContentRaw = delta?.content || '';
 
-							// Process llama.cpp native timings and OpenAI usage details
-							if (parsed.timings) {
-								const t = parsed.timings;
-								if (t.predicted_n && t.predicted_n > tokenCount) {
-									tokenCount = t.predicted_n;
-								}
-								const speedVal = t.predicted_per_second
-									? `${t.predicted_per_second.toFixed(1)} t/s`
-									: finalSpeed && finalSpeed !== '0 t/s'
-										? finalSpeed
-										: undefined;
-								liveUsage = {
-									...liveUsage,
-									thisTurnFresh: t.prompt_n ?? liveUsage.thisTurnFresh,
-									thisTurnGenerated: tokenCount,
-									avgSpeed: speedVal ?? liveUsage.avgSpeed ?? '0.0t/s'
-								};
-							}
-							if (parsed.usage) {
-								const u = parsed.usage;
-								if (u.completion_tokens && u.completion_tokens > tokenCount) {
-									tokenCount = u.completion_tokens;
-								}
-								const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
-								const prompt = u.prompt_tokens ?? liveUsage.thisTurnPrompt ?? turnPrompt;
-								const generated = tokenCount;
-								liveUsage = {
-									...liveUsage,
-									thisTurnPrompt: prompt,
-									thisTurnCached: cached > 0 ? cached : (liveUsage.thisTurnCached ?? turnCached),
-									thisTurnFresh:
-										cached > 0
-											? Math.max(1, prompt - cached)
-											: (liveUsage.thisTurnFresh ?? turnFresh),
-									thisTurnGenerated: generated,
-									kvCacheTotal: u.total_tokens ?? prompt + generated
-								};
-							}
+				let hasChunkUpdate = false;
 
-							const delta = parsed.choices?.[0]?.delta;
-							const deltaReasoning = delta?.reasoning_content || delta?.reasoning || delta?.thought || '';
-							const deltaContentRaw = delta?.content || '';
+				// 1. Handle dedicated reasoning fields (DeepSeek-R1, OpenAI o1/o3, llama.cpp with reasoning flag)
+				if (deltaReasoning) {
+					if (!reasoningStartTime) reasoningStartTime = performance.now();
+					accumulatedReasoning += deltaReasoning;
+					reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
+					tokenCount++;
+					hasChunkUpdate = true;
+				}
 
-							let hasChunkUpdate = false;
+				// 2. Handle raw content and inline <think> tags
+				if (deltaContentRaw) {
+					tokenCount++;
+					hasChunkUpdate = true;
 
-							// 1. Handle dedicated reasoning fields (DeepSeek-R1, OpenAI o1/o3, llama.cpp with reasoning flag)
-							if (deltaReasoning) {
+					let remaining = deltaContentRaw;
+					while (remaining.length > 0) {
+						if (!isInsideThinkTag) {
+							const thinkIdx = remaining.indexOf('<think>');
+							if (thinkIdx !== -1) {
+								accumulatedContent += remaining.slice(0, thinkIdx);
+								remaining = remaining.slice(thinkIdx + 7);
+								isInsideThinkTag = true;
 								if (!reasoningStartTime) reasoningStartTime = performance.now();
-								accumulatedReasoning += deltaReasoning;
-								reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
-								tokenCount++;
-								hasChunkUpdate = true;
+							} else {
+								accumulatedContent += remaining;
+								remaining = '';
 							}
-
-							// 2. Handle raw content and inline <think> tags
-							if (deltaContentRaw) {
-								tokenCount++;
-								hasChunkUpdate = true;
-
-								let remaining = deltaContentRaw;
-								while (remaining.length > 0) {
-									if (!isInsideThinkTag) {
-										const thinkIdx = remaining.indexOf('<think>');
-										if (thinkIdx !== -1) {
-											accumulatedContent += remaining.slice(0, thinkIdx);
-											remaining = remaining.slice(thinkIdx + 7);
-											isInsideThinkTag = true;
-											if (!reasoningStartTime) reasoningStartTime = performance.now();
-										} else {
-											accumulatedContent += remaining;
-											remaining = '';
-										}
-									} else {
-										const closeIdx = remaining.indexOf('</think>');
-										if (closeIdx !== -1) {
-											accumulatedReasoning += remaining.slice(0, closeIdx);
-											remaining = remaining.slice(closeIdx + 8);
-											isInsideThinkTag = false;
-											if (reasoningStartTime) {
-												reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
-											}
-										} else {
-											accumulatedReasoning += remaining;
-											remaining = '';
-										}
-									}
-								}
-								if (isInsideThinkTag && reasoningStartTime) {
+						} else {
+							const closeIdx = remaining.indexOf('</think>');
+							if (closeIdx !== -1) {
+								accumulatedReasoning += remaining.slice(0, closeIdx);
+								remaining = remaining.slice(closeIdx + 8);
+								isInsideThinkTag = false;
+								if (reasoningStartTime) {
 									reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
 								}
+							} else {
+								accumulatedReasoning += remaining;
+								remaining = '';
 							}
+						}
+					}
+					if (isInsideThinkTag && reasoningStartTime) {
+						reasoningDuration = `${((performance.now() - reasoningStartTime) / 1000).toFixed(1)}s`;
+					}
+				}
 
-							if (hasChunkUpdate) {
-								// Auto-collapse reasoning accordion as soon as reasoning is complete and answer content starts streaming
-								if (
-									!hasAutoCollapsedReasoning &&
-									accumulatedReasoning &&
-									!isInsideThinkTag &&
-									accumulatedContent.trim().length > 0
-								) {
-									collapsedReasoning[assistantMsgId] = true;
-									hasAutoCollapsedReasoning = true;
-								}
+				if (hasChunkUpdate) {
+					// Auto-collapse reasoning accordion as soon as reasoning is complete and answer content starts streaming
+					if (
+						!hasAutoCollapsedReasoning &&
+						accumulatedReasoning &&
+						!isInsideThinkTag &&
+						accumulatedContent.trim().length > 0
+					) {
+						collapsedReasoning[assistantMsgId] = true;
+						hasAutoCollapsedReasoning = true;
+					}
 
-								const elapsedSec = (performance.now() - startTime) / 1000;
-								finalSpeed =
-									elapsedSec > 0 ? `${(tokenCount / elapsedSec).toFixed(1)} t/s` : '0 t/s';
-								finalDuration = `${elapsedSec.toFixed(1)}s`;
+					const elapsedSec = (performance.now() - startTime) / 1000;
+					finalSpeed = elapsedSec > 0 ? `${(tokenCount / elapsedSec).toFixed(1)} t/s` : '0 t/s';
+					finalDuration = `${elapsedSec.toFixed(1)}s`;
 
-								liveUsage = {
-									...liveUsage,
-									thisTurnGenerated: tokenCount,
-									kvCacheTotal: (liveUsage.thisTurnPrompt || turnPrompt) + tokenCount,
-									avgSpeed: finalSpeed
-								};
+					liveUsage = {
+						...liveUsage,
+						thisTurnGenerated: tokenCount,
+						kvCacheTotal: (liveUsage.thisTurnPrompt || turnPrompt) + tokenCount,
+						avgSpeed: finalSpeed
+					};
 
-								messages = messages.map((msg) => {
-									if (msg.id === assistantMsgId) {
-										return {
-											...msg,
-											content: accumulatedContent,
-											reasoning: accumulatedReasoning,
-											reasoningDuration,
-											tokens: tokenCount,
-											duration: finalDuration,
-											speed: finalSpeed
-										};
-									}
-									return msg;
-								});
+					messages = messages.map((msg) => {
+						if (msg.id === assistantMsgId) {
+							return {
+								...msg,
+								content: accumulatedContent,
+								reasoning: accumulatedReasoning,
+								reasoningDuration,
+								tokens: tokenCount,
+								duration: finalDuration,
+								speed: finalSpeed
+							};
+						}
+						return msg;
+					});
 
-								// 1. Auto-scroll reasoning container if reasoning updated and user hasn't scrolled up inside it
-								if (deltaReasoning || isInsideThinkTag) {
-									const shouldAutoScroll = (autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false;
-									if (shouldAutoScroll) {
-										await tick();
-										const rContainer = reasoningContainers[assistantMsgId];
-										if (rContainer && (autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false) {
-											rContainer.scrollTop = rContainer.scrollHeight;
-										}
-									}
-								}
-
-								// 2. Auto-scroll chat viewport if user hasn't scrolled up
-								if (autoScrollChat && messagesContainer) {
-									await tick();
-									if (autoScrollChat && messagesContainer) {
-										messagesContainer.scrollTop = messagesContainer.scrollHeight;
-									}
-								}
+					// 1. Auto-scroll reasoning container if reasoning updated and user hasn't scrolled up inside it
+					if (deltaReasoning || isInsideThinkTag) {
+						const shouldAutoScroll =
+							(autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false;
+						if (shouldAutoScroll) {
+							await tick();
+							const rContainer = reasoningContainers[assistantMsgId];
+							if (
+								rContainer &&
+								(autoScrollReasoning as Record<string, boolean>)[assistantMsgId] !== false
+							) {
+								rContainer.scrollTop = rContainer.scrollHeight;
 							}
-						} catch {
-							// Ignore incomplete chunk parse error
+						}
+					}
+
+					// 2. Auto-scroll chat viewport if user hasn't scrolled up
+					if (autoScrollChat && messagesContainer) {
+						await tick();
+						if (autoScrollChat && messagesContainer) {
+							messagesContainer.scrollTop = messagesContainer.scrollHeight;
 						}
 					}
 				}
+			}
+
+			// Check if generation was aborted or interrupted by model unload
+			if (
+				wasInterruptedByUnload ||
+				currentAbortController?.signal.reason === 'INTERRUPTED' ||
+				runningModelsState.unloadingModelIds.has(selectedModel)
+			) {
+				finalStatus = 'INTERRUPTED';
+				messages = messages.map((msg) => {
+					if (msg.id === assistantMsgId) {
+						return {
+							...msg,
+							content: accumulatedContent,
+							status: 'INTERRUPTED'
+						};
+					}
+					return msg;
+				});
+			} else if (
+				wasStoppedByUser ||
+				currentAbortController?.signal.reason === 'USER_CANCELLED' ||
+				currentAbortController?.signal.aborted
+			) {
+				finalStatus = 'CANCELLED';
+				messages = messages.map((msg) => {
+					if (msg.id === assistantMsgId) {
+						return {
+							...msg,
+							content: accumulatedContent,
+							status: 'CANCELLED'
+						};
+					}
+					return msg;
+				});
 			}
 
 			// Finalize turn metrics across all turns
@@ -1040,8 +1047,32 @@
 				avgSpeed: validSpeed
 			};
 		} catch (err: any) {
-			if (err.name === 'AbortError') {
-				console.log('Stream generation cancelled by user.');
+			const isUnloadInterrupted =
+				wasInterruptedByUnload ||
+				currentAbortController?.signal.reason === 'INTERRUPTED' ||
+				(selectedModel ? runningModelsState.unloadingModelIds.has(selectedModel) : false);
+
+			const isUserCancelled =
+				wasStoppedByUser ||
+				currentAbortController?.signal.reason === 'USER_CANCELLED' ||
+				currentAbortController?.signal.aborted ||
+				err.name === 'AbortError' ||
+				err.name === 'APIUserAbortError' ||
+				err.message?.toLowerCase().includes('abort');
+
+			if (isUnloadInterrupted) {
+				finalStatus = 'INTERRUPTED';
+				messages = messages.map((msg) => {
+					if (msg.id === assistantMsgId) {
+						return {
+							...msg,
+							content: accumulatedContent,
+							status: 'INTERRUPTED'
+						};
+					}
+					return msg;
+				});
+			} else if (isUserCancelled) {
 				finalStatus = 'CANCELLED';
 				messages = messages.map((msg) => {
 					if (msg.id === assistantMsgId) {
@@ -1076,9 +1107,9 @@
 			try {
 				if (activeId && assistantMsgId) {
 					const fullStoredContent = accumulatedReasoning
-						? (reasoningDuration
+						? reasoningDuration
 							? `<think duration="${reasoningDuration}">${accumulatedReasoning}</think>${accumulatedContent}`
-							: `<think>${accumulatedReasoning}</think>${accumulatedContent}`)
+							: `<think>${accumulatedReasoning}</think>${accumulatedContent}`
 						: accumulatedContent;
 
 					await fetch(
@@ -1110,6 +1141,8 @@
 
 			isGenerating = false;
 			currentAbortController = null;
+			wasInterruptedByUnload = false;
+			wasStoppedByUser = false;
 			if (autoScrollChat) {
 				scrollToBottom();
 			}
@@ -1119,8 +1152,8 @@
 
 	function handleStopGeneration() {
 		if (currentAbortController) {
-			currentAbortController.abort();
-			currentAbortController = null;
+			wasStoppedByUser = true;
+			currentAbortController.abort('USER_CANCELLED');
 		}
 	}
 
@@ -1159,8 +1192,26 @@
 		handleSendMessage();
 	}
 
+	function isMobileDevice(): boolean {
+		if (typeof window === 'undefined') return false;
+		const isTouch =
+			window.matchMedia('(pointer: coarse)').matches ||
+			(typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+		const isMobileWidth =
+			window.innerWidth <= 768 || window.matchMedia('(max-width: 768px)').matches;
+		const isMobileUA =
+			typeof navigator !== 'undefined' &&
+			/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+		return (isTouch && isMobileWidth) || isMobileUA;
+	}
+
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
+			if (isMobileDevice()) {
+				// On mobile virtual keyboard, Enter inserts a newline instead of sending
+				setTimeout(adjustTextareaHeight, 0);
+				return;
+			}
 			e.preventDefault();
 			handleSendMessage();
 			return;
@@ -1248,7 +1299,11 @@
 									<!-- Reasoning Accordion if message has thoughts -->
 									{#if msg.reasoning}
 										<div
-											class="reasoning-container group/reasoning mb-3 rounded-xl overflow-hidden transition-colors duration-150 {!collapsedReasoning[msg.id] ? 'bg-[var(--bg-surface)]' : 'bg-transparent hover:bg-[var(--bg-surface)]'}"
+											class="reasoning-container group/reasoning mb-3 rounded-xl overflow-hidden transition-colors duration-150 {!collapsedReasoning[
+												msg.id
+											]
+												? 'bg-[var(--bg-surface)]'
+												: 'bg-transparent hover:bg-[var(--bg-surface)]'}"
 										>
 											<button
 												type="button"
@@ -1258,16 +1313,27 @@
 											>
 												<div class="flex items-center gap-2 font-medium">
 													{#if isGenerating && !msg.content}
-														<Sparkles size={13} class="text-[var(--primary)] animate-pulse shrink-0" />
+														<Sparkles
+															size={13}
+															class="text-[var(--primary)] animate-pulse shrink-0"
+														/>
 														<span class="text-[var(--primary)] font-semibold">Thinking...</span>
 													{:else}
 														<Sparkles size={13} class="text-[var(--text-muted)] shrink-0" />
-														<span>{msg.reasoningDuration ? `Thought for ${msg.reasoningDuration}` : 'Thinking process'}</span>
+														<span
+															>{msg.reasoningDuration
+																? `Thought for ${msg.reasoningDuration}`
+																: 'Thinking process'}</span
+														>
 													{/if}
 												</div>
 												<ChevronDown
 													size={13}
-													class="text-[var(--text-muted)] transition-all duration-150 shrink-0 {!collapsedReasoning[msg.id] ? 'opacity-100 rotate-180' : 'opacity-0 group-hover/reasoning:opacity-100'}"
+													class="text-[var(--text-muted)] transition-all duration-150 shrink-0 {!collapsedReasoning[
+														msg.id
+													]
+														? 'opacity-100 rotate-180'
+														: 'opacity-0 group-hover/reasoning:opacity-100'}"
 												/>
 											</button>
 
@@ -1289,8 +1355,12 @@
 											<span class="dot"></span>
 											<span class="dot"></span>
 										</div>
-									{:else if !msg.content && msg.status === 'CANCELLED'}
-										<span class="cancelled-text-placeholder">(Cancelled by user)</span>
+									{:else if !msg.content && (msg.status === 'CANCELLED' || msg.status === 'INTERRUPTED')}
+										<span class="cancelled-text-placeholder"
+											>({msg.status === 'INTERRUPTED'
+												? t('chat.interrupted')
+												: t('chat.cancelledByUser')})</span
+										>
 									{:else if msg.content}
 										<MarkdownRenderer content={msg.content} />
 									{/if}
@@ -1301,7 +1371,7 @@
 										<ModelBadge model={msg.modelTags} />
 									{/if}
 
-									{#if msg.status === 'CANCELLED'}
+									{#if msg.status === 'CANCELLED' || msg.status === 'INTERRUPTED'}
 										<div class="tooltip-container {activeTooltipId === msg.id ? 'active' : ''}">
 											<button
 												type="button"
@@ -1310,12 +1380,22 @@
 													e.stopPropagation();
 													activeTooltipId = activeTooltipId === msg.id ? null : msg.id;
 												}}
-												aria-label="Cancelled by user"
+												aria-label={msg.status === 'INTERRUPTED'
+													? t('chat.interrupted')
+													: t('chat.cancelledByUser')}
 											>
-												<CircleX size={14} class="cancelled-icon" />
+												{#if msg.status === 'INTERRUPTED'}
+													<CircleAlert size={12} class="cancelled-icon" />
+												{:else}
+													<Square size={10} fill="currentColor" class="cancelled-icon" />
+												{/if}
 											</button>
 											<div class="tooltip-bubble" role="tooltip">
-												<span>Cancelled by user</span>
+												<span
+													>{msg.status === 'INTERRUPTED'
+														? t('chat.interrupted')
+														: t('chat.cancelledByUser')}</span
+												>
 												<div class="tooltip-arrow"></div>
 											</div>
 										</div>
@@ -1372,7 +1452,9 @@
 				<ChevronDown size={18} />
 			</button>
 		{/if}
-		<div class="input-card backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60">
+		<div
+			class="input-card backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60"
+		>
 			<textarea
 				bind:this={textareaRef}
 				bind:value={inputMessage}
@@ -2414,12 +2496,14 @@
 		justify-content: center;
 		width: 24px;
 		height: 24px;
-		padding: 0;
-		border-radius: 0.375rem;
+		border-radius: 9999px;
 		background: rgba(239, 68, 68, 0.12);
 		color: #ef4444;
 		border: 1px solid rgba(239, 68, 68, 0.3);
 		cursor: pointer;
+		font-size: 0.7rem;
+		font-weight: 500;
+		line-height: 1;
 		transition: all 0.15s ease;
 	}
 
@@ -2428,6 +2512,11 @@
 		background: rgba(239, 68, 68, 0.22);
 		border-color: rgba(239, 68, 68, 0.5);
 		color: #f87171;
+	}
+
+	.cancelled-label {
+		line-height: 1;
+		white-space: nowrap;
 	}
 
 	.tooltip-bubble {

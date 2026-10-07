@@ -262,7 +262,9 @@
 	<!-- Section Header -->
 	<div class="flex items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3">
 		<div>
-			<h4 class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2 leading-none">
+			<h4
+				class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2 leading-none"
+			>
 				<Settings2 size={18} class="text-[var(--primary)] shrink-0" />
 				<span>Active Configuration & Storage</span>
 			</h4>
@@ -543,7 +545,10 @@
 								<span class="font-medium text-[var(--text-primary)]">{hardwareMeta.title}</span>
 								{#if hardwareReport && hardwareReport.detected_gpus.length > 0}
 									<span class="text-[var(--text-muted)]">•</span>
-									<span class="text-emerald-500 font-medium truncate" title={hardwareReport.detected_gpus.join(', ')}>
+									<span
+										class="text-emerald-500 font-medium truncate"
+										title={hardwareReport.detected_gpus.join(', ')}
+									>
 										{hardwareReport.detected_gpus[0]}
 									</span>
 								{/if}
@@ -571,7 +576,9 @@
 			<div
 				class="p-4 bg-[var(--bg-primary)] border border-[var(--primary)]/40 rounded-xl flex flex-col gap-4 shadow-sm"
 			>
-				<div class="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2.5">
+				<div
+					class="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2.5"
+				>
 					<span class="text-xs font-bold text-[var(--text-primary)]">
 						Modify Configuration & Network
 					</span>
@@ -583,7 +590,10 @@
 				<!-- Host and Port Inputs -->
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<div class="flex flex-col gap-1.5">
-						<label for="cfg-host-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+						<label
+							for="cfg-host-input"
+							class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+						>
 							<Network size={14} class="text-emerald-500" />
 							<span>Host Address</span>
 						</label>
@@ -597,7 +607,10 @@
 					</div>
 
 					<div class="flex flex-col gap-1.5">
-						<label for="cfg-port-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+						<label
+							for="cfg-port-input"
+							class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+						>
 							<span class="text-emerald-500 text-xs font-mono font-bold">#</span>
 							<span>HTTP Port</span>
 						</label>
@@ -615,7 +628,10 @@
 
 				<!-- Models Input -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-models-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-models-input"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<HardDrive size={14} class="text-blue-500" />
 						<span>Models Directory</span>
 					</label>
@@ -630,7 +646,10 @@
 
 				<!-- Runtimes Input -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-runtimes-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-runtimes-input"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<Cpu size={14} class="text-purple-500" />
 						<span>Runtimes Directory</span>
 					</label>
@@ -645,7 +664,10 @@
 
 				<!-- Hardware Selector -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-hardware-select" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-hardware-select"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<Zap size={14} class="text-amber-500" />
 						<span>Hardware Acceleration</span>
 					</label>
@@ -661,7 +683,11 @@
 							>
 								<div class="flex items-center justify-between gap-1 w-full">
 									<span class="text-xs font-bold leading-tight">{hw.title}</span>
-									<span class="text-[0.6rem] font-mono px-1 py-0.2 rounded border uppercase {isSelected ? 'bg-[var(--primary)] text-white border-transparent' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)]'}">
+									<span
+										class="text-[0.6rem] font-mono px-1 py-0.2 rounded border uppercase {isSelected
+											? 'bg-[var(--primary)] text-white border-transparent'
+											: 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)]'}"
+									>
 										{hw.badge}
 									</span>
 								</div>
@@ -674,7 +700,9 @@
 				</div>
 
 				<!-- Save Action Bar -->
-				<div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]/60">
+				<div
+					class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]/60"
+				>
 					<button
 						type="button"
 						onclick={cancelEdit}

@@ -31,7 +31,7 @@
 		features?: string[];
 		is_installed?: boolean;
 		installed_path?: string | null;
-		binary_path?: string;
+		binary_path?: string | null;
 	}
 
 	interface ModelFileItem {
@@ -350,7 +350,8 @@
 		}
 
 		if (installedRuntimes.length === 0) {
-			formError = 'No installed runtimes found. Please install a runtime in the Runtimes tab first.';
+			formError =
+				'No installed runtimes found. Please install a runtime in the Runtimes tab first.';
 			return;
 		}
 
@@ -653,7 +654,9 @@
 				class="app-btn app-btn-primary app-btn-md"
 				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
 				onclick={handleSubmit}
-				title={installedRuntimes.length === 0 ? 'Cannot save model without an installed runtime' : 'Save Model'}
+				title={installedRuntimes.length === 0
+					? 'Cannot save model without an installed runtime'
+					: 'Save Model'}
 			>
 				<Save size={15} />
 				<span>{isSaving ? 'Saving...' : 'Save Model'}</span>

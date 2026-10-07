@@ -12,7 +12,7 @@
 		model: string | string[] | undefined | null;
 		showIcon?: boolean;
 		iconSize?: number;
-		variant?: 'badge' | 'inline' | 'clean';
+		variant?: 'badge' | 'inline' | 'clean' | 'badge-full' | 'full';
 		class?: string;
 	} = $props();
 
@@ -24,7 +24,9 @@
 		{#if showIcon}
 			<Box size={iconSize} class="model-badge-icon" />
 		{/if}
+		
 		<span class="model-name-text" title={parsed.name}>{parsed.name}</span>
+
 		{#each parsed.tags as tag}
 			<span class="model-tag">{tag}</span>
 		{/each}
@@ -50,6 +52,22 @@
 		padding: 0.25rem 0.55rem;
 	}
 
+	.model-badge-container.badge-full {
+		background: color-mix(in srgb, var(--bg-surface) 80%, black 20%);
+		border: 1px solid var(--border-color);
+		border-radius: 0.5rem;
+		padding: 0.25rem 0.55rem;
+		display: flex;
+		justify-content: space-between;
+		width: 100%;
+	}
+
+	.model-badge-container.full {
+		display: flex;
+		justify-content: space-between;
+		width: 100%;
+	}
+
 	.model-badge-container.inline {
 		background: transparent;
 		border: none;
@@ -70,6 +88,7 @@
 		white-space: nowrap;
 		min-width: 0;
 		flex-shrink: 1;
+		margin-right: auto;
 	}
 
 	.model-tag {

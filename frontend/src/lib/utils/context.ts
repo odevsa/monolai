@@ -67,18 +67,18 @@ export interface ChatMessageLike {
 export interface TokenUsageDetails {
 	// Across all turns
 	allPromptEvaluated: number; // Prompt tokens evaluated (fresh)
-	allPromptCached: number;    // Reused from KV cache
+	allPromptCached: number; // Reused from KV cache
 	allTokensGenerated: number; // Tokens generated
 
 	// This turn · KV cache
-	thisTurnPrompt: number;     // Prompt tokens (fresh + cached)
-	thisTurnFresh: number;      // Fresh prompt tokens
-	thisTurnCached: number;     // Cached prompt tokens
-	thisTurnGenerated: number;  // Generated tokens in this turn
-	kvCacheTotal: number;       // KV cache total (prompt + generated)
+	thisTurnPrompt: number; // Prompt tokens (fresh + cached)
+	thisTurnFresh: number; // Fresh prompt tokens
+	thisTurnCached: number; // Cached prompt tokens
+	thisTurnGenerated: number; // Generated tokens in this turn
+	kvCacheTotal: number; // KV cache total (prompt + generated)
 
 	// Speed
-	avgSpeed: string;           // E.g. "33.2t/s"
+	avgSpeed: string; // E.g. "33.2t/s"
 }
 
 export interface PreparedContext {
@@ -149,7 +149,10 @@ export function prepareSlidingWindowContext(
 		};
 
 		return {
-			messages: systemPrompt && systemPrompt.trim() ? [{ role: 'system', content: systemPrompt.trim() }] : [],
+			messages:
+				systemPrompt && systemPrompt.trim()
+					? [{ role: 'system', content: systemPrompt.trim() }]
+					: [],
 			usedTokens: 0,
 			maxTokens: maxContextLimit,
 			percentage: 0,
@@ -223,7 +226,12 @@ export function prepareSlidingWindowContext(
 
 	// Compute avgSpeed: prefer active liveMetrics, or fallback to assistant history
 	let computedAvgSpeed = liveMetrics?.avgSpeed;
-	if (!computedAvgSpeed || computedAvgSpeed === '0.0t/s' || computedAvgSpeed === '0 t/s' || computedAvgSpeed === '0.0 t/s') {
+	if (
+		!computedAvgSpeed ||
+		computedAvgSpeed === '0.0t/s' ||
+		computedAvgSpeed === '0 t/s' ||
+		computedAvgSpeed === '0.0 t/s'
+	) {
 		const assistantMsgs = cleanMessages.filter((m) => m.role === 'assistant');
 		for (let i = assistantMsgs.length - 1; i >= 0; i--) {
 			const m = assistantMsgs[i];
@@ -270,4 +278,3 @@ export function prepareSlidingWindowContext(
 		usageDetails
 	};
 }
-

@@ -67,17 +67,22 @@ The backend is structured into four primary layers:
 1. **Svelte 5 Runes**:
    - Always use Svelte 5 Runes: `$state`, `$derived`, `$props`, `$effect`.
    - Do NOT use legacy Svelte 3/4 reactivity (`let` assignments for reactive state, `$:` statements).
+   - Reactive singleton state belongs in `src/lib/state/*.svelte.ts`.
 2. **TypeScript Strictness**:
-   - Zero `any` policy. All API responses, state objects, and component props must have explicit TypeScript interfaces matching backend DTOs.
+   - Zero `any` policy. All API responses, state objects, and component props must have explicit TypeScript interfaces matching backend DTOs in `src/lib/types/`.
 3. **Layered Frontend Structure**:
-   - `src/lib/api/` or `src/lib/services/`: Centralized HTTP and SSE client methods. Components must NOT execute ad-hoc `fetch()` calls directly.
-   - `src/lib/stores/` or `src/lib/state/`: Global application state (active model, chat session, host metrics) using reactive runes or stores.
-   - `src/lib/components/`: Reusable, atomic UI components (buttons, modals, message bubbles, hardware meters) decoupled from page-specific routing.
+   - `src/lib/api/`: Centralized HTTP, SSE, and official SDK methods (`modelsApi`, `runtimesApi`, `chatsApi`, `hostApi`, `configApi`, `settingsApi`). Components must NOT execute ad-hoc `fetch()` calls or parse raw SSE streams directly.
+   - `src/lib/state/`: Global application state (active model, chat tabs, confirm modal, host metrics) using reactive runes singletons.
+   - `src/lib/components/ds/`: Atomic Mini-Design System (`atoms`, `molecules`, `organisms`) standardizing buttons, inputs, selects, cards, headings, modals, and alerts.
    - `src/routes/`: SvelteKit page routes responsible only for layout and view composition.
-4. **Styling & Design System**:
-   - Use Tailwind CSS v4 design tokens and CSS variables.
-   - Do not use inline hardcoded HEX color values; maintain dark/light theme consistency.
-   - Responsive layouts suitable for both browser web usage and embedded desktop webviews.
+4. **OpenAI Official SDK Integration**:
+   - All OpenAI-compatible chat completions (`/v1/chat/completions`) and image generation (`/v1/images/generations`) must be dispatched through the official `openai` JS/TS client configured in `src/lib/api/openai.ts`.
+5. **Internationalization (i18n)**:
+   - Mandatory use of `t('key.path')` via `src/lib/i18n`. Hardcoded UI strings in components are forbidden. All user-facing strings are stored in `src/lib/i18n/locales/en.json`.
+6. **Styling & Layout Inviolability**:
+   - Use Tailwind CSS v4 design tokens and CSS variables (`var(--bg-primary)`, `var(--text-primary)`, `var(--primary)`, etc.).
+   - Do not use inline hardcoded HEX color values or blanket `text-white` on text elements; maintain theme consistency across all color schemes.
+   - The layout shell (sidebar, floating header tabs/actions, floating glassmorphic chat input) is structurally fixed and must not be broken or stripped during feature development.
 
 ---
 

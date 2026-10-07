@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { confirmStore } from '$lib/confirmStore';
+	import { confirmState } from '$lib/state/confirm.svelte';
 	import { AlertTriangle, Info, Trash2, X } from '@lucide/svelte';
 
-	let current = $derived($confirmStore);
+	let current = $derived(confirmState.current);
 	let confirmBtnRef = $state<HTMLButtonElement | null>(null);
 
 	$effect(() => {
@@ -15,19 +15,11 @@
 	});
 
 	function handleConfirm() {
-		if (current) {
-			const res = current.resolve;
-			confirmStore.set(null);
-			res(true);
-		}
+		confirmState.close(true);
 	}
 
 	function handleCancel() {
-		if (current) {
-			const res = current.resolve;
-			confirmStore.set(null);
-			res(false);
-		}
+		confirmState.close(false);
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -61,7 +53,12 @@
 		>
 			<div class="flex items-center justify-between">
 				<div
-					class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {current.variant === 'danger' ? 'bg-red-500/15 text-red-500' : current.variant === 'warning' ? 'bg-amber-500/15 text-amber-500' : 'bg-[var(--primary-light)] text-[var(--primary)]'}"
+					class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {current.variant ===
+					'danger'
+						? 'bg-red-500/15 text-red-500'
+						: current.variant === 'warning'
+							? 'bg-amber-500/15 text-amber-500'
+							: 'bg-[var(--primary-light)] text-[var(--primary)]'}"
 				>
 					{#if current.variant === 'danger'}
 						<Trash2 size={20} />
@@ -99,7 +96,12 @@
 				<button
 					type="button"
 					bind:this={confirmBtnRef}
-					class="border-0 px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-150 text-white {current.variant === 'danger' ? 'bg-red-500 hover:bg-red-600' : current.variant === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[var(--primary)] hover:bg-[var(--primary-hover)]'}"
+					class="border-0 px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-150 text-white {current.variant ===
+					'danger'
+						? 'bg-red-500 hover:bg-red-600'
+						: current.variant === 'warning'
+							? 'bg-amber-500 hover:bg-amber-600'
+							: 'bg-[var(--primary)] hover:bg-[var(--primary-hover)]'}"
 					onclick={handleConfirm}
 				>
 					{current.confirmText || 'Confirm'}

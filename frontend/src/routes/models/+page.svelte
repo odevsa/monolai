@@ -14,61 +14,22 @@
 		Check,
 		X
 	} from '@lucide/svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import Alert from '$lib/components/Alert.svelte';
+	import { modelsApi, runtimesApi } from '$lib/api';
+	import type { ModelRecord, ModelFileItem, RunningModelStatus } from '$lib/types/models';
+	import type { Runtime, RuntimeManifest } from '$lib/types/runtimes';
+	import { t } from '$lib/i18n';
+	import { Button, Badge, Select, PageHeader, Alert, EmptyState } from '$lib/components/ds';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import ModelForm from '$lib/components/ModelForm.svelte';
-	import Select from '$lib/components/Select.svelte';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
 	import { getMainModelFilePath } from '$lib/utils/model';
 	import { formatBytes } from '$lib/utils/format';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { refreshFeatures } from '$lib/featuresStore';
-	import { runningModels, type RunningModelStatus } from '$lib/runningModelsStore';
-
-	interface ModelRecord {
-		id: string;
-		runtime: string;
-		flags: string;
-		created_at?: string;
-		file_exists?: boolean;
-	}
-
-	interface RuntimeItem {
-		id: string;
-		name: string;
-		binary_path: string;
-	}
-
-	interface ModelFileItem {
-		name?: string;
-		filename?: string;
-		path?: string;
-		relative_path?: string;
-		absolute_path?: string;
-		size?: number;
-		size_bytes?: number;
-	}
-
-	interface ManifestFlag {
-		flag: string;
-		name: string;
-		description: string;
-		type: string;
-		important: boolean;
-		default_value: string;
-		options?: string[];
-	}
-
-	interface RuntimeManifest {
-		id: string;
-		name: string;
-		description: string;
-		flags: ManifestFlag[];
-	}
+	import { runningModelsState } from '$lib/runningModelsStore';
 
 	let registeredModels = $state<ModelRecord[]>([]);
-	let runtimes = $state<RuntimeItem[]>([]);
+	let runtimes = $state<Runtime[]>([]);
 	let availableFiles = $state<ModelFileItem[]>([]);
 	let runtimeManifests = $state<RuntimeManifest[]>([]);
 	let isLoadingData = $state(true);
@@ -87,7 +48,7 @@
 	// Map of running models for quick lookup
 	let runningMap = $derived.by(() => {
 		const map = new Map<string, RunningModelStatus>();
-		for (const rm of $runningModels) {
+		for (const rm of runningModelsState.runningModels) {
 			map.set(rm.model_id, rm);
 		}
 		return map;
@@ -95,15 +56,15 @@
 
 	// Selectbox options
 	let runtimeFilterOptions = $derived([
-		{ value: 'all', label: 'All Runtimes' },
+		{ value: 'all', label: t('models.allRuntimes') },
 		...runtimes.map((rt) => ({ value: rt.id, label: rt.name }))
 	]);
 
-	const statusFilterOptions = [
-		{ value: 'all', label: 'All Statuses' },
-		{ value: 'running', label: 'Running' },
-		{ value: 'missing', label: 'Missing Weights' }
-	];
+	let statusFilterOptions = $derived([
+		{ value: 'all', label: t('models.allStatuses') },
+		{ value: 'running', label: t('models.runningStatus') },
+		{ value: 'missing', label: t('models.missingStatus') }
+	]);
 
 	// Filtered models list
 	let filteredModels = $derived.by(() => {
@@ -134,22 +95,57 @@
 		return list;
 	});
 
+	function getMainFile(flagsStr: string): string {
+		try {
+			const flags = JSON.parse(flagsStr);
+			return flags.m || flags['--model'] || flags.model || '';
+		} catch {
+			return '';
+		}
+	}
+
+	function getFileInfo(
+		filePath: string,
+		files: ModelFileItem[]
+	): { fileName: string; sizeFormatted: string | null; format: string } {
+		if (!filePath)
+			return { fileName: 'No file configured', sizeFormatted: null, format: 'UNKNOWN' };
+
+		const fileName = filePath.split('/').pop() || filePath;
+		const found = files.find(
+			(f) =>
+				(f.name && f.name === fileName) ||
+				(f.path && f.path.endsWith(fileName)) ||
+				(f.relative_path && f.relative_path.endsWith(fileName))
+		);
+
+		const size = found?.size_bytes ?? found?.size;
+		const sizeFormatted = size ? formatBytes(size) : null;
+
+		let format = 'MODEL';
+		if (fileName.toLowerCase().endsWith('.gguf')) format = 'GGUF';
+		else if (fileName.toLowerCase().endsWith('.safetensors')) format = 'SAFETENSORS';
+		else if (fileName.toLowerCase().endsWith('.bin')) format = 'BIN';
+
+		return { fileName, sizeFormatted, format };
+	}
+
 	async function loadAllModelsData(isSilent = false) {
 		if (!isSilent) isLoadingData = true;
 		error = null;
 
 		try {
 			const [modelsRes, runtimesRes, filesRes, manifestsRes] = await Promise.all([
-				fetch('/api/models?all=true').then((r) => (r.ok ? r.json() : [])),
-				fetch('/api/runtimes').then((r) => (r.ok ? r.json() : [])),
-				fetch('/api/models/available').then((r) => (r.ok ? r.json() : [])),
-				fetch('/api/runtime-manifests').then((r) => (r.ok ? r.json() : []))
+				modelsApi.list(true).catch(() => []),
+				runtimesApi.list().catch(() => []),
+				modelsApi.getAvailableFiles().catch(() => []),
+				runtimesApi.getManifests().catch(() => [])
 			]);
 
-			registeredModels = modelsRes;
-			runtimes = runtimesRes;
-			availableFiles = filesRes;
-			runtimeManifests = manifestsRes;
+			registeredModels = modelsRes || [];
+			runtimes = runtimesRes || [];
+			availableFiles = filesRes || [];
+			runtimeManifests = manifestsRes || [];
 		} catch (e: any) {
 			error = e.message || 'Failed to load models data from server';
 			console.error('Error loading models data:', e);
@@ -179,14 +175,18 @@
 		};
 	});
 
+	let containerRef = $state<HTMLDivElement | null>(null);
+
 	function startAddModel() {
 		editingModel = null;
 		isEditingModel = true;
+		(containerRef?.closest('main') || containerRef)?.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	function startEditModel(model: ModelRecord) {
 		editingModel = model;
 		isEditingModel = true;
+		(containerRef?.closest('main') || containerRef)?.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	function cancelEdit() {
@@ -210,18 +210,17 @@
 		flags: Record<string, string>;
 	}) {
 		const isExisting = !!editingModel;
-		const url = isExisting ? `/api/models/${encodeURIComponent(payload.id)}` : '/api/models';
-		const method = isExisting ? 'PUT' : 'POST';
-
-		const res = await fetch(url, {
-			method,
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
-		});
-
-		if (!res.ok) {
-			const errorText = await res.text();
-			throw new Error(errorText || 'Failed to save model');
+		if (isExisting) {
+			await modelsApi.update(payload.id, {
+				runtime: payload.runtime,
+				flags: JSON.stringify(payload.flags)
+			});
+		} else {
+			await modelsApi.create({
+				id: payload.id,
+				runtime: payload.runtime,
+				flags: JSON.stringify(payload.flags)
+			});
 		}
 
 		await loadAllModelsData(true);
@@ -232,107 +231,59 @@
 
 	async function deleteModel(id: string) {
 		const confirmed = await askConfirm(
-			`Are you sure you want to delete model '${id}'?`,
-			'Delete Model',
+			t('models.deleteConfirmMsg', { id }),
+			t('models.deleteConfirmTitle'),
 			'danger',
-			'Delete',
-			'Cancel'
+			t('common.delete'),
+			t('common.cancel')
 		);
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/models/${encodeURIComponent(id)}`, {
-				method: 'DELETE'
-			});
-
-			if (!res.ok) {
-				throw new Error('Failed to delete model');
-			}
-
+			await modelsApi.delete(id);
 			await loadAllModelsData(true);
 			refreshFeatures(true);
 		} catch (e: any) {
 			await showAlert(e.message || 'Error deleting model', 'Error', 'danger');
 		}
 	}
-
-	function getMainFile(flagsJson: string): string {
-		try {
-			const obj: Record<string, string> = JSON.parse(flagsJson);
-			return obj['--model'] || obj['-m'] || '';
-		} catch {
-			return '';
-		}
-	}
-
-	function getFileInfo(filePath: string, files: ModelFileItem[]) {
-		if (!filePath)
-			return { fileName: 'No file configured', format: 'GGUF', sizeFormatted: undefined };
-		const fileName = filePath.split(/[/\\]/).pop() || filePath;
-		const match = files.find((f) => {
-			const p = f.path || f.absolute_path || f.relative_path || '';
-			return (
-				p === filePath || p.endsWith(fileName) || f.name === fileName || f.filename === fileName
-			);
-		});
-
-		const ext = fileName.split('.').pop()?.toUpperCase() || 'GGUF';
-		const sizeBytes = match?.size_bytes ?? match?.size;
-		const sizeFormatted = sizeBytes ? formatBytes(sizeBytes) : undefined;
-		return { fileName, sizeFormatted, format: ext };
-	}
 </script>
 
-<svelte:head>
-	<title>Monolai - Models</title>
-</svelte:head>
-
-<div class="page-container">
-	<div class="page-inner gap-5 sm:gap-6">
-		<!-- Page Header matching Monolai design standards -->
-		<PageHeader
-			title="Models"
-			subtitle="Manage local model definitions, weights files, and runtime execution flags"
-			icon={Box}
-		>
+<div
+	bind:this={containerRef}
+	class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border"
+>
+	<div class="flex flex-col gap-5 sm:gap-6">
+		<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box}>
 			{#if !isEditingModel}
-				<button
-					type="button"
-					class="app-btn app-btn-primary app-btn-md shadow-xs"
-					onclick={startAddModel}
-				>
+				<Button variant="primary" size="md" onclick={startAddModel}>
 					<Plus size={15} />
-					<span>New</span>
-				</button>
+					<span>{t('models.registerModel')}</span>
+				</Button>
 			{:else}
-				<button
-					type="button"
-					class="app-btn app-btn-secondary app-btn-md shadow-xs"
-					onclick={cancelEdit}
-				>
+				<Button variant="secondary" size="md" onclick={cancelEdit}>
 					<ArrowLeft size={15} />
-					<span>Back</span>
-				</button>
+					<span>{t('common.back')}</span>
+				</Button>
 			{/if}
 		</PageHeader>
 
 		{#if error}
-			<Alert variant="error" title="Backend Connection Failure:" message={error}>
-				{#snippet action()}
-					<button
-						type="button"
-						class="app-btn app-btn-secondary app-btn-sm"
-						onclick={() => loadAllModelsData()}
-					>
-						Retry Connection
-					</button>
-				{/snippet}
+			<Alert variant="error" title="Backend Connection Failure:">
+				<div class="flex items-center justify-between gap-3">
+					<span>{error}</span>
+					<Button variant="secondary" size="sm" onclick={() => loadAllModelsData()}>
+						{t('common.refresh')}
+					</Button>
+				</div>
 			</Alert>
 		{/if}
 
 		{#if isEditingModel}
-			<!-- Dedicated Form Container (Borderless solid panel) -->
-			<div class="bg-[var(--bg-surface)] rounded-2xl border-0 shadow-xs p-5 sm:p-7">
+			<!-- Dedicated Form Container -->
+			<div
+				class="bg-[var(--bg-surface)] rounded-2xl p-5 sm:p-7 shadow-sm"
+			>
 				<div class="flex items-center gap-2.5 pb-4 mb-5 border-b border-[var(--border-color)]">
 					<div
 						class="w-8 h-8 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0"
@@ -341,7 +292,9 @@
 					</div>
 					<div>
 						<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">
-							{editingModel ? `Edit Model: ${editingModel.id}` : 'New Model'}
+							{editingModel
+								? `${t('models.editModel')}: ${editingModel.id}`
+								: t('models.registerModel')}
 						</h3>
 						<p class="m-0 text-xs text-[var(--text-muted)] mt-0.5">
 							Configure weights file, runtime backend, and execution parameters.
@@ -359,9 +312,9 @@
 				/>
 			</div>
 		{:else}
-			<!-- Search & Filter Controls Bar (Standardized Custom Selectboxes, Borderless) -->
+			<!-- Search & Filter Controls Bar -->
 			<div
-				class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2 bg-[var(--bg-surface)] border-0 rounded-xl shadow-xs"
+				class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2 bg-[var(--bg-surface)] rounded-xl shadow-xs"
 			>
 				<!-- Search Input -->
 				<div class="relative flex-1 min-w-[180px]">
@@ -372,8 +325,8 @@
 					<input
 						type="text"
 						bind:value={searchQuery}
-						placeholder="Search by model ID, filename, or runtime..."
-						class="w-full pl-8.5 pr-8 py-2 text-xs rounded-lg bg-[var(--bg-primary)] border-0 text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden transition-colors box-border"
+						placeholder={t('models.searchPlaceholder')}
+						class="w-full pl-8.5 pr-8 py-2 text-xs rounded-lg bg-[var(--bg-primary)] border border-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-hidden transition-colors box-border"
 					/>
 					{#if searchQuery}
 						<button
@@ -392,7 +345,7 @@
 					<Select
 						bind:value={selectedRuntimeFilter}
 						options={runtimeFilterOptions}
-						placeholder="All Runtimes"
+						placeholder={t('models.allRuntimes')}
 						ariaLabel="Filter by runtime"
 					/>
 				</div>
@@ -402,7 +355,7 @@
 					<Select
 						bind:value={selectedStatusFilter}
 						options={statusFilterOptions}
-						placeholder="All Statuses"
+						placeholder={t('models.allStatuses')}
 						ariaLabel="Filter by status"
 					/>
 				</div>
@@ -416,64 +369,42 @@
 					<div
 						class="w-8 h-8 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
 					></div>
-					<p class="m-0 text-xs">Loading registered models...</p>
+					<p class="m-0 text-xs">{t('common.loading')}</p>
 				</div>
 			{:else if registeredModels.length === 0}
-				<!-- Zero Models Registered Empty State -->
-				<div
-					class="bg-[var(--bg-surface)] border-0 rounded-2xl p-10 flex flex-col items-center justify-center gap-3.5 text-center shadow-xs"
+				<EmptyState
+					title={t('models.noModelsFound')}
+					description={t('models.noModelsFoundDesc')}
+					icon={Box}
 				>
-					<div
-						class="w-14 h-14 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0 shadow-xs"
-					>
-						<Box size={28} />
-					</div>
-					<div class="flex flex-col gap-1 max-w-[420px]">
-						<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">No Registered Models</h3>
-						<p class="m-0 text-xs text-[var(--text-muted)] leading-relaxed">
-							Register your GGUF or SafeTensors weights from disk to start serving local LLM
-							inference.
-						</p>
-					</div>
-					<button
-						type="button"
-						class="app-btn app-btn-primary app-btn-md shadow-xs mt-1"
-						onclick={startAddModel}
-					>
-						<Plus size={15} />
-						<span>New Model</span>
-					</button>
-				</div>
+					{#snippet actions()}
+						<Button variant="primary" onclick={startAddModel}>
+							<Plus size={15} />
+							<span>{t('models.registerModel')}</span>
+						</Button>
+					{/snippet}
+				</EmptyState>
 			{:else if filteredModels.length === 0}
-				<!-- Search Yielded No Results -->
-				<div
-					class="bg-[var(--bg-surface)] border-0 rounded-2xl p-8 flex flex-col items-center justify-center gap-2.5 text-center shadow-xs"
+				<EmptyState
+					title="No models match your search"
+					description="Try adjusting your filters or search keywords."
+					icon={Search}
 				>
-					<div
-						class="w-10 h-10 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] flex items-center justify-center"
-					>
-						<Search size={18} />
-					</div>
-					<h4 class="m-0 text-sm font-bold text-[var(--text-primary)]">
-						No models match your search
-					</h4>
-					<p class="m-0 text-xs text-[var(--text-muted)]">
-						Try adjusting your filters or search keywords.
-					</p>
-					<button
-						type="button"
-						class="app-btn app-btn-secondary app-btn-sm mt-1"
-						onclick={() => {
-							searchQuery = '';
-							selectedRuntimeFilter = 'all';
-							selectedStatusFilter = 'all';
-						}}
-					>
-						Clear Filters
-					</button>
-				</div>
+					{#snippet actions()}
+						<Button
+							variant="secondary"
+							onclick={() => {
+								searchQuery = '';
+								selectedRuntimeFilter = 'all';
+								selectedStatusFilter = 'all';
+							}}
+						>
+							Clear Filters
+						</Button>
+					{/snippet}
+				</EmptyState>
 			{:else}
-				<!-- Compact Model Cards Grid (Borderless, Muted when missing) -->
+				<!-- Compact Model Cards Grid -->
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
 					{#each filteredModels as model (model.id)}
 						{@const mainFile = getMainFile(model.flags)}
@@ -483,63 +414,41 @@
 						{@const isRunning = !!runningInfo}
 
 						<div
-							class="model-card bg-[var(--bg-surface)] border-0 rounded-xl p-4 flex flex-col justify-between gap-3 shadow-xs transition-opacity {isMissing
-								? 'opacity-55 hover:opacity-75'
+							class="bg-[var(--bg-surface)] rounded-xl p-4 flex flex-col justify-between gap-3 shadow-xs transition-opacity {isMissing
+								? 'opacity-65 hover:opacity-85'
 								: ''}"
 						>
 							<!-- Header: Model ID + Badges + Status -->
 							<div class="flex flex-col gap-2 min-w-0">
-								<div class="flex items-center justify-between gap-2">
-									<div class="flex items-center gap-1.5 min-w-0">
-										<ModelBadge model={model.id} variant="inline" />
-										<span
-											class="px-2 py-0.5 rounded text-[0.68rem] font-medium bg-[var(--bg-primary)] text-[var(--text-muted)] border-0 shrink-0"
-										>
-											{model.runtime}
-										</span>
-									</div>
+								<ModelBadge model={model.id} variant="badge-full" />
 
-									{#if isRunning}
-										<span
-											class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.68rem] font-semibold bg-emerald-500/15 text-emerald-400 border-0 shrink-0"
-										>
-											<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-											<span>Running :{runningInfo?.port}</span>
-										</span>
-									{:else if isMissing}
-										<span
-											class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.68rem] font-medium bg-amber-500/15 text-amber-500 border-0 shrink-0"
-											title="Weights file not found on disk"
-										>
-											<AlertTriangle size={11} />
-											<span>Missing File</span>
-										</span>
-									{/if}
-								</div>
-
-								<!-- Model ID with copy shortcut -->
-								<div
-									class="flex items-center gap-1.5 text-xs font-mono font-semibold text-[var(--text-primary)] min-w-0"
-								>
-									<span class="truncate" title={model.id}>{model.id}</span>
-									<button
-										type="button"
-										class="p-0.5 bg-transparent border-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer rounded transition-colors shrink-0"
-										onclick={() => copyId(model.id)}
-										title="Copy model ID"
+								<div class="flex justify-between gap-1.5">
+									<!-- Model ID with copy shortcut -->
+									<span
+										class="flex items-center gap-1.5 text-xs text-[var(--text-muted)] p-1 truncate"
+										title={model.id}
 									>
-										{#if copiedId === model.id}
-											<Check size={12} class="text-emerald-400" />
-										{:else}
-											<Copy size={12} />
-										{/if}
-									</button>
+										{model.id}
+									</span>
+
+									<Badge variant="pill">{model.runtime}</Badge>
+									
+									{#if true || isRunning}
+										<Badge variant="success" pulse={true}>
+											Running :{runningInfo?.port}
+										</Badge>
+									{:else if isMissing}
+										<Badge variant="warning">
+											<AlertTriangle size={11} class="shrink-0" />
+											<span>{t('models.fileMissing')}</span>
+										</Badge>
+									{/if}
 								</div>
 							</div>
 
-							<!-- File information (Borderless compact pill) -->
+							<!-- File information -->
 							<div
-								class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-primary)] border-0"
+								class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-hover)] border border-[var(--border-color)]/50"
 							>
 								<div
 									class="flex items-center gap-1.5 min-w-0 font-mono {isMissing
@@ -559,33 +468,33 @@
 										</span>
 									{/if}
 									<span
-										class="px-1.5 py-0.2 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border-0"
+										class="px-1.5 py-0.2 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]/50"
 									>
 										{fileDetails.format}
 									</span>
 								</div>
 							</div>
 
-							<!-- Action Buttons: Standardized matching runtimes page -->
+							<!-- Action Buttons -->
 							<div class="flex items-center justify-end gap-2 pt-1">
-								<button
-									type="button"
-									class="app-btn app-btn-secondary app-btn-sm"
+								<Button
+									variant="secondary"
+									size="sm"
 									onclick={() => startEditModel(model)}
-									title="Edit model"
+									title={t('common.edit')}
 								>
 									<Edit2 size={13} />
-									<span>Edit</span>
-								</button>
-								<button
-									type="button"
-									class="app-btn app-btn-danger app-btn-sm"
+									<span>{t('common.edit')}</span>
+								</Button>
+								<Button
+									variant="danger"
+									size="sm"
 									onclick={() => deleteModel(model.id)}
-									title="Delete model"
+									title={t('common.delete')}
 								>
 									<Trash2 size={13} />
-									<span>Delete</span>
-								</button>
+									<span>{t('common.delete')}</span>
+								</Button>
 							</div>
 						</div>
 					{/each}
@@ -594,10 +503,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	/* Solid card container without background flash on hover */
-	.model-card {
-		background-color: var(--bg-surface);
-	}
-</style>

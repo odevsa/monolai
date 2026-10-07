@@ -52,7 +52,10 @@
 
 	let pathD = $derived.by(() => {
 		if (points.length === 0) return '';
-		return points.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`, '');
+		return points.reduce(
+			(acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`,
+			''
+		);
 	});
 
 	let areaD = $derived.by(() => {
@@ -65,28 +68,32 @@
 	let lastPoint = $derived(points.length > 0 ? points[points.length - 1] : null);
 </script>
 
-<div class="bg-[var(--bg-surface)] rounded-2xl p-5 flex flex-col justify-between gap-4 h-full border-0">
+<div
+	class="bg-[var(--bg-surface)] rounded-2xl p-5 flex flex-col justify-between gap-4 h-full border-0"
+>
 	<div class="flex items-start justify-between gap-4 min-w-0">
-		<div class="flex items-center gap-3 min-w-0 flex-1">
+		<div class="flex items-center gap-2 min-w-0 flex-1">
 			{#if IconComponent}
-				<div
-					class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-					style="background-color: color-mix(in srgb, {color} 15%, transparent); color: {color}"
-				>
-					<IconComponent size={18} />
+				<div class="flex items-center justify-center shrink-0" style="color: {color}">
+					<IconComponent size={28} />
 				</div>
 			{/if}
 			<div class="min-w-0 flex-1">
 				<h3 class="m-0 text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h3>
 				{#if subtitle}
-					<span class="text-xs text-[var(--text-muted)] block mt-0.5 truncate" title={subtitle}>{subtitle}</span>
+					<span class="text-xs text-[var(--text-muted)] block mt-0.5 truncate" title={subtitle}
+						>{subtitle}</span
+					>
 				{/if}
 			</div>
 		</div>
 
 		{#if !unavailable}
 			<div class="flex items-baseline gap-1.5 shrink-0 ml-auto pt-0.5">
-				<span class="text-2xl font-bold tracking-tight leading-none tabular-nums whitespace-nowrap" style="color: {color}">
+				<span
+					class="text-2xl font-bold tracking-tight leading-none tabular-nums whitespace-nowrap"
+					style="color: {color}"
+				>
 					{typeof currentValue === 'number' ? currentValue.toFixed(1) : currentValue}
 				</span>
 				<span class="text-xs font-medium text-[var(--text-muted)] shrink-0">{unit}</span>
@@ -95,8 +102,12 @@
 	</div>
 
 	{#if unavailable}
-		<div class="w-full h-[140px] flex flex-col items-center justify-center p-4 text-center bg-[var(--bg-surface-hover)] rounded-xl border-0">
-			<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-semibold">
+		<div
+			class="w-full h-[140px] flex flex-col items-center justify-center p-4 text-center bg-[var(--bg-surface-hover)] rounded-xl border-0"
+		>
+			<div
+				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-semibold"
+			>
 				<AlertTriangle size={15} />
 				<span>{unavailableMessage}</span>
 			</div>
@@ -105,12 +116,10 @@
 			</p>
 		</div>
 	{:else}
-		<div class="w-full h-[140px] relative overflow-hidden rounded-xl bg-[var(--bg-surface-hover)] border-0">
-			<svg
-				viewBox="0 0 {width} {height}"
-				preserveAspectRatio="none"
-				class="w-full h-full block"
-			>
+		<div
+			class="w-full h-[140px] relative overflow-hidden rounded-xl bg-[var(--bg-surface-hover)] border-0"
+		>
+			<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none" class="w-full h-full block">
 				<defs>
 					<linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color={color} stop-opacity="0.45" />
@@ -120,9 +129,27 @@
 				</defs>
 
 				<!-- Grid Lines -->
-				<line x1="0" y1={paddingY} x2={width} y2={paddingY} class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1" />
-				<line x1="0" y1={height / 2} x2={width} y2={height / 2} class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1" />
-				<line x1="0" y1={height - paddingY} x2={width} y2={height - paddingY} class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1" />
+				<line
+					x1="0"
+					y1={paddingY}
+					x2={width}
+					y2={paddingY}
+					class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1"
+				/>
+				<line
+					x1="0"
+					y1={height / 2}
+					x2={width}
+					y2={height / 2}
+					class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1"
+				/>
+				<line
+					x1="0"
+					y1={height - paddingY}
+					x2={width}
+					y2={height - paddingY}
+					class="stroke-[var(--border-color)] stroke-dasharray-[4_4] stroke-opacity-40 stroke-1"
+				/>
 
 				{#if points.length > 0}
 					<!-- Area Fill -->

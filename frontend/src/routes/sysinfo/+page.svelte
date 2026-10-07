@@ -1,78 +1,25 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import { Activity, Box, Cpu, HardDrive, MemoryStick, Monitor, Power, RefreshCw, Zap } from '@lucide/svelte';
 	import { MAX_CHART_POINTS } from '$lib';
+	import { hostApi } from '$lib/api/host';
 	import AreaChart from '$lib/components/AreaChart.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { setSysinfoStatus } from '$lib/headerStore';
+	import { Alert, PageHeader } from '$lib/components/ds';
+	import { t } from '$lib/i18n';
+	import {
+		getStatusType,
+		runningModelsState,
+		startRunningStatePolling,
+		unloadAllModels,
+		unloadModel
+	} from '$lib/runningModelsStore';
+	import { headerState } from '$lib/state/header.svelte';
+	import type { HostMetricsTick, SysInfo } from '$lib/types/host';
 	import { formatBytes, formatUptime } from '$lib/utils/format';
 	import { parseModelDetails } from '$lib/utils/model';
-	import {
-		runningModels,
-		unloadingModelIds,
-		unloadModel,
-		unloadAllModels,
-		getStatusType,
-		startRunningStatePolling
-	} from '$lib/runningModelsStore';
+	import { Activity, Box, Cpu, Gpu, MemoryStick, Monitor, Power, RefreshCw } from '@lucide/svelte';
+	import { onDestroy, onMount } from 'svelte';
 
-	interface CpuInfo {
-		usage: number;
-		cores: number;
-		brand: string;
-		frequency_mhz: number;
-	}
-
-	interface RamInfo {
-		total_bytes: number;
-		used_bytes: number;
-		free_bytes: number;
-		percentage: number;
-	}
-
-	interface OsInfo {
-		name: string;
-		kernel_version: string;
-		os_version: string;
-		hostname: string;
-		uptime_seconds: number;
-	}
-
-	interface VramInfo {
-		total_bytes: number;
-		used_bytes: number;
-		free_bytes: number;
-		percentage: number;
-	}
-
-	interface SysInfo {
-		cpu: CpuInfo;
-		ram: RamInfo;
-		os: OsInfo;
-		gpu: {
-			name: string;
-			vendor: string;
-			memory_total_bytes?: number | null;
-			driver_version?: string | null;
-			is_dedicated: boolean;
-		} | null;
-		vram?: VramInfo | null;
-		timestamp: number;
-	}
-
-	interface HostMetricsTick {
-		cpu_usage: number;
-		ram_used_bytes: number;
-		ram_total_bytes: number;
-		ram_free_bytes: number;
-		ram_percentage: number;
-		gpu_usage: number | null;
-		vram_used_bytes?: number | null;
-		vram_total_bytes?: number | null;
-		vram_free_bytes?: number | null;
-		vram_percentage?: number | null;
-		timestamp: number;
-	}
+	let runningModelsList = $derived(runningModelsState.runningModels);
+	let unloadingIds = $derived(runningModelsState.unloadingModelIds);
 
 	let sysinfo = $state<SysInfo | null>(null);
 	let loadingStatic = $state(true);
@@ -85,14 +32,13 @@
 	let gpuHistory = $state<number[]>([]);
 	let vramHistory = $state<number[]>([]);
 
-	let eventSource: EventSource | null = null;
+	let unsubscribeMetrics: (() => void) | null = null;
 
 	async function fetchStaticHostInfo() {
 		try {
 			loadingStatic = true;
-			const res = await fetch('/api/host');
-			if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-			sysinfo = await res.json();
+			const data = await hostApi.getInfo();
+			sysinfo = data;
 			error = null;
 		} catch (e: any) {
 			error = e.message || 'Failed to connect to backend';
@@ -107,22 +53,16 @@
 	}
 
 	function connectMetricsStream() {
-		if (eventSource) {
-			eventSource.close();
+		if (unsubscribeMetrics) {
+			unsubscribeMetrics();
 		}
 
-		eventSource = new EventSource('/api/host/usage');
-
-		eventSource.onopen = () => {
-			sseConnected = true;
-			error = null;
-			setSysinfoStatus(true, reconnectMetricsStream);
-		};
-
-		eventSource.onmessage = (event) => {
-			try {
-				const tick: HostMetricsTick = JSON.parse(event.data);
+		unsubscribeMetrics = hostApi.subscribeMetrics(
+			(tick) => {
 				latestTick = tick;
+				sseConnected = true;
+				error = null;
+				headerState.setSysinfoStatus(true, reconnectMetricsStream);
 
 				cpuHistory = [...cpuHistory.slice(-(MAX_CHART_POINTS - 1)), tick.cpu_usage];
 				ramHistory = [...ramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.ram_percentage];
@@ -134,16 +74,12 @@
 				if (tick.vram_percentage !== null && tick.vram_percentage !== undefined) {
 					vramHistory = [...vramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.vram_percentage];
 				}
-			} catch (err) {
-				console.error('Failed to parse SSE metrics tick:', err);
+			},
+			() => {
+				sseConnected = false;
+				headerState.setSysinfoStatus(false, reconnectMetricsStream);
 			}
-		};
-
-		eventSource.onerror = (err) => {
-			console.warn('SSE connection lost or error:', err);
-			sseConnected = false;
-			setSysinfoStatus(false, reconnectMetricsStream);
-		};
+		);
 	}
 
 	let stopRunningStatePolling: (() => void) | null = null;
@@ -151,18 +87,19 @@
 	onMount(() => {
 		fetchStaticHostInfo();
 		connectMetricsStream();
-		stopRunningStatePolling = startRunningStatePolling(3000);
+		stopRunningStatePolling = startRunningStatePolling(2500);
 	});
 
 	onDestroy(() => {
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
+		if (unsubscribeMetrics) {
+			unsubscribeMetrics();
+			unsubscribeMetrics = null;
 		}
 		if (stopRunningStatePolling) {
 			stopRunningStatePolling();
 			stopRunningStatePolling = null;
 		}
+		headerState.setSysinfoStatus(false);
 	});
 
 	let isGpuUnavailable = $derived.by(() => {
@@ -174,8 +111,19 @@
 	let isVramUnavailable = $derived.by(() => {
 		if (isGpuUnavailable) return true;
 		if (sysinfo?.vram && sysinfo.vram.total_bytes > 0) return false;
-		if (latestTick && latestTick.vram_percentage !== null && latestTick.vram_percentage !== undefined) return false;
-		if (latestTick && latestTick.vram_total_bytes !== null && latestTick.vram_total_bytes !== undefined && latestTick.vram_total_bytes > 0) return false;
+		if (
+			latestTick &&
+			latestTick.vram_percentage !== null &&
+			latestTick.vram_percentage !== undefined
+		)
+			return false;
+		if (
+			latestTick &&
+			latestTick.vram_total_bytes !== null &&
+			latestTick.vram_total_bytes !== undefined &&
+			latestTick.vram_total_bytes > 0
+		)
+			return false;
 		if (sysinfo?.gpu?.memory_total_bytes && sysinfo.gpu.memory_total_bytes > 0) return false;
 		return true;
 	});
@@ -185,74 +133,69 @@
 	<title>Monolai - System Info</title>
 </svelte:head>
 
-<div class="page-container">
-	<div class="page-inner gap-8">
+<div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
+	<div class="flex flex-col gap-6">
+		<!-- Page Header (clean, without duplicate Live Stream badge which lives in the floating header) -->
 		<PageHeader
-			title="System Info"
-			subtitle="Real-time resource utilization streaming"
+			title={t('sysinfo.pageTitle')}
+			subtitle={t('sysinfo.pageSubtitle')}
 			icon={Activity}
 		/>
 
 		{#if error}
-			<div
-				class="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-surface)] border-0 text-[var(--text-primary)] text-xs"
-			>
-				<div>
-					<strong class="text-red-500">Backend Connection Failure:</strong>
-					{error}
+			<Alert variant="error" title="Backend Connection Failure:">
+				<div class="flex items-center justify-between gap-3">
+					<span>{error}</span>
+					<button
+						type="button"
+						class="px-3 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 cursor-pointer text-[var(--text-primary)]"
+						onclick={reconnectMetricsStream}
+					>
+						{t('common.refresh')}
+					</button>
 				</div>
-				<button
-					type="button"
-					class="px-3 py-1.5 text-xs font-medium border-0 bg-[var(--btn-bg)] text-[var(--btn-text)] rounded-lg cursor-pointer transition-colors hover:bg-[var(--btn-hover)]"
-					onclick={() => {
-						fetchStaticHostInfo();
-						connectMetricsStream();
-					}}
-				>
-					Retry Connection
-				</button>
-			</div>
+			</Alert>
 		{/if}
 
 		<!-- Real-Time Mountain Charts Section -->
 		<section class="flex flex-col gap-4">
-			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
 				<!-- CPU Usage Mountain Chart -->
 				<AreaChart
 					title="CPU Utilization"
 					subtitle={sysinfo
-						? `${sysinfo.cpu.brand} (${sysinfo.cpu.cores} Cores)`
+						? `${sysinfo.cpu.brand} (${sysinfo.cpu.cores} cores)`
 						: 'Host Processor'}
-					currentValue={latestTick ? latestTick.cpu_usage : (sysinfo?.cpu.usage ?? 0)}
+					currentValue={latestTick?.cpu_usage ?? sysinfo?.cpu?.usage ?? 0}
 					unit="%"
-					color="#38bdf8"
+					color="#9845e7"
 					icon={Cpu}
 					data={cpuHistory}
 					maxVal={100}
 				/>
 
-				<!-- RAM Memory Mountain Chart -->
+				<!-- RAM Usage Mountain Chart -->
 				<AreaChart
-					title="RAM Memory Usage"
+					title="RAM Usage"
 					subtitle={sysinfo
 						? `${formatBytes(latestTick?.ram_used_bytes ?? sysinfo.ram.used_bytes)} / ${formatBytes(sysinfo.ram.total_bytes)}`
-						: 'Physical RAM'}
-					currentValue={latestTick ? latestTick.ram_percentage : (sysinfo?.ram.percentage ?? 0)}
+						: 'System Memory'}
+					currentValue={latestTick?.ram_percentage ?? sysinfo?.ram?.percentage ?? 0}
 					unit="%"
-					color="#34d399"
-					icon={HardDrive}
+					color="#c875ff"
+					icon={MemoryStick}
 					data={ramHistory}
 					maxVal={100}
 				/>
 
-				<!-- GPU Usage Mountain Chart -->
+				<!-- GPU Utilization Mountain Chart -->
 				<AreaChart
-					title="GPU Engine"
-					subtitle={!isGpuUnavailable ? (sysinfo?.gpu?.name || 'Dedicated Acceleration') : 'No Dedicated GPU Detected'}
-					currentValue={latestTick?.gpu_usage ?? 0}
+					title="GPU Utilization"
+					subtitle={sysinfo?.gpu ? sysinfo.gpu.name : 'Dedicated Graphics'}
+					currentValue={latestTick?.gpu_usage ?? (isGpuUnavailable ? 0 : 0)}
 					unit="%"
-					color="#a855f7"
-					icon={Zap}
+					color="#00a971"
+					icon={Gpu}
 					data={gpuHistory}
 					maxVal={100}
 					unavailable={isGpuUnavailable}
@@ -261,13 +204,13 @@
 
 				<!-- VRAM Memory Mountain Chart -->
 				<AreaChart
-					title="VRAM Memory Usage"
+					title="VRAM Usage"
 					subtitle={!isVramUnavailable
 						? `${formatBytes(latestTick?.vram_used_bytes ?? sysinfo?.vram?.used_bytes ?? 0)} / ${formatBytes(latestTick?.vram_total_bytes ?? sysinfo?.vram?.total_bytes ?? sysinfo?.gpu?.memory_total_bytes ?? 0)}`
 						: 'Dedicated Video RAM'}
 					currentValue={latestTick?.vram_percentage ?? sysinfo?.vram?.percentage ?? 0}
 					unit="%"
-					color="#f43f5e"
+					color="#30d9a1"
 					icon={MemoryStick}
 					data={vramHistory}
 					maxVal={100}
@@ -277,76 +220,52 @@
 			</div>
 		</section>
 
-		<!-- Loaded Models Section -->
-		<section class="bg-[var(--bg-surface)] rounded-2xl p-6 flex flex-col gap-5 border-0 shadow-sm">
-			<div class="flex items-center justify-between flex-wrap gap-3">
+		<!-- Active Models Section -->
+		<section class="bg-[var(--bg-surface)] rounded-2xl p-6 flex flex-col gap-4 border-0 shadow-xs">
+			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
-					<div
-						class="w-9 h-9 rounded-xl bg-[var(--primary)]/15 text-[var(--primary)] flex items-center justify-center shrink-0"
-					>
-						<Box size={18} />
-					</div>
-					<div>
-						<div class="flex items-center gap-2">
-							<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">Loaded Models</h3>
-							{#if $runningModels.length > 0}
-								<span
-									class="text-[0.7rem] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5"
-								>
-									<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-									{$runningModels.length}
-									{$runningModels.length === 1 ? 'model' : 'models'} active
-								</span>
-							{:else}
-								<span
-									class="text-[0.7rem] font-medium px-2 py-0.5 rounded-full bg-white/5 text-[var(--text-muted)] border border-[var(--border-color)]"
-								>
-									0 active
-								</span>
-							{/if}
-						</div>
-						<p class="m-0 text-xs text-[var(--text-muted)] mt-0.5">
-							Active upstream inference processes currently running in memory
-						</p>
+					<div class="flex items-center gap-2">
+						<Box size={16} class="text-[var(--primary)]" />
+						<h3 class="app-card-title text-sm">Active Models</h3>
 					</div>
 				</div>
 
-				{#if $runningModels.length > 0}
+				{#if runningModelsList.length > 0}
 					<button
 						type="button"
-						class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/25 rounded-lg cursor-pointer transition-all hover:bg-red-500/20 hover:border-red-500/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 cursor-pointer transition-all hover:bg-red-500/20 hover:border-red-500/30 active:scale-95"
 						onclick={() => unloadAllModels()}
-						title="Unload all running models from memory"
+						title="Unload all running models"
 					>
-						<Power size={14} />
+						<Power size={13} />
 						<span>Unload All</span>
 					</button>
 				{/if}
 			</div>
 
-			{#if $runningModels.length === 0}
+			{#if runningModelsList.length === 0}
 				<div
-					class="flex flex-col items-center justify-center gap-2.5 py-8 px-4 rounded-xl border border-dashed border-[var(--border-color)] bg-black/10 text-center"
+					class="flex flex-col stretch items-center gap-2 p-4 rounded-xl bg-white/[0.02] border-0 text-[var(--text-muted)]"
 				>
 					<div
-						class="w-10 h-10 rounded-xl bg-white/5 text-[var(--text-muted)] flex items-center justify-center"
+						class="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-white/[0.04] text-[var(--text-muted)]"
 					>
-						<Box size={20} class="opacity-60" />
+						<Box size={16} />
 					</div>
-					<div class="flex flex-col gap-0.5">
-						<span class="text-xs font-semibold text-[var(--text-primary)]"
-							>No Models Currently Loaded</span
-						>
-						<span class="text-[0.75rem] text-[var(--text-muted)] max-w-md">
+					<div>
+						<div class="text-xs text-center font-semibold text-[var(--text-primary)]">
+							No Models Currently Loaded
+						</div>
+						<div class="text-[0.75rem] text-center text-[var(--text-muted)] max-w-md">
 							Inference processes spawn automatically when a chat or OpenAI API request is made, and
 							auto-unload when idle.
-						</span>
+						</div>
 					</div>
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-					{#each $runningModels as model (model.model_id)}
-						{@const isUnloading = $unloadingModelIds.has(model.model_id)}
+					{#each runningModelsList as model (model.model_id)}
+						{@const isUnloading = unloadingIds.has(model.model_id)}
 						{@const rawStatus = getStatusType(model.state)}
 						{@const statusType = isUnloading ? 'loading' : rawStatus}
 						{@const parsed = parseModelDetails(model.model_id)}
@@ -354,7 +273,7 @@
 						<div
 							class="flex flex-col justify-between gap-3 p-4 rounded-xl bg-white/[0.03] border-0 transition-all hover:bg-white/[0.06]"
 						>
-							<!-- Top row: icons only -->
+							<!-- Top row: indicators and runtime -->
 							<div class="flex items-center justify-between">
 								<div class="flex items-center gap-2">
 									<span
@@ -371,7 +290,6 @@
 									></span>
 									<Box size={16} class="text-[var(--text-muted)]" />
 
-									<!-- Runtime on a line below badges -->
 									<span
 										class="text-[0.625rem] font-semibold bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] px-2 py-0.5 rounded-md uppercase tracking-wider inline-block"
 									>
@@ -395,7 +313,7 @@
 								</button>
 							</div>
 
-							<!-- Model Name in a single bold line -->
+							<!-- Model Name -->
 							<div class="min-w-0">
 								<h4
 									class="m-0 text-sm font-bold text-[var(--text-primary)] truncate"
@@ -405,7 +323,7 @@
 								</h4>
 							</div>
 
-							<!-- Badges on their own line -->
+							<!-- Badges -->
 							{#if parsed.tags.length > 0}
 								<div class="flex items-center gap-1.5 flex-wrap">
 									{#each parsed.tags as tag}
@@ -418,7 +336,7 @@
 								</div>
 							{/if}
 
-							<!-- Metrics: PID, Port, Idle formatted as a table -->
+							<!-- Metrics Table -->
 							<div class="mt-auto pt-2.5 border-t border-[var(--border-color)]/40">
 								<table class="w-full text-[0.725rem] font-mono border-collapse">
 									<thead>
@@ -461,19 +379,23 @@
 
 		<!-- Static System Info Cards -->
 		{#if sysinfo}
-			<section class="bg-[var(--bg-surface)] rounded-2xl p-6 flex flex-col gap-5 border-0">
+			<section
+				class="bg-[var(--bg-surface)] rounded-2xl p-6 flex flex-col gap-5 border-0 shadow-xs"
+			>
 				<div class="flex items-center gap-3">
-					<div
-						class="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0"
-					>
-						<Monitor size={18} />
-					</div>
-					<div>
-						<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">Host System Details</h3>
+					<div class="flex items-center gap-2">
+						<Monitor size={16} class="text-[var(--primary)]" />
+						<h3 class="app-card-title text-sm">Host System Details</h3>
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu ? ((sysinfo.vram?.total_bytes ?? sysinfo.gpu.memory_total_bytes) ? 'xl:grid-cols-6' : 'xl:grid-cols-5') : ''} gap-4">
+				<div
+					class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu
+						? (sysinfo.vram?.total_bytes ?? sysinfo.gpu.memory_total_bytes)
+							? 'xl:grid-cols-6'
+							: 'xl:grid-cols-5'
+						: ''} gap-4"
+				>
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
@@ -522,13 +444,12 @@
 							>
 							<span
 								class="text-sm font-semibold text-[var(--text-primary)] truncate"
-								title={sysinfo.gpu.name}
-								>{sysinfo.gpu.name}</span
+								title={sysinfo.gpu.name}>{sysinfo.gpu.name}</span
 							>
 						</div>
 					{/if}
 
-					{#if (sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes)}
+					{#if sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes}
 						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 							<span
 								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"

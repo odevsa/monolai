@@ -14,6 +14,9 @@
 	import Logo from './Logo.svelte';
 	import GeneralSettingsTab from './GeneralSettingsTab.svelte';
 	import { THEMES, type ThemeId } from '$lib/themes';
+	import { configApi } from '$lib/api/config';
+	import type { ConfigStatus } from '$lib/types/config';
+	import { t } from '$lib/i18n';
 	import { APP_VERSION } from '$lib/version';
 
 	let {
@@ -27,20 +30,12 @@
 	} = $props();
 
 	let activeTab = $state<'general' | 'appearance' | 'about'>('general');
-	let configStatus = $state<{
-		loaded_path: string | null;
-		expected_path: string;
-		models_dir: string | null;
-		runtimes_dir: string | null;
-		hardware: string;
-		host?: string;
-		port?: number;
-	} | null>(null);
+	let configStatus = $state<ConfigStatus | null>(null);
 
 	$effect(() => {
 		if (open && activeTab === 'about') {
-			fetch('/api/config/status')
-				.then((r) => (r.ok ? r.json() : null))
+			configApi
+				.getStatus()
 				.then((data) => {
 					if (data) configStatus = data;
 				})
@@ -289,7 +284,9 @@
 									<span class="text-[var(--text-primary)] font-semibold">Rust</span>
 								</div>
 								<div
-									class="flex items-center justify-between text-xs py-1.5 {configStatus ? 'border-b border-[var(--border-color)]/60' : ''}"
+									class="flex items-center justify-between text-xs py-1.5 {configStatus
+										? 'border-b border-[var(--border-color)]/60'
+										: ''}"
 								>
 									<span class="text-[var(--text-muted)]">Frontend</span>
 									<span class="text-[var(--text-primary)] font-semibold">Svelte + Tailwind</span>

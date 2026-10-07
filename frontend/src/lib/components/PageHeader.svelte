@@ -1,11 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { PageHeader } from './ds';
 
 	let {
 		title,
 		subtitle,
-		icon: IconComponent = null,
-		iconSize = 48,
+		icon = null,
+		iconSize,
 		children
 	}: {
 		title: string;
@@ -16,21 +17,8 @@
 	} = $props();
 </script>
 
-<header class="page-header">
-	<div class="flex items-center gap-4">
-		{#if IconComponent}
-			<IconComponent size={iconSize} strokeWidth={1} class="text-white shrink-0" />
-		{/if}
-		<div>
-			<h2 class="page-title">{title}</h2>
-			{#if subtitle}
-				<p class="page-subtitle">{subtitle}</p>
-			{/if}
-		</div>
-	</div>
+<PageHeader {title} {subtitle} {icon} {iconSize}>
 	{#if children}
-		<div class="flex items-center gap-2">
-			{@render children()}
-		</div>
+		{@render children()}
 	{/if}
-</header>
+</PageHeader>

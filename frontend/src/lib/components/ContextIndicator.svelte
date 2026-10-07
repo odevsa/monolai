@@ -94,7 +94,9 @@
 		type="button"
 		class="context-trigger-btn {isOpen ? 'active' : ''}"
 		onclick={togglePopover}
-		title="Context window: {contextInfo.percentage}% used ({contextInfo.usedTokens} / {formatTokenCount(contextInfo.maxTokens)})"
+		title="Context window: {contextInfo.percentage}% used ({contextInfo.usedTokens} / {formatTokenCount(
+			contextInfo.maxTokens
+		)})"
 		aria-label="Context usage"
 	>
 		<svg class="circular-progress" viewBox="0 0 36 36">
@@ -124,17 +126,15 @@
 		></div>
 
 		<!-- Context Popover matching screenshot with exact typography and KV metrics -->
-		<div
-			class="context-popover"
-			role="dialog"
-			bind:this={popoverRef}
-			style={desktopStyle}
-		>
+		<div class="context-popover" role="dialog" bind:this={popoverRef} style={desktopStyle}>
 			<div class="context-header">
 				<span class="context-title">Context</span>
 				<span class="context-divider">·</span>
 				<span class="context-numbers font-medium">
-					{formatUsedInScale((details.kvCacheTotal ?? contextInfo.usedTokens) || 0, contextInfo.maxTokens)} / {formatTokenCount(contextInfo.maxTokens)}
+					{formatUsedInScale(
+						(details.kvCacheTotal ?? contextInfo.usedTokens) || 0,
+						contextInfo.maxTokens
+					)} / {formatTokenCount(contextInfo.maxTokens)}
 				</span>
 			</div>
 
@@ -142,14 +142,17 @@
 			<div class="progress-bar-track">
 				<div
 					class="progress-bar-fill"
-					style="width: {contextInfo.usedTokens > 0 ? Math.max(1, Math.min(100, contextInfo.percentage)) : 0}%;"
+					style="width: {contextInfo.usedTokens > 0
+						? Math.max(1, Math.min(100, contextInfo.percentage))
+						: 0}%;"
 				></div>
 			</div>
 
 			<!-- Stats row -->
 			<div class="context-stats-row">
 				<span class="stat-used">{contextInfo.percentage}% used</span>
-				<span class="stat-remaining">{formatTokenCount(contextInfo.remainingTokens)} remaining</span>
+				<span class="stat-remaining">{formatTokenCount(contextInfo.remainingTokens)} remaining</span
+				>
 			</div>
 
 			<div class="context-separator"></div>
@@ -197,8 +200,12 @@
 							<span class="breakdown-val">{details.thisTurnGenerated} tok</span>
 						</div>
 						<div class="breakdown-row highlight-row">
-							<span class="breakdown-label font-medium text-[var(--text-primary)]">KV cache total</span>
-							<span class="breakdown-val font-semibold text-[var(--text-primary)]">{details.kvCacheTotal} tok</span>
+							<span class="breakdown-label font-medium text-[var(--text-primary)]"
+								>KV cache total</span
+							>
+							<span class="breakdown-val font-semibold text-[var(--text-primary)]"
+								>{details.kvCacheTotal} tok</span
+							>
 						</div>
 					</div>
 
@@ -270,7 +277,9 @@
 		stroke: var(--primary);
 		stroke-width: 5;
 		stroke-linecap: round;
-		transition: stroke-dasharray 0.3s ease, stroke 0.3s ease;
+		transition:
+			stroke-dasharray 0.3s ease,
+			stroke 0.3s ease;
 	}
 
 	/* Completely opaque, responsive popover */

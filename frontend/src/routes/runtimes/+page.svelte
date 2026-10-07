@@ -11,13 +11,13 @@
 		FolderCheck
 	} from '@lucide/svelte';
 	import { askConfirm } from '$lib/confirmStore';
-	import { runtimesRefreshing, runtimesRefreshFn } from '$lib/headerStore';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import Badge from '$lib/components/Badge.svelte';
-	import Alert from '$lib/components/Alert.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Select from '$lib/components/Select.svelte';
+	import { headerState } from '$lib/state/header.svelte';
+	import { runtimesApi } from '$lib/api/runtimes';
+	import type { Runtime, InstallProgress, AccelerationOption } from '$lib/types/runtimes';
+	import { t } from '$lib/i18n';
+	import { Button, Badge, Card, Select, PageHeader, Alert, EmptyState, Label, DiagonalLabel } from '$lib/components/ds';
 	import { refreshFeatures } from '$lib/featuresStore';
+	import { formatBytes } from '$lib/utils/format';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
 	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
 
@@ -26,43 +26,10 @@
 		'sd-cpp': sdIcon
 	};
 
-	interface InstallProgress {
-		runtime_id: string;
-		status: 'idle' | 'downloading' | 'extracting' | 'completed' | 'error' | string;
-		percent: number;
-		speed_mbps: number;
-		downloaded_bytes: number;
-		total_bytes: number;
-		error_message: string | null;
-		message?: string | null;
-	}
-
 	function isInstallingStatus(status?: string): boolean {
 		if (!status) return false;
 		const s = status.toLowerCase();
 		return s.startsWith('download') || s.startsWith('extract');
-	}
-
-	interface AccelerationOption {
-		id: string;
-		label: string;
-		is_recommended: boolean;
-	}
-
-	interface Runtime {
-		id: string;
-		name: string;
-		version: string;
-		icon: string | null;
-		website: string | null;
-		description: string;
-		features: string[];
-		is_installed: boolean;
-		installed_path: string | null;
-		active_acceleration: string;
-		installed_acceleration: string | null;
-		available_accelerations: AccelerationOption[];
-		install_progress: InstallProgress | null;
 	}
 
 	let runtimes = $state<Runtime[]>([]);
@@ -70,22 +37,18 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	// Map of active event sources keyed by runtime_id
-	const activeEventSources: Record<string, EventSource> = {};
+	// Map of active cancel callbacks keyed by runtime_id
+	const activeStreams: Record<string, () => void> = {};
 
 	async function fetchRuntimes() {
 		try {
 			loading = true;
-			runtimesRefreshing.set(true);
+			headerState.setRuntimesRefreshing(true);
 			error = null;
-			const res = await fetch('/api/runtimes');
-			if (!res.ok) {
-				throw new Error('Failed to fetch runtimes');
-			}
-			const data: Runtime[] = await res.json();
-			runtimes = data;
+			const data = await runtimesApi.list();
+			runtimes = data || [];
 
-			for (const r of data) {
+			for (const r of runtimes) {
 				if (!selectedAccelerations[r.id]) {
 					const rec = r.available_accelerations?.find((a) => a.is_recommended);
 					selectedAccelerations[r.id] =
@@ -98,10 +61,7 @@
 
 			// Reconnect SSE for any runtime currently downloading/extracting
 			for (const runtime of runtimes) {
-				if (
-					isInstallingStatus(runtime.install_progress?.status) &&
-					!activeEventSources[runtime.id]
-				) {
+				if (isInstallingStatus(runtime.install_progress?.status) && !activeStreams[runtime.id]) {
 					listenProgress(runtime.id);
 				}
 			}
@@ -109,50 +69,73 @@
 			error = err?.message || 'Error loading runtimes';
 		} finally {
 			loading = false;
-			runtimesRefreshing.set(false);
+			headerState.setRuntimesRefreshing(false);
 		}
 	}
 
 	function listenProgress(runtimeId: string) {
-		if (activeEventSources[runtimeId]) {
-			activeEventSources[runtimeId].close();
+		if (activeStreams[runtimeId]) {
+			activeStreams[runtimeId]();
+			delete activeStreams[runtimeId];
 		}
 
-		const sse = new EventSource(`/api/runtimes/${encodeURIComponent(runtimeId)}/install/stream`);
-		activeEventSources[runtimeId] = sse;
-
-		sse.onmessage = (event) => {
-			try {
-				const progress: InstallProgress = JSON.parse(event.data);
+		activeStreams[runtimeId] = runtimesApi.connectInstallStream(
+			runtimeId,
+			(progress) => {
 				const idx = runtimes.findIndex((r) => r.id === runtimeId);
 				if (idx !== -1) {
 					runtimes[idx].install_progress = progress;
 					if (progress.status === 'completed') {
 						runtimes[idx].is_installed = true;
-						sse.close();
-						delete activeEventSources[runtimeId];
-						// Refresh full state
+						if (activeStreams[runtimeId]) {
+							activeStreams[runtimeId]();
+							delete activeStreams[runtimeId];
+						}
 						fetchRuntimes();
 						refreshFeatures(true);
 					} else if (progress.status === 'error') {
-						sse.close();
-						delete activeEventSources[runtimeId];
+						if (activeStreams[runtimeId]) {
+							activeStreams[runtimeId]();
+							delete activeStreams[runtimeId];
+						}
 					}
 				}
-			} catch (e) {
-				console.error('Error parsing SSE progress:', e);
+			},
+			() => {
+				if (activeStreams[runtimeId]) {
+					delete activeStreams[runtimeId];
+				}
 			}
+		);
+	}
+
+	onMount(() => {
+		fetchRuntimes();
+		headerState.setRuntimesRefreshing(false, () => fetchRuntimes());
+
+		const handleNavRuntimes = () => {
+			fetchRuntimes();
 		};
 
-		sse.onerror = () => {
-			sse.close();
-			delete activeEventSources[runtimeId];
+		window.addEventListener('monolai:nav-runtimes', handleNavRuntimes);
+
+		return () => {
+			window.removeEventListener('monolai:nav-runtimes', handleNavRuntimes);
+			Object.values(activeStreams).forEach((cancel) => cancel());
 		};
-	}
+	});
+
+	onDestroy(() => {
+		headerState.setRuntimesRefreshing(false, undefined);
+		Object.values(activeStreams).forEach((cancel) => cancel());
+	});
+
+	afterNavigate(() => {
+		headerState.setRuntimesRefreshing(false, () => fetchRuntimes());
+	});
 
 	async function installRuntime(runtimeId: string) {
 		try {
-			// Optimistically set status
 			const idx = runtimes.findIndex((r) => r.id === runtimeId);
 			if (idx !== -1) {
 				runtimes[idx].install_progress = {
@@ -169,16 +152,7 @@
 			listenProgress(runtimeId);
 
 			const chosenHardware = selectedAccelerations[runtimeId];
-			const res = await fetch(`/api/runtimes/${encodeURIComponent(runtimeId)}/install`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ hardware: chosenHardware })
-			});
-
-			if (!res.ok) {
-				const msg = await res.text();
-				throw new Error(msg || 'Failed to start installation');
-			}
+			await runtimesApi.install(runtimeId, chosenHardware);
 		} catch (err: any) {
 			console.error(`Failed to install runtime ${runtimeId}:`, err);
 			const idx = runtimes.findIndex((r) => r.id === runtimeId);
@@ -198,305 +172,266 @@
 
 	async function uninstallRuntime(runtime: Runtime) {
 		const confirmed = await askConfirm(
-			`Are you sure you want to uninstall '${runtime.name}'? Models requiring this runtime will not be able to run until reinstalled.`,
-			`Uninstall ${runtime.name}`,
+			t('runtimes.uninstallConfirmMsg', { name: runtime.name }),
+			t('runtimes.uninstallConfirmTitle'),
 			'danger',
-			'Uninstall',
-			'Cancel'
+			t('common.uninstall'),
+			t('common.cancel')
 		);
 
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/runtimes/${encodeURIComponent(runtime.id)}`, {
-				method: 'DELETE'
-			});
-
-			if (!res.ok) {
-				const msg = await res.text();
-				throw new Error(msg || 'Failed to uninstall runtime');
-			}
-
+			await runtimesApi.uninstall(runtime.id);
 			await fetchRuntimes();
 			refreshFeatures(true);
 		} catch (err: any) {
-			alert(`Error uninstalling runtime: ${err?.message || err}`);
+			console.error(`Failed to uninstall runtime ${runtime.id}:`, err);
+			error = err?.message || 'Failed to uninstall runtime';
 		}
 	}
-
-	function formatBytes(bytes: number): string {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-	}
-
-	afterNavigate(() => {
-		fetchRuntimes();
-	});
-
-	onMount(() => {
-		runtimesRefreshFn.set(fetchRuntimes);
-		fetchRuntimes();
-
-		const handleNavRuntimes = () => {
-			fetchRuntimes();
-		};
-
-		window.addEventListener('monolai:nav-runtimes', handleNavRuntimes);
-		return () => {
-			window.removeEventListener('monolai:nav-runtimes', handleNavRuntimes);
-		};
-	});
-
-	onDestroy(() => {
-		runtimesRefreshFn.set(null);
-		runtimesRefreshing.set(false);
-		// Clean up all active SSE connections
-		for (const key in activeEventSources) {
-			activeEventSources[key].close();
-		}
-	});
 </script>
 
-<svelte:head>
-	<title>Monolai - Runtimes</title>
-</svelte:head>
-
-<div class="page-container">
-	<div class="page-inner gap-8">
-		<!-- Standard Page Header matching /sysinfo -->
+<div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
+	<div class="flex flex-col gap-5 sm:gap-6">
 		<PageHeader
-			title="Runtimes"
-			subtitle="1-click installation of upstream AI inference engines"
+			title={t('runtimes.pageTitle')}
+			subtitle={t('runtimes.pageSubtitle')}
 			icon={Boxes}
 		/>
 
 		{#if error}
-			<Alert variant="error" title="Backend Connection Failure:" message={error}>
-				{#snippet action()}
-					<button
-						type="button"
-						class="app-btn app-btn-secondary app-btn-sm"
-						onclick={fetchRuntimes}
-					>
-						Retry Connection
-					</button>
-				{/snippet}
+			<Alert variant="error" title="Backend Connection Failure:">
+				<div class="flex items-center justify-between gap-3">
+					<span>{error}</span>
+					<Button variant="secondary" size="sm" onclick={() => fetchRuntimes()}>
+						{t('common.refresh')}
+					</Button>
+				</div>
 			</Alert>
 		{/if}
 
 		{#if loading && runtimes.length === 0}
 			<div
-				class="flex flex-col items-center justify-center gap-3 p-12 text-[var(--text-muted)] text-sm"
+				class="flex flex-col items-center justify-center gap-3 p-16 text-[var(--text-muted)] text-sm"
 			>
 				<div
 					class="w-8 h-8 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
 				></div>
-				<p class="m-0">Loading available runtimes...</p>
+				<p class="m-0 text-xs">{t('common.loading')}</p>
 			</div>
+		{:else if runtimes.length === 0}
+			<EmptyState
+				title={t('runtimes.noRuntimesFound')}
+				description="No executable runtime backends configured on the server."
+				icon={Boxes}
+			/>
 		{:else}
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
 				{#each runtimes as runtime}
 					{@const progress = runtime.install_progress}
 					{@const isInstalling = isInstallingStatus(progress?.status)}
 
-					<Card class="justify-between">
-						<!-- Card Top Details -->
-						<div class="flex flex-col gap-4">
-							<div class="flex items-start justify-between gap-3">
-								<div class="flex items-start gap-3.5 min-w-0 flex-1">
-									<div
-										class="w-13 h-13 rounded-2xl bg-[var(--bg-surface-hover)] border-0 flex items-center justify-center p-2.5 shrink-0 overflow-hidden shadow-xs"
-									>
-										{#if localIcons[runtime.id] || runtime.icon}
-											<img
-												src={localIcons[runtime.id] || runtime.icon}
-												alt={runtime.name}
-												class="w-full h-full object-contain"
-											/>
-										{:else}
-											<Cpu size={26} class="text-[var(--primary)]" />
-										{/if}
-									</div>
+					<Card class="relative">
+						{#if runtime.is_installed}
+							<DiagonalLabel text={t('runtimes.installed')} />
+						{/if}
 
-									<div class="min-w-0 flex-1">
-										<div class="flex items-center gap-2 flex-wrap">
-											<h3 class="m-0 text-base font-bold text-[var(--text-primary)] truncate">
-												{runtime.name}
-											</h3>
-											{#if runtime.website}
-												<a
-													href={runtime.website}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors shrink-0"
-													title="Visit official repository"
-												>
-													<ExternalLink size={13} />
-												</a>
+						<div class="flex flex-col gap-4 justify-between h-full">
+							<!-- Card Top Details -->
+							<div class="flex flex-col gap-4 justify-between h-full">
+								<div class="flex items-start justify-between gap-3">
+									<div class="flex items-start gap-3.5 min-w-0 flex-1">
+										<div
+											class="w-14 h-14 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] flex items-center justify-center p-2.5 shrink-0 overflow-hidden shadow-xs"
+										>
+											{#if localIcons[runtime.id] || runtime.icon}
+												<img
+													src={localIcons[runtime.id] || runtime.icon}
+													alt={runtime.name}
+													class="w-full h-full object-contain"
+												/>
+											{:else}
+												<Cpu size={26} class="text-[var(--primary)]" />
 											{/if}
 										</div>
 
-										<div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-											<Badge variant="pill">v{runtime.version}</Badge>
-											<Badge variant="pill" class="text-[var(--primary)] font-semibold uppercase">
-												{runtime.installed_acceleration || runtime.active_acceleration}
-											</Badge>
+										<div class="min-w-0 flex-1">
+											<div class="flex flex-col gap-0">
+												<h3
+													class="m-0 text-base font-bold text-[var(--text-primary)] truncate"
+													title={runtime.name}
+												>
+													{runtime.name}
+												</h3>
+												{#if runtime.website}
+													<a
+														href={runtime.website}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="text-[var(--primary)] hover:text-[var(--primary-hover)] text-xs transition-colors truncate"
+														title="Visit official repository"
+													>
+														{runtime.website}
+													</a>
+												{/if}
+												<span class="text-[var(--text-muted)] text-xs">Version: {runtime.version}</span>
+											</div>
 										</div>
 									</div>
 								</div>
 
-								<!-- Status Badge -->
-								<div class="shrink-0 pt-0.5">
-									{#if runtime.is_installed}
-										<Badge variant="success" dot>Installed</Badge>
-									{:else if isInstalling}
-										<Badge variant="warning">
-											<RefreshCw size={11} class="animate-spin" />
-											Installing
-										</Badge>
-									{:else}
-										<Badge variant="muted">Not Installed</Badge>
+								<div class="flex flex-col gap-2 mb-auto">
+									<!-- Description -->
+									<p class="m-0 text-xs leading-relaxed text-[var(--text-secondary)]">
+										{t(`runtimes.description.${runtime.id}`)}
+									</p>
+
+									<!-- Features Badges -->
+									{#if runtime.features && runtime.features.length > 0}
+										<div class="flex items-center gap-1.5 flex-wrap">
+											{#each runtime.features as feat}
+												<Badge variant="pill">{feat}</Badge>
+											{/each}
+										</div>
 									{/if}
 								</div>
+
+								<!-- Installed Binary Path Hint -->
+								{#if runtime.is_installed && runtime.installed_path}
+									<div
+										class="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-muted)]"
+									>
+										<FolderCheck size={13} class="text-emerald-400 shrink-0" />
+										<span class="truncate" title={runtime.installed_path}
+											>{runtime.installed_path}</span
+										>
+										<Badge variant="success">{runtime.installed_acceleration}</Badge>
+									</div>
+								{/if}
+
+								<!-- Acceleration Selector -->
+								{#if !runtime.is_installed && !isInstalling && runtime.available_accelerations && runtime.available_accelerations.length > 0}
+									<div
+										class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<span
+												class="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap shrink-0"
+												>{t('runtimes.accelerationLabel')}</span
+											>
+											<span class="text-[11px] text-[var(--text-muted)] truncate text-right"
+												>Choose GPU backend or CUDA version</span
+											>
+										</div>
+										<div class="w-full">
+											<Select
+												bind:value={selectedAccelerations[runtime.id]}
+												options={runtime.available_accelerations.map((opt) => ({
+													value: opt.id,
+													label:
+														opt.label +
+														(opt.is_recommended ? ` (${t('runtimes.recommendedBadge')})` : '')
+												}))}
+												placeholder="Select hardware target..."
+												ariaLabel={t('runtimes.accelerationLabel')}
+											/>
+										</div>
+									</div>
+								{/if}
+
+								<!-- Installation Error Notice if any -->
+								{#if progress && progress.status === 'error'}
+									<Alert variant="error" dismissible>
+										{progress.error_message || 'Installation error occurred'}
+									</Alert>
+								{/if}
 							</div>
 
-							<!-- Description -->
-							<p class="m-0 text-xs leading-relaxed text-[var(--text-secondary)]">
-								{runtime.description}
-							</p>
-
-							<!-- Features Badges -->
-							{#if runtime.features && runtime.features.length > 0}
-								<div class="flex items-center gap-1.5 flex-wrap">
-									{#each runtime.features as feat}
-										<Badge variant="pill">{feat}</Badge>
-									{/each}
-								</div>
-							{/if}
-
-							<!-- Installed Binary Path Hint -->
-							{#if runtime.is_installed && runtime.installed_path}
-								<div
-									class="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-surface-hover)] border-0 text-[11px] font-mono text-[var(--text-muted)]"
-								>
-									<FolderCheck size={13} class="text-emerald-400 shrink-0" />
-									<span class="truncate" title={runtime.installed_path}
-										>{runtime.installed_path}</span
+							<!-- Card Bottom Actions with Dedicated Progress Bar -->
+							<div
+								class="pt-4 border-t border-[var(--border-color)] flex items-center justify-end gap-2.5 flex-wrap"
+							>
+								{#if isInstalling && progress}
+									<div
+										class="w-full flex flex-col gap-2 p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]"
 									>
-								</div>
-							{/if}
-
-							<!-- Acceleration Selector -->
-							{#if runtime.available_accelerations && runtime.available_accelerations.length > 0}
-								<div
-									class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-surface-hover)] border-0"
-								>
-									<div class="flex items-center justify-between gap-2">
-										<span class="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap shrink-0">Hardware Target</span>
-										<span class="text-[11px] text-[var(--text-muted)] truncate text-right">Choose GPU backend or CUDA version</span>
-									</div>
-									<div class="w-full">
-										<Select
-											bind:value={selectedAccelerations[runtime.id]}
-											options={runtime.available_accelerations.map((opt) => ({
-												value: opt.id,
-												label: opt.label + (opt.is_recommended ? ' (Recommended)' : '')
-											}))}
-											placeholder="Select hardware target..."
-											ariaLabel="Hardware Target"
-										/>
-									</div>
-								</div>
-							{/if}
-
-							<!-- Installation Error Notice if any -->
-							{#if progress && progress.status === 'error'}
-								<Alert
-									variant="error"
-									message={progress.error_message || 'Installation error occurred'}
-									class="py-2 px-3 text-xs"
-								/>
-							{/if}
-						</div>
-
-						<!-- Card Bottom Actions with Dedicated Progress Bar -->
-						<div class="pt-2 border-0 flex items-center justify-end gap-2.5 flex-wrap">
-							{#if isInstalling && progress}
-								<!-- Dedicated Clean Progress Bar -->
-								<div class="w-full flex flex-col gap-2 p-3 rounded-xl bg-[var(--bg-primary)] border-0">
-									<!-- Top Row: Phase Message + Percentage -->
-									<div class="flex items-center justify-between gap-3 text-xs">
-										<div class="flex items-center gap-2 text-[var(--text-primary)] min-w-0">
-											<RefreshCw size={13} class="animate-spin text-[var(--primary)] shrink-0" />
-											<span class="font-medium truncate">
-												{#if progress.message}
-													{progress.message}
-												{:else if progress.status === 'extracting'}
-													Extracting files...
-												{:else}
-													Downloading engine...
-												{/if}
+										<div class="flex items-center justify-between gap-3 text-xs">
+											<div class="flex items-center gap-2 text-[var(--text-primary)] min-w-0">
+												<RefreshCw size={13} class="animate-spin text-[var(--primary)] shrink-0" />
+												<span class="font-medium truncate">
+													{#if progress.message}
+														{progress.message}
+													{:else if progress.status === 'extracting'}
+														{t('runtimes.extracting')}...
+													{:else}
+														{t('runtimes.downloading')}...
+													{/if}
+												</span>
+											</div>
+											<span class="font-mono text-xs font-bold text-[var(--primary)] shrink-0">
+												{progress.percent.toFixed(0)}%
 											</span>
 										</div>
-										<span class="font-mono text-xs font-bold text-[var(--primary)] shrink-0">
-											{progress.percent.toFixed(0)}%
-										</span>
-									</div>
 
-									<!-- Middle Row: Progress Bar Track -->
-									<div class="w-full h-2 rounded-full bg-[var(--bg-surface)] overflow-hidden">
-										<div
-											class="h-full bg-[var(--primary)] transition-all duration-200 rounded-full"
-											style="width: {Math.max(2, Math.min(100, progress.percent))}%"
-										></div>
-									</div>
-
-									<!-- Bottom Row: Download Metrics -->
-									{#if progress.total_bytes > 0 || progress.speed_mbps > 0}
-										<div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] pt-0.5">
-											<span>
-												{#if progress.total_bytes > 0}
-													{formatBytes(progress.downloaded_bytes)} of {formatBytes(progress.total_bytes)}
-												{/if}
-											</span>
-											<span>
-												{#if progress.speed_mbps > 0}
-													{progress.speed_mbps.toFixed(1)} MB/s
-												{/if}
-											</span>
+										<div class="w-full h-2 rounded-full bg-[var(--bg-surface)] overflow-hidden">
+											<div
+												class="h-full bg-[var(--primary)] transition-all duration-200 rounded-full"
+												style="width: {Math.max(2, Math.min(100, progress.percent))}%"
+											></div>
 										</div>
-									{/if}
-								</div>
-							{:else if !runtime.is_installed}
-								<button
-									onclick={() => installRuntime(runtime.id)}
-									class="app-btn app-btn-primary app-btn-md w-full"
-								>
-									<Download size={14} />
-									<span>Install Runtime</span>
-								</button>
-							{:else}
-								<button
-									onclick={() => uninstallRuntime(runtime)}
-									class="app-btn app-btn-danger app-btn-sm"
-									title="Uninstall this runtime"
-								>
-									<Trash2 size={13} />
-									<span>Uninstall</span>
-								</button>
 
-								<button
-									onclick={() => installRuntime(runtime.id)}
-									class="app-btn app-btn-secondary app-btn-sm"
-									title="Reinstall or update runtime to latest package"
-								>
-									<RefreshCw size={13} />
-									<span>Reinstall</span>
-								</button>
-							{/if}
+										{#if progress.total_bytes > 0 || progress.speed_mbps > 0}
+											<div
+												class="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] pt-0.5"
+											>
+												<span>
+													{#if progress.total_bytes > 0}
+														{formatBytes(progress.downloaded_bytes)} of {formatBytes(
+															progress.total_bytes
+														)}
+													{/if}
+												</span>
+												<span>
+													{#if progress.speed_mbps > 0}
+														{progress.speed_mbps.toFixed(1)} MB/s
+													{/if}
+												</span>
+											</div>
+										{/if}
+									</div>
+								{:else if !runtime.is_installed}
+									<Button
+										variant="primary"
+										size="md"
+										class="w-full"
+										onclick={() => installRuntime(runtime.id)}
+									>
+										<Download size={14} />
+										<span>{t('runtimes.installBtn')}</span>
+									</Button>
+								{:else}
+									<Button
+										variant="danger"
+										size="sm"
+										onclick={() => uninstallRuntime(runtime)}
+										title="Uninstall this runtime"
+									>
+										<Trash2 size={13} />
+										<span>{t('runtimes.uninstallBtn')}</span>
+									</Button>
+
+									<Button
+										variant="secondary"
+										size="sm"
+										onclick={() => installRuntime(runtime.id)}
+										title="Reinstall or update runtime to latest package"
+									>
+										<RefreshCw size={13} />
+										<span>Reinstall</span>
+									</Button>
+								{/if}
+							</div>
 						</div>
 					</Card>
 				{/each}

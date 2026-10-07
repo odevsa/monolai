@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
@@ -6,8 +7,9 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import { featuresStore } from '$lib/featuresStore';
-	import { runningModels } from '$lib/runningModelsStore';
+	import { featuresState, onFeaturesChange } from '$lib/state/features.svelte';
+	import { imageGalleryState } from '$lib/state';
+	import { runningModelsState } from '$lib/runningModelsStore';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import {
 		Box,
@@ -27,35 +29,11 @@
 		Trash,
 		X
 	} from '@lucide/svelte';
-	import { onMount } from 'svelte';
-
-	interface ModelRecord {
-		id: string;
-		runtime: string;
-		flags: string;
-		file_exists: boolean;
-		created_at?: string;
-	}
-
-	interface RuntimeManifest {
-		id: string;
-		name: string;
-		features: string[];
-	}
-
-	interface GeneratedImage {
-		id: string;
-		timestamp: number;
-		prompt: string;
-		negativePrompt?: string;
-		model: string;
-		size: string;
-		steps: number;
-		cfgScale: number;
-		seed?: number;
-		src: string; // data:image/png;base64,... or url
-		generationTimeSecs?: number;
-	}
+	import { generateImages } from '$lib/api/openai';
+	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
+	import type { ModelRecord } from '$lib/types/models';
+	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
+	import { t } from '$lib/i18n';
 
 	const SIZE_OPTIONS = [
 		{ value: '256x256', label: '256 × 256 (Square - Draft)' },
@@ -146,33 +124,59 @@
 	let generationError = $state<string | null>(null);
 	let generationElapsed = $state(0);
 	let generationTimer: ReturnType<typeof setInterval> | null = null;
+	let generationAbortController: AbortController | null = null;
 	let currentResult = $state<GeneratedImage[]>([]);
 	let selectedResultImage = $state<GeneratedImage | null>(null);
-	let history = $state<GeneratedImage[]>([]);
+	let history = $derived(imageGalleryState.history);
+
+	$effect(() => {
+		if (imageGalleryState.selectionVersion > 0 && imageGalleryState.selectedImage) {
+			selectedResultImage = imageGalleryState.selectedImage;
+			currentResult = [imageGalleryState.selectedImage];
+		}
+	});
+
+	function handleModelUnloadInterruption(targetModelId?: string) {
+		if (!isGenerating) return;
+		if (!targetModelId || targetModelId === '*' || targetModelId === selectedModel) {
+			if (generationAbortController) {
+				generationAbortController.abort();
+				generationAbortController = null;
+			}
+			if (generationTimer) {
+				clearInterval(generationTimer);
+				generationTimer = null;
+			}
+			isGenerating = false;
+			generationError = t('image.interrupted');
+		}
+	}
 
 	// UI feedback states
 	let lightboxOpen = $state(false);
 	let copiedPrompt = $state(false);
 	let copiedImage = $state(false);
 
-	let activeRunningModels = $derived($runningModels);
+	let activeRunningModels = $derived(runningModelsState.runningModels);
 	let isModelRunning = $derived(
 		selectedModel ? activeRunningModels.some((m) => m.model_id === selectedModel) : false
 	);
 
-	let registeredImageModels = $derived.by(() => {
-		if (!$featuresStore.isInitialized) return [];
-		return $featuresStore.models.filter((m) => {
-			const runtimeItem = $featuresStore.runtimes.find(
-				(r) => r.id.toLowerCase() === m.runtime.toLowerCase()
-			);
-			if (runtimeItem?.features) {
-				return runtimeItem.features.includes('image-generation');
-			}
-			return (
-				m.runtime.toLowerCase() === 'sd-cpp' || m.runtime.toLowerCase().includes('diffusion')
-			);
-		});
+	let registeredImageModels = $state<FeatureModelItem[]>([]);
+
+	async function loadImageModels() {
+		try {
+			registeredImageModels = await getFeatureModels(['image-generation']);
+		} catch (err) {
+			console.error('Error fetching image models via OpenAI SDK:', err);
+		}
+	}
+
+	$effect(() => {
+		if (featuresState.isInitialized) {
+			const _ = featuresState.lastUpdated;
+			loadImageModels();
+		}
 	});
 
 	let modelSelectOptions = $derived(
@@ -204,35 +208,8 @@
 		}
 	});
 
-	function loadHistoryFromStorage() {
-		if (typeof localStorage !== 'undefined') {
-			try {
-				const saved = localStorage.getItem('monolai:image_history');
-				if (saved) {
-					history = JSON.parse(saved);
-				}
-			} catch (err) {
-				console.error('Failed to load image history:', err);
-			}
-		}
-	}
-
-	function saveHistoryToStorage(newHistory: GeneratedImage[]) {
-		history = newHistory;
-		if (typeof localStorage !== 'undefined') {
-			try {
-				localStorage.setItem('monolai:image_history', JSON.stringify(newHistory.slice(0, 30)));
-			} catch (err) {
-				console.error('Failed to save image history to storage:', err);
-			}
-		}
-	}
-
 	function clearHistory() {
-		history = [];
-		if (typeof localStorage !== 'undefined') {
-			localStorage.removeItem('monolai:image_history');
-		}
+		imageGalleryState.clearHistory();
 	}
 
 	async function handleGenerate() {
@@ -241,6 +218,7 @@
 		isGenerating = true;
 		generationError = null;
 		generationElapsed = 0;
+		generationAbortController = new AbortController();
 
 		const startTime = Date.now();
 		generationTimer = setInterval(() => {
@@ -273,21 +251,7 @@
 		}
 
 		try {
-			const res = await fetch('/v1/images/generations', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(requestBody)
-			});
-
-			if (!res.ok) {
-				const errData = await res.json().catch(() => null);
-				const msg = errData?.error?.message || `Server returned ${res.status}: ${res.statusText}`;
-				throw new Error(msg);
-			}
-
-			const data = await res.json();
+			const data = await generateImages(requestBody as any, generationAbortController.signal);
 			const totalSecs = Math.round((Date.now() - startTime) / 100) / 10;
 
 			if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
@@ -323,14 +287,19 @@
 			selectedResultImage = generatedList[0] || null;
 
 			// Add to history
-			saveHistoryToStorage([...generatedList, ...history]);
+			imageGalleryState.addImage(generatedList);
 		} catch (err: any) {
-			generationError = err.message || 'Image generation failed';
+			if (err.name === 'AbortError') {
+				generationError = generationError || t('image.interrupted');
+			} else {
+				generationError = err.message || 'Image generation failed';
+			}
 		} finally {
 			if (generationTimer) {
 				clearInterval(generationTimer);
 				generationTimer = null;
 			}
+			generationAbortController = null;
 			isGenerating = false;
 		}
 	}
@@ -360,6 +329,7 @@
 	function openHistoryPreview(item: GeneratedImage) {
 		selectedResultImage = item;
 		currentResult = [item];
+		imageGalleryState.selectImage(item);
 	}
 
 	function reuseParameters(item: GeneratedImage) {
@@ -420,8 +390,39 @@
 		}
 	}
 
+	$effect(() => {
+		if (isGenerating && selectedModel) {
+			if (runningModelsState.unloadingModelIds.has(selectedModel)) {
+				handleModelUnloadInterruption(selectedModel);
+			}
+		}
+	});
+
 	onMount(() => {
-		loadHistoryFromStorage();
+		loadImageModels();
+		const unsubFeatures = onFeaturesChange(() => {
+			loadImageModels();
+		});
+		imageGalleryState.loadFromStorage();
+		const onUnload = (e: Event) => {
+			const customEvent = e as CustomEvent<{ modelId?: string }>;
+			handleModelUnloadInterruption(customEvent.detail?.modelId);
+		};
+		if (typeof window !== 'undefined') {
+			window.addEventListener('monolai:model-unload', onUnload);
+		}
+		return () => {
+			unsubFeatures();
+			if (typeof window !== 'undefined') {
+				window.removeEventListener('monolai:model-unload', onUnload);
+			}
+			if (generationAbortController) {
+				generationAbortController.abort();
+			}
+			if (generationTimer) {
+				clearInterval(generationTimer);
+			}
+		};
 	});
 </script>
 
@@ -430,14 +431,14 @@
 </svelte:head>
 
 <FeatureGate features={['image-generation']} showCard={true}>
-	<div class="page-container">
-	<div class="page-inner gap-5 sm:gap-6">
-		<!-- Page Header matching Monolai design standards -->
-		<PageHeader
-			title="Image"
-			subtitle="Generate images using local models via OpenAI-compatible API standard"
-			icon={ImageIcon}
-		/>
+	<div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
+		<div class="flex flex-col gap-5 sm:gap-6">
+			<!-- Page Header matching Monolai design standards -->
+			<PageHeader
+				title={t('image.pageTitle')}
+				subtitle={t('image.pageSubtitle')}
+				icon={ImageIcon}
+			/>
 
 			<!-- Main Generation Studio Grid -->
 			<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
@@ -792,157 +793,81 @@
 							</div>
 						{/if}
 					</Card>
-
-					<!-- Session Gallery / History -->
-					{#if history.length > 0}
-						<Card>
-							<div class="app-card-header pb-1">
-								<div class="flex items-center gap-2">
-									<RotateCcwClock size={16} class="text-[var(--text-muted)]" />
-									<h3 class="app-card-title text-sm">Session History ({history.length})</h3>
-								</div>
-
-								<button
-									type="button"
-									class="app-btn app-btn-secondary app-btn-sm"
-									onclick={clearHistory}
-									title="Clear image history"
-								>
-									<Trash size={13} />
-									<span>Clear</span>
-								</button>
-							</div>
-
-							<div
-								class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-1"
-							>
-								{#each history as item (item.id)}
-									<!-- svelte-ignore a11y_click_events_have_key_events -->
-									<!-- svelte-ignore a11y_no_static_element_interactions -->
-									<div
-										class="group relative rounded-xl overflow-hidden aspect-square bg-[var(--bg-primary)] border border-[var(--border-color)] cursor-pointer transition-all duration-150 hover:border-[var(--border-hover)] {selectedResultImage?.id ===
-										item.id
-											? 'ring-2 ring-[var(--primary)]'
-											: ''}"
-										onclick={() => openHistoryPreview(item)}
-									>
-										<img
-											src={item.src}
-											alt={item.prompt}
-											class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-										/>
-
-										<!-- Hover overlay actions -->
-										<div
-											class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between"
-										>
-											<p class="text-[10px] text-white line-clamp-2 m-0 leading-tight">
-												{item.prompt}
-											</p>
-											<div class="flex items-center justify-end gap-1">
-												<button
-													type="button"
-													class="p-1 rounded bg-white/20 text-white hover:bg-white/40 border-0 cursor-pointer"
-													onclick={(e) => {
-														e.stopPropagation();
-														reuseParameters(item);
-													}}
-													title="Reuse prompt & settings"
-												>
-													<Sparkles size={11} />
-												</button>
-												<button
-													type="button"
-													class="p-1 rounded bg-white/20 text-white hover:bg-white/40 border-0 cursor-pointer"
-													onclick={(e) => {
-														e.stopPropagation();
-														downloadImage(item);
-													}}
-													title="Download image"
-												>
-													<Download size={11} />
-												</button>
-											</div>
-										</div>
-									</div>
-								{/each}
-							</div>
-						</Card>
-					{/if}
 				</div>
 			</div>
 		</div>
 	</div>
 
-<!-- Lightbox Modal Preview -->
-{#if lightboxOpen && selectedResultImage}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-4"
-		onclick={() => (lightboxOpen = false)}
-	>
+	<!-- Lightbox Modal Preview -->
+	{#if lightboxOpen && selectedResultImage}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="relative max-w-5xl max-h-[90vh] flex flex-col items-center bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-2xl p-4 gap-3 pointer-events-auto"
-			onclick={(e) => e.stopPropagation()}
+			class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-4"
+			onclick={() => (lightboxOpen = false)}
 		>
-			<!-- Top Bar inside Modal -->
 			<div
-				class="w-full flex items-center justify-between pb-2 border-b border-[var(--border-color)]"
+				class="relative max-w-5xl max-h-[90vh] flex flex-col items-center bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-2xl p-4 gap-3 pointer-events-auto"
+				onclick={(e) => e.stopPropagation()}
 			>
-				<div class="flex items-center gap-2 min-w-0">
-					<ModelBadge model={selectedResultImage.model} variant="inline" class="text-xs" />
-					<Badge variant="pill">{selectedResultImage.size}</Badge>
-					{#if selectedResultImage.generationTimeSecs}
-						<Badge variant="pill">{formatElapsedTime(selectedResultImage.generationTimeSecs)}</Badge
+				<!-- Top Bar inside Modal -->
+				<div
+					class="w-full flex items-center justify-between pb-2 border-b border-[var(--border-color)]"
+				>
+					<div class="flex items-center gap-2 min-w-0">
+						<ModelBadge model={selectedResultImage.model} variant="inline" class="text-xs" />
+						<Badge variant="pill">{selectedResultImage.size}</Badge>
+						{#if selectedResultImage.generationTimeSecs}
+							<Badge variant="pill"
+								>{formatElapsedTime(selectedResultImage.generationTimeSecs)}</Badge
+							>
+						{/if}
+					</div>
+
+					<div class="flex items-center gap-2">
+						<button
+							type="button"
+							class="app-btn app-btn-secondary app-btn-sm"
+							onclick={() => downloadImage(selectedResultImage!)}
+							title="Download image"
 						>
+							<Download size={13} />
+							<span>Download</span>
+						</button>
+						<button
+							type="button"
+							class="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-hover)] text-[var(--text-muted)] border-0 cursor-pointer hover:text-[var(--text-primary)]"
+							onclick={() => (lightboxOpen = false)}
+							title="Close modal"
+						>
+							<X size={16} />
+						</button>
+					</div>
+				</div>
+
+				<!-- Image in Modal -->
+				<div class="flex-1 min-h-0 flex items-center justify-center max-h-[70vh]">
+					<img
+						src={selectedResultImage.src}
+						alt={selectedResultImage.prompt}
+						class="max-w-full max-h-[70vh] object-contain rounded-lg"
+					/>
+				</div>
+
+				<!-- Prompt details at bottom -->
+				<div
+					class="w-full p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]"
+				>
+					<span class="font-semibold text-[var(--text-primary)]">Prompt:</span>
+					{selectedResultImage.prompt}
+					{#if selectedResultImage.negativePrompt}
+						<div class="mt-1">
+							<span class="font-semibold text-[var(--text-primary)]">Negative Prompt:</span>
+							{selectedResultImage.negativePrompt}
+						</div>
 					{/if}
 				</div>
-
-				<div class="flex items-center gap-2">
-					<button
-						type="button"
-						class="app-btn app-btn-secondary app-btn-sm"
-						onclick={() => downloadImage(selectedResultImage!)}
-						title="Download image"
-					>
-						<Download size={13} />
-						<span>Download</span>
-					</button>
-					<button
-						type="button"
-						class="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-hover)] text-[var(--text-muted)] border-0 cursor-pointer hover:text-[var(--text-primary)]"
-						onclick={() => (lightboxOpen = false)}
-						title="Close modal"
-					>
-						<X size={16} />
-					</button>
-				</div>
-			</div>
-
-			<!-- Image in Modal -->
-			<div class="flex-1 min-h-0 flex items-center justify-center max-h-[70vh]">
-				<img
-					src={selectedResultImage.src}
-					alt={selectedResultImage.prompt}
-					class="max-w-full max-h-[70vh] object-contain rounded-lg"
-				/>
-			</div>
-
-			<!-- Prompt details at bottom -->
-			<div
-				class="w-full p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]"
-			>
-				<span class="font-semibold text-[var(--text-primary)]">Prompt:</span>
-				{selectedResultImage.prompt}
-				{#if selectedResultImage.negativePrompt}
-					<div class="mt-1">
-						<span class="font-semibold text-[var(--text-primary)]">Negative Prompt:</span>
-						{selectedResultImage.negativePrompt}
-					</div>
-				{/if}
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
 </FeatureGate>

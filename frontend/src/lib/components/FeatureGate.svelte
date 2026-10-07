@@ -2,11 +2,10 @@
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import {
-		featuresStore,
+		featuresState,
 		refreshFeatures,
-		checkFeature,
 		type FeatureCheckResult
-	} from '$lib/featuresStore';
+	} from '$lib/state/features.svelte';
 	import {
 		MessageSquare,
 		Image as ImageIcon,
@@ -34,13 +33,7 @@
 		children?: Snippet;
 	}
 
-	let {
-		features,
-		showCard = true,
-		title,
-		description,
-		children
-	}: Props = $props();
+	let { features, showCard = true, title, description, children }: Props = $props();
 
 	// De-para mapping of feature to icon, label, and fallback info
 	const FEATURE_MAP: Record<string, { label: string; icon: any; sampleRuntimes?: string }> = {
@@ -117,17 +110,17 @@
 
 	let reqFeatures = $derived(Array.isArray(features) ? features : [features]);
 
-	// Reactive derivation based on featuresStore
+	// Reactive derivation based on featuresState
 	let checkResults = $derived(
 		reqFeatures.map((f) => ({
 			feature: f,
 			meta: getFeatureMeta(f),
-			...checkFeature($featuresStore, f)
+			...featuresState.checkFeature(f)
 		}))
 	);
 
 	let isSatisfied = $derived(
-		$featuresStore.isInitialized && checkResults.every((r) => r.isSatisfied)
+		featuresState.isInitialized && checkResults.every((r) => r.isSatisfied)
 	);
 
 	let missingRuntimes = $derived(checkResults.filter((r) => r.missingRuntime));
@@ -140,10 +133,10 @@
 			.join(' / ')
 	);
 
-	let isLoading = $derived(!$featuresStore.isInitialized && $featuresStore.isLoading);
+	let isLoading = $derived(!featuresState.isInitialized || featuresState.isLoading);
 
 	onMount(() => {
-		if (!$featuresStore.isInitialized) {
+		if (!featuresState.isInitialized) {
 			refreshFeatures();
 		}
 	});
@@ -186,7 +179,9 @@
 {:else if isSatisfied}
 	{@render children?.()}
 {:else if showCard}
-	<div class="flex flex-col items-center justify-center p-4 sm:p-6 w-full h-full min-h-[calc(100dvh-4rem)]">
+	<div
+		class="flex flex-col items-center justify-center p-4 sm:p-6 w-full h-full min-h-[calc(100dvh-4rem)]"
+	>
 		<Card class="border border-dashed border-[var(--border-color)] max-w-xl w-full">
 			<div class="flex flex-col items-center justify-center text-center p-6 sm:p-10 mx-auto w-full">
 				<!-- Feature Icons: one icon for each required feature -->
