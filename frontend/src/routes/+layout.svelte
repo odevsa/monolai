@@ -2,10 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { chatsApi, configApi } from '$lib/api';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Badge from '$lib/components/ds/atoms/Badge.svelte';
-	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import Logo from '$lib/components/Logo.svelte';
+	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ds';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { askConfirm } from '$lib/confirmStore';

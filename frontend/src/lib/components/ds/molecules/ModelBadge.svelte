@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { Box } from '@lucide/svelte';
 	import { parseModelDetails } from '$lib/utils/model';
-	import Badge from './ds/atoms/Badge.svelte';
+	import { Box } from '@lucide/svelte';
 
 	let {
 		model,
@@ -38,6 +37,7 @@
 	.model-badge-container {
 		display: inline-flex;
 		align-items: center;
+		flex-wrap: nowrap;
 		gap: 0.25rem;
 		width: fit-content;
 		max-width: 100%;
@@ -50,60 +50,72 @@
 		background: color-mix(in srgb, var(--bg-surface) 80%, black 20%);
 		border: 1px solid var(--border-color);
 		border-radius: 0.5rem;
-		padding: 0.25rem 0.25rem;
-		padding-left: 0.4rem;
+		padding: 0.35rem 0.5rem;
+		padding-left: 0.5rem;
 	}
 
 	.model-badge-container.badge-full {
 		background: color-mix(in srgb, var(--bg-surface) 80%, black 20%);
 		border: 1px solid var(--border-color);
 		border-radius: 0.5rem;
-		display: flex;
-		justify-content: space-between;
-		width: 100%;
-		padding: 0.25rem 0.25rem;
-		padding-left: 0.4rem;
+		padding: 0.35rem 0.5rem;
+		padding-left: 0.5rem;
 	}
 
-	.model-badge-container.full {
-		display: flex;
-		justify-content: space-between;
-		width: 100%;
-	}
-
-	.model-badge-container.inline {
+	.model-badge-container.clean {
 		background: transparent;
 		border: none;
 		padding: 0;
 	}
 
+	.model-badge-container.inline {
+		border: none;
+		background: transparent;
+		padding: 0;
+	}
+
 	:global(.model-badge-icon) {
-		color: var(--text-muted);
+		color: var(--primary);
 		flex-shrink: 0;
+		display: inline-block;
+		vertical-align: middle;
 	}
 
 	.model-name-text {
-		font-size: 0.8125rem;
-		font-weight: 500;
+		font-weight: 600;
+		font-size: 0.775rem;
 		color: var(--text-primary);
+		line-height: 1.1;
+		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-		flex-shrink: 1;
-		margin-right: auto;
+	}
+
+	.clean .model-name-text,
+	.inline .model-name-text {
+		font-size: 0.825rem;
+		color: inherit;
 	}
 
 	.model-tag {
-		background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-		border-radius: 9999px;
-		padding: 0.1rem 0.45rem;
-		font-size: 0.7rem;
-		font-weight: 500;
-		font-variant-numeric: tabular-nums;
+		font-size: 0.65rem;
+		font-weight: 600;
+		padding: 0.1rem 0.35rem;
+		border-radius: 0.25rem;
+		background: var(--border-color);
 		color: var(--text-secondary);
-		line-height: 1.1;
+		line-height: 1;
 		white-space: nowrap;
 		flex-shrink: 0;
+	}
+
+	.inline .model-tag {
+		background: var(--primary-focus);
+		color: var(--primary-hover);
+	}
+
+	.badge-full .model-tag {
+		background: var(--primary-focus);
+		color: var(--primary-hover);
 	}
 </style>

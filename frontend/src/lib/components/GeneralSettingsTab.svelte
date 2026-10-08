@@ -1,13 +1,23 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Clock, Save, Check, RefreshCw, Cpu, ShieldCheck, MessageSquare } from '@lucide/svelte';
-	import { formatTimeoutDuration as formatDuration } from '$lib/utils/format';
-	import { DEFAULT_SYSTEM_PROMPT } from '$lib/utils/context';
 	import { settingsApi } from '$lib/api/settings';
-	import { t } from '$lib/i18n';
+	import { AVAILABLE_LOCALES, i18n, isLocaleSupported, t } from '$lib/i18n';
+	import { DEFAULT_SYSTEM_PROMPT } from '$lib/utils/context';
+	import { formatTimeoutDuration as formatDuration } from '$lib/utils/format';
+	import {
+		Check,
+		Clock,
+		Cpu,
+		Globe,
+		MessageSquare,
+		RefreshCw,
+		Save,
+		ShieldCheck
+	} from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import SystemConfigCard from './SystemConfigCard.svelte';
 	import Button from './ds/atoms/Button.svelte';
 	import Alert from './ds/molecules/Alert.svelte';
+	import Select from './ds/molecules/Select.svelte';
 
 	let idleAutoUnloadEnabled = $state<boolean>(true);
 	let idleTimeoutSeconds = $state<number>(300);
@@ -20,12 +30,19 @@
 	let saveSuccess = $state(false);
 	let errorMessage = $state<string | null>(null);
 
+	function changeLanguage(locale: string) {
+		i18n.setLocale(locale);
+	}
+
 	async function loadSettings() {
 		isLoading = true;
 		errorMessage = null;
 		try {
 			const settings = await settingsApi.getAll();
 			if (settings) {
+				if (settings.language !== undefined && isLocaleSupported(settings.language)) {
+					i18n.setLocale(settings.language);
+				}
 				if (settings.idle_auto_unload_enabled !== undefined) {
 					idleAutoUnloadEnabled = settings.idle_auto_unload_enabled === 'true';
 				}
@@ -64,6 +81,7 @@
 		saveSuccess = false;
 		try {
 			const payload: Record<string, string> = {
+				language: i18n.currentLocale,
 				idle_auto_unload_enabled: idleAutoUnloadEnabled ? 'true' : 'false',
 				idle_timeout_seconds: String(Math.max(0, idleTimeoutSeconds)),
 				readiness_timeout: String(Math.max(1, readinessTimeout)),
@@ -94,19 +112,48 @@
 </script>
 
 <div class="flex flex-col gap-6">
+	<!-- Language Settings Card -->
+	<div class="flex flex-col gap-3">
+		<div class="border-b border-[var(--border-color)] pb-3">
+			<h4
+				class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2"
+			>
+				<Globe size={18} class="text-[var(--primary)]" />
+				{t('settings.languageTitle')}
+			</h4>
+			<p class="m-0 text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+				{t('settings.languageDesc')}
+			</p>
+		</div>
+
+		<div class="w-full sm:w-72 mt-1">
+			<Select
+				value={i18n.currentLocale}
+				options={AVAILABLE_LOCALES.map((l) => ({
+					value: l.id,
+					label: l.label
+				}))}
+				onchange={(val) => changeLanguage(val)}
+				placeholder={t('settings.languageTitle')}
+				ariaLabel={t('settings.languageTitle')}
+			/>
+		</div>
+	</div>
+
 	<!-- Active System Configuration & Storage -->
 	<SystemConfigCard />
 
+	<!-- Process Lifecycle & Memory Management -->
 	<div class="border-t border-[var(--border-color)] pt-2 flex flex-col gap-4">
 		<div class="border-b border-[var(--border-color)] pb-3">
 			<h4
 				class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2"
 			>
 				<Cpu size={18} class="text-[var(--primary)]" />
-				Process Lifecycle & Memory Management
+				{t('settings.lifecycleTitle')}
 			</h4>
 			<p class="m-0 text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
-				Configure automatic model unloading and RAM/VRAM resource recycling.
+				{t('settings.lifecycleDesc')}
 			</p>
 		</div>
 
@@ -169,7 +216,7 @@
 					<div class="p-4 flex flex-col gap-4">
 						<div class="flex flex-col gap-2">
 							<label for="idle-timeout-input" class="text-xs text-[var(--text-muted)] font-medium">
-								Timeout duration (in seconds):
+								{t('settings.timeoutDurationLabel')}
 							</label>
 							<div class="flex flex-wrap items-center gap-2.5">
 								<input
@@ -192,7 +239,7 @@
 						<!-- Presets -->
 						<div class="flex flex-col gap-2 pt-2 border-t border-[var(--border-color)]/50">
 							<span class="text-[0.725rem] text-[var(--text-muted)] font-medium"
-								>Quick Presets:</span
+								>{t('settings.quickPresets')}</span
 							>
 							<div class="flex flex-wrap gap-2">
 								{#each [60, 300, 600, 900, 1800] as seconds}
@@ -226,8 +273,7 @@
 								{t('settings.defaultSystemPrompt')}
 							</h5>
 							<p class="m-0 text-[0.725rem] text-[var(--text-muted)] leading-relaxed">
-								Instructions sent to models at the beginning of each chat session to define behavior
-								and context.
+								{t('settings.systemPromptDesc')}
 							</p>
 						</div>
 						<button
@@ -235,14 +281,14 @@
 							class="text-[0.725rem] text-[var(--text-muted)] hover:text-[var(--primary)] underline cursor-pointer bg-transparent border-0 font-medium"
 							onclick={() => (systemPrompt = DEFAULT_SYSTEM_PROMPT)}
 						>
-							Reset to default
+							{t('settings.resetDefault')}
 						</button>
 					</div>
 
 					<textarea
 						bind:value={systemPrompt}
 						rows="4"
-						placeholder="Enter default system instructions..."
+						placeholder={t('settings.systemPromptPlaceholder')}
 						class="w-full px-3.5 py-2.5 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] resize-y leading-relaxed font-sans"
 					></textarea>
 				</div>
@@ -260,7 +306,7 @@
 						</div>
 					{:else}
 						<span class="text-[0.725rem] text-[var(--text-muted)]"
-							>Changes take effect immediately</span
+							>{t('settings.changesImmediate')}</span
 						>
 					{/if}
 

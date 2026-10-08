@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { ChevronDown, ChevronUp } from '@lucide/svelte';
 	import { formatTokenCount, type PreparedContext } from '$lib/utils/context';
+	import { ChevronDown, ChevronUp } from '@lucide/svelte';
 	import { tick } from 'svelte';
 
 	let {

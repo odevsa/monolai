@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
-	import { AlertTriangle, AlertCircle, CheckCircle2, Info, X } from '@lucide/svelte';
 
 	let {
 		variant = 'info',
 		title = '',
+		message = '',
 		dismissible = false,
 		class: className = '',
 		ondismiss,
@@ -12,6 +13,7 @@
 	}: {
 		variant?: 'error' | 'success' | 'warning' | 'info';
 		title?: string;
+		message?: string;
 		dismissible?: boolean;
 		class?: string;
 		ondismiss?: () => void;
@@ -42,11 +44,11 @@
 	>
 		<div class="shrink-0 mt-0.5">
 			{#if variant === 'error'}
-				<AlertCircle size={16} />
+				<CircleAlert size={16} />
 			{:else if variant === 'warning'}
-				<AlertTriangle size={16} />
+				<TriangleAlert size={16} />
 			{:else if variant === 'success'}
-				<CheckCircle2 size={16} />
+				<CircleCheck size={16} />
 			{:else}
 				<Info size={16} />
 			{/if}
@@ -57,7 +59,11 @@
 				<div class="font-bold mb-0.5">{title}</div>
 			{/if}
 			<div>
-				{@render children?.()}
+				{#if message}
+					{message}
+				{:else}
+					{@render children?.()}
+				{/if}
 			</div>
 		</div>
 

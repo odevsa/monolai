@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { AlertTriangle } from '@lucide/svelte';
 	import { MAX_CHART_POINTS } from '$lib';
+	import { TriangleAlert } from '@lucide/svelte';
 
 	let {
 		data = [],
@@ -108,7 +108,7 @@
 			<div
 				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-semibold"
 			>
-				<AlertTriangle size={15} />
+				<TriangleAlert size={15} />
 				<span>{unavailableMessage}</span>
 			</div>
 			<p class="mt-3 m-0 text-xs text-[var(--text-muted)] max-w-[280px] leading-relaxed">

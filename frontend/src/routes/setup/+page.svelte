@@ -1,28 +1,25 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { configApi, hostApi } from '$lib/api';
+	import { CodeBlock } from '$lib/components/ds';
+	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
+	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import {
-		Wand2,
+		Check,
+		CircleAlert,
+		CircleCheck,
+		Copy,
 		FileCode,
 		Folder,
-		Cpu,
-		Zap,
-		Copy,
-		Check,
-		RefreshCw,
-		CheckCircle2,
-		AlertCircle,
 		HardDrive,
-		Terminal,
+		Network,
+		RefreshCw,
 		Sparkles,
-		Network
+		Terminal,
+		Wand,
+		Zap
 	} from '@lucide/svelte';
-	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
-	import CodeBlock from '$lib/components/CodeBlock.svelte';
-	import { configApi, hostApi } from '$lib/api';
-	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
-	import { t } from '$lib/i18n';
-	import { Button, Alert, Card, Input } from '$lib/components/ds';
+	import { getContext, onMount } from 'svelte';
 
 	let activeTab = $state<'wizard' | 'manual'>('wizard');
 	let configStatus = $state<ConfigStatus | null>(null);
@@ -273,7 +270,7 @@
 								? 'bg-[var(--primary)] text-white shadow-sm'
 								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
 						>
-							<Wand2 size={14} />
+							<Wand size={14} />
 							<span>Interactive Setup</span>
 						</button>
 						<button
@@ -296,7 +293,7 @@
 					<div
 						class="flex items-center gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs"
 					>
-						<AlertCircle size={16} class="shrink-0" />
+						<CircleAlert size={16} class="shrink-0" />
 						<span>{saveError}</span>
 					</div>
 				{/if}
@@ -379,7 +376,7 @@
 								<div
 									class="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0"
 								>
-									<CheckCircle2 size={16} />
+									<CircleCheck size={16} />
 								</div>
 								<div class="flex flex-col gap-0.5 min-w-0">
 									<div class="flex items-center gap-2">
@@ -435,7 +432,7 @@
 										<div
 											class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0"
 										>
-											<CheckCircle2 size={16} />
+											<CircleCheck size={16} />
 										</div>
 										<div class="flex flex-col min-w-0">
 											<div class="flex items-center gap-2 flex-wrap">

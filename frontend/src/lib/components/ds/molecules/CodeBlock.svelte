@@ -1,16 +1,16 @@
 <script lang="ts">
+	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { highlightCode, normalizeLanguage } from '$lib/utils/prism';
 	import {
 		Check,
 		Code as CodeIcon,
 		Copy,
 		ExternalLink,
 		Eye,
+		Moon,
 		RotateCcw,
-		Sun,
-		Moon
+		Sun
 	} from '@lucide/svelte';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { highlightCode, normalizeLanguage } from '$lib/utils/prism';
 
 	let { code = '', lang = '' }: { code?: string; lang?: string } = $props();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Home, FileQuestion } from '@lucide/svelte';
+	import { FileQuestionMark, Home } from '@lucide/svelte';
 
 	let status = $derived(page.status || 404);
 	let message = $derived(page.error?.message || 'Page Not Found');
@@ -13,7 +13,7 @@
 		<div
 			class="w-18 h-18 rounded-full bg-[var(--primary-light)] border border-[var(--primary-focus)] flex items-center justify-center mb-5"
 		>
-			<FileQuestion size={40} class="text-[var(--primary)]" />
+			<FileQuestionMark size={40} class="text-[var(--primary)]" />
 		</div>
 
 		<div class="text-4xl font-extrabold text-[var(--primary)] tracking-tight mb-1 leading-none">

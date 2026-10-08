@@ -1,38 +1,14 @@
 <script lang="ts">
-	import {
-		ArrowUp,
-		Box,
-		Check,
-		ChevronDown,
-		ChevronRight,
-		CircleAlert,
-		CircleX,
-		Clock,
-		Copy,
-		Info,
-		Lightbulb,
-		MessageSquare,
-		Pencil,
-		Plus,
-		RotateCw,
-		Sparkles,
-		Square,
-		Trash2,
-		Zap
-	} from '@lucide/svelte';
-	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { syncRecentChats } from '$lib/headerStore';
-	import { showAlert } from '$lib/confirmStore';
-	import { generateUUID } from '$lib/utils/common';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import ModelBadge from '$lib/components/ModelBadge.svelte';
-	import ContextIndicator from '$lib/components/ContextIndicator.svelte';
-	import MarkdownRenderer from '$lib/components/MarkdownRenderer.svelte';
+	import { chatsApi, getFeatureModels, settingsApi } from '$lib/api';
 	import { streamChatCompletion } from '$lib/api/openai';
-	import { chatsApi, modelsApi, runtimesApi, settingsApi, getFeatureModels } from '$lib/api';
-	import { runningModelsState } from '$lib/runningModelsStore';
+	import { ContextIndicator, MarkdownRenderer, ModelBadge } from '$lib/components/ds';
+	import { showAlert } from '$lib/confirmStore';
+	import { syncRecentChats } from '$lib/headerStore';
 	import { t } from '$lib/i18n';
+	import { runningModelsState } from '$lib/runningModelsStore';
+	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { generateUUID } from '$lib/utils/common';
 	import {
 		DEFAULT_SYSTEM_PROMPT,
 		REASONING_PRESETS,
@@ -41,6 +17,24 @@
 		type ReasoningPreset,
 		type TokenUsageDetails
 	} from '$lib/utils/context';
+	import {
+		ArrowUp,
+		Box,
+		Check,
+		ChevronDown,
+		ChevronRight,
+		CircleAlert,
+		Clock,
+		Copy,
+		Lightbulb,
+		Plus,
+		RotateCw,
+		Sparkles,
+		Square,
+		Trash2,
+		Zap
+	} from '@lucide/svelte';
+	import { onMount, tick } from 'svelte';
 
 	let { chatId = '' }: { chatId?: string } = $props();
 

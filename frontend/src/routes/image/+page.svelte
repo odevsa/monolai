@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
 	import { generateImages } from '$lib/api/openai';
-	import Alert from '$lib/components/Alert.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Badge from '$lib/components/ds/atoms/Badge.svelte';
-	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import ModelBadge from '$lib/components/ModelBadge.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import Select from '$lib/components/Select.svelte';
+	import {
+		Alert,
+		Badge,
+		Card,
+		FeatureGate,
+		ModelBadge,
+		PageHeader,
+		Select
+	} from '$lib/components/ds';
 	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
 	import { imageGalleryState } from '$lib/state';
@@ -21,10 +23,11 @@
 		Copy,
 		Dices,
 		Download,
+		Image,
 		Image as ImageIcon,
-		Maximize2,
+		Maximize,
 		RefreshCw,
-		Sliders,
+		SlidersVertical,
 		Sparkles,
 		X
 	} from '@lucide/svelte';
@@ -112,7 +115,6 @@
 	let cfgScale = $state(7.5);
 	let seed = $state<number | string>('');
 	let showAdvanced = $state(false);
-	let showNegative = $state(false);
 
 	// Execution & Output State
 	let isGenerating = $state(false);
@@ -321,17 +323,10 @@
 		prompt = nextPrompt;
 	}
 
-	function openHistoryPreview(item: GeneratedImage) {
-		selectedResultImage = item;
-		currentResult = [item];
-		imageGalleryState.selectImage(item);
-	}
-
 	function reuseParameters(item: GeneratedImage) {
 		prompt = item.prompt;
 		if (item.negativePrompt) {
 			negativePrompt = item.negativePrompt;
-			showNegative = true;
 		}
 		if (item.size) {
 			selectedSize = item.size;
@@ -359,16 +354,6 @@
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
-	}
-
-	async function copyPromptToClipboard(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			copiedPrompt = true;
-			setTimeout(() => (copiedPrompt = false), 2000);
-		} catch (err) {
-			console.error('Failed to copy prompt:', err);
-		}
 	}
 
 	async function copyImageToClipboard(item: GeneratedImage) {
@@ -440,215 +425,208 @@
 				<!-- Left Column: Controls & Prompt Studio (5 cols on lg) -->
 				<div class="lg:col-span-5 flex flex-col gap-4">
 					<Card>
-						<div class="app-card-header pb-1">
-							<div class="flex items-center gap-2">
-								<Sparkles size={16} class="text-[var(--primary)]" />
-								<h3 class="app-card-title text-sm">Prompt Studio</h3>
-							</div>
-							{#if isModelRunning}
-								<Badge variant="success" pulse>Active</Badge>
-							{/if}
-						</div>
-
-						<!-- Model Selector -->
-						<div class="flex flex-col gap-1.5">
-							<div class="flex items-center justify-between">
-								<label
-									for="image-model-select"
-									class="text-xs font-semibold text-[var(--text-secondary)]"
-								>
-									Model
-								</label>
-								{#if currentModelRecord}
-									<span class="text-[11px] text-[var(--text-muted)] font-mono">
-										{currentModelRecord.runtime}
-									</span>
+						<div class="flex flex-col gap-4">
+							<div class="app-card-header pb-1">
+								<div class="flex items-center gap-2">
+									<Sparkles size={16} class="text-[var(--primary)]" />
+									<h3 class="app-card-title text-sm">Prompt Studio</h3>
+								</div>
+								{#if isModelRunning}
+									<Badge variant="success" pulse>Active</Badge>
 								{/if}
 							</div>
-							<Select
-								bind:value={selectedModel}
-								options={modelSelectOptions}
-								placeholder="Select an image model..."
-							/>
-						</div>
 
-						<!-- Prompt Input -->
-						<div class="flex flex-col gap-1.5">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-2">
+							<!-- Model Selector -->
+							<div class="flex flex-col gap-1">
+								<div class="flex items-center justify-between">
 									<label
-										for="image-prompt"
+										for="image-model-select"
 										class="text-xs font-semibold text-[var(--text-secondary)]"
 									>
-										Prompt
+										Model
 									</label>
-									<button
-										type="button"
-										class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
-										onclick={insertRandomPrompt}
-										title="Generate random prompt from the list"
-									>
-										<Dices size={13} class="text-[var(--primary)]" />
-										<span>Random</span>
-									</button>
+									{#if currentModelRecord}
+										<span class="text-[11px] text-[var(--text-muted)] font-mono">
+											{currentModelRecord.runtime}
+										</span>
+									{/if}
 								</div>
-								<span class="text-[11px] text-[var(--text-muted)]"> Ctrl+Enter to generate </span>
+								<Select
+									bind:value={selectedModel}
+									options={modelSelectOptions}
+									placeholder="Select an image model..."
+								/>
 							</div>
-							<textarea
-								id="image-prompt"
-								bind:value={prompt}
-								onkeydown={handleKeyDown}
-								rows={4}
-								placeholder="Describe what you want to see in detail..."
-								class="w-full p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
-								disabled={isGenerating}></textarea>
-						</div>
 
-						<!-- Negative Prompt Toggle -->
-						<div class="flex flex-col gap-1.5">
-							<button
-								type="button"
-								class="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)] bg-transparent border-0 p-0 cursor-pointer hover:text-[var(--text-primary)]"
-								onclick={() => (showNegative = !showNegative)}
-							>
-								<span>Negative Prompt</span>
-								{#if showNegative}
-									<ChevronUp size={14} />
-								{:else}
-									<ChevronDown size={14} />
-								{/if}
-							</button>
+							<!-- Prompt Input -->
+							<div class="flex flex-col gap-1">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-2">
+										<label
+											for="image-prompt"
+											class="text-xs font-semibold text-[var(--text-secondary)]"
+										>
+											Prompt
+										</label>
+										<button
+											type="button"
+											class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+											onclick={insertRandomPrompt}
+											title="Generate random prompt from the list"
+										>
+											<Dices size={13} class="text-[var(--primary)]" />
+											<span>Random</span>
+										</button>
+									</div>
+									<span class="text-[11px] text-[var(--text-muted)]"> Ctrl+Enter to generate </span>
+								</div>
+								<textarea
+									id="image-prompt"
+									bind:value={prompt}
+									onkeydown={handleKeyDown}
+									rows={4}
+									placeholder="Describe what you want to see in detail..."
+									class="w-full p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+									disabled={isGenerating}></textarea>
+							</div>
 
-							{#if showNegative}
+							<!-- Negative Prompt Toggle -->
+							<div class="flex flex-col gap-1">
+								<label
+									for="image-negative-prompt"
+									class="text-xs font-semibold text-[var(--text-secondary)]"
+								>
+									Negative Prompt
+								</label>
 								<textarea
 									bind:value={negativePrompt}
 									rows={2}
 									placeholder="Items or styles to avoid (e.g. blurry, deformed, low quality, artifacts)..."
 									class="w-full p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)]"
 									disabled={isGenerating}></textarea>
-							{/if}
-						</div>
-
-						<!-- Dimensions & Quantity Row -->
-						<div class="grid grid-cols-2 gap-3 pt-1">
-							<div class="flex flex-col gap-1.5">
-								<label
-									for="image-size-select"
-									class="text-xs font-semibold text-[var(--text-secondary)]"
-								>
-									Dimensions
-								</label>
-								<Select
-									bind:value={selectedSize}
-									options={SIZE_OPTIONS}
-									placeholder="Select size..."
-								/>
 							</div>
 
-							<div class="flex flex-col gap-1.5">
-								<label
-									for="image-count-select"
-									class="text-xs font-semibold text-[var(--text-secondary)]"
-								>
-									Quantity (n)
-								</label>
-								<Select
-									bind:value={selectedCount}
-									options={COUNT_OPTIONS}
-									placeholder="Select count..."
-								/>
-							</div>
-						</div>
-
-						<!-- Advanced Parameters Accordion -->
-						<div class="border-t border-[var(--border-color)] pt-3 flex flex-col gap-3">
-							<button
-								type="button"
-								class="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)] bg-transparent border-0 p-0 cursor-pointer hover:text-[var(--text-primary)]"
-								onclick={() => (showAdvanced = !showAdvanced)}
-							>
-								<div class="flex items-center gap-1.5">
-									<Sliders size={13} />
-									<span>Advanced Parameters</span>
+							<!-- Dimensions & Quantity Row -->
+							<div class="grid grid-cols-2 gap-3 pt-1">
+								<div class="flex flex-col gap-1.5">
+									<label
+										for="image-size-select"
+										class="text-xs font-semibold text-[var(--text-secondary)]"
+									>
+										Dimensions
+									</label>
+									<Select
+										bind:value={selectedSize}
+										options={SIZE_OPTIONS}
+										placeholder="Select size..."
+									/>
 								</div>
+
+								<div class="flex flex-col gap-1">
+									<label
+										for="image-count-select"
+										class="text-xs font-semibold text-[var(--text-secondary)]"
+									>
+										Quantity (n)
+									</label>
+									<Select
+										bind:value={selectedCount}
+										options={COUNT_OPTIONS}
+										placeholder="Select count..."
+									/>
+								</div>
+							</div>
+
+							<!-- Advanced Parameters Accordion -->
+							<div class="border-t border-[var(--border-color)] pt-3 flex flex-col gap-3">
+								<button
+									type="button"
+									class="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)] bg-transparent border-0 p-0 cursor-pointer hover:text-[var(--text-primary)]"
+									onclick={() => (showAdvanced = !showAdvanced)}
+								>
+									<div class="flex items-center gap-1.5">
+										<SlidersVertical size={13} />
+										<span>Advanced Parameters</span>
+									</div>
+									{#if showAdvanced}
+										<ChevronUp size={14} />
+									{:else}
+										<ChevronDown size={14} />
+									{/if}
+								</button>
+
 								{#if showAdvanced}
-									<ChevronUp size={14} />
-								{:else}
-									<ChevronDown size={14} />
+									<div class="grid grid-cols-2 gap-3 pt-1">
+										<div class="flex flex-col gap-1">
+											<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
+												<span>Steps</span>
+												<span class="font-mono text-[var(--text-primary)]">{steps}</span>
+											</div>
+											<input
+												type="range"
+												min="5"
+												max="50"
+												step="1"
+												bind:value={steps}
+												class="w-full accent-[var(--primary)] cursor-pointer"
+											/>
+										</div>
+
+										<div class="flex flex-col gap-1">
+											<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
+												<span>CFG Scale</span>
+												<span class="font-mono text-[var(--text-primary)]">{cfgScale}</span>
+											</div>
+											<input
+												type="range"
+												min="1"
+												max="20"
+												step="0.5"
+												bind:value={cfgScale}
+												class="w-full accent-[var(--primary)] cursor-pointer"
+											/>
+										</div>
+
+										<div class="col-span-2 flex flex-col gap-1">
+											<label for="image-seed-input" class="text-[11px] text-[var(--text-muted)]">
+												Seed (leave empty for random)
+											</label>
+											<input
+												id="image-seed-input"
+												type="number"
+												bind:value={seed}
+												placeholder="-1 (Random)"
+												class="w-full px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+											/>
+										</div>
+									</div>
 								{/if}
-							</button>
+							</div>
 
-							{#if showAdvanced}
-								<div class="grid grid-cols-2 gap-3 pt-1">
-									<div class="flex flex-col gap-1">
-										<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
-											<span>Steps</span>
-											<span class="font-mono text-[var(--text-primary)]">{steps}</span>
-										</div>
-										<input
-											type="range"
-											min="5"
-											max="50"
-											step="1"
-											bind:value={steps}
-											class="w-full accent-[var(--primary)] cursor-pointer"
-										/>
-									</div>
+							<!-- Generate Action Button -->
+							<div class="pt-2">
+								<button
+									type="button"
+									class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all"
+									disabled={isGenerating || !prompt.trim() || !selectedModel}
+									onclick={handleGenerate}
+								>
+									{#if isGenerating}
+										<RefreshCw size={16} class="animate-spin" />
+										<span>Generating... ({formatElapsedTime(generationElapsed)})</span>
+									{:else}
+										<Sparkles size={16} />
+										<span>Generate Image</span>
+									{/if}
+								</button>
+							</div>
 
-									<div class="flex flex-col gap-1">
-										<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
-											<span>CFG Scale</span>
-											<span class="font-mono text-[var(--text-primary)]">{cfgScale}</span>
-										</div>
-										<input
-											type="range"
-											min="1"
-											max="20"
-											step="0.5"
-											bind:value={cfgScale}
-											class="w-full accent-[var(--primary)] cursor-pointer"
-										/>
-									</div>
-
-									<div class="col-span-2 flex flex-col gap-1">
-										<label for="image-seed-input" class="text-[11px] text-[var(--text-muted)]">
-											Seed (leave empty for random)
-										</label>
-										<input
-											id="image-seed-input"
-											type="number"
-											bind:value={seed}
-											placeholder="-1 (Random)"
-											class="w-full px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-										/>
-									</div>
+							{#if generationError}
+								<div class="pt-2">
+									<Alert variant="error" title="Generation Error:" message={generationError} />
 								</div>
 							{/if}
 						</div>
-
-						<!-- Generate Action Button -->
-						<div class="pt-2">
-							<button
-								type="button"
-								class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all"
-								disabled={isGenerating || !prompt.trim() || !selectedModel}
-								onclick={handleGenerate}
-							>
-								{#if isGenerating}
-									<RefreshCw size={16} class="animate-spin" />
-									<span>Generating... ({formatElapsedTime(generationElapsed)})</span>
-								{:else}
-									<Sparkles size={16} />
-									<span>Generate Image</span>
-								{/if}
-							</button>
-						</div>
-
-						{#if generationError}
-							<div class="pt-2">
-								<Alert variant="error" title="Generation Error:" message={generationError} />
-							</div>
-						{/if}
 					</Card>
 				</div>
 
@@ -677,7 +655,7 @@
 									<button
 										type="button"
 										class="app-btn app-btn-secondary app-btn-sm"
-										onclick={() => copyPromptToClipboard(selectedResultImage!.prompt)}
+										onclick={() => reuseParameters(selectedResultImage!)}
 										title="Copy prompt"
 									>
 										{#if copiedPrompt}
@@ -692,10 +670,20 @@
 									<button
 										type="button"
 										class="app-btn app-btn-secondary app-btn-sm"
+										onclick={() => copyImageToClipboard(selectedResultImage!)}
+										title="Copy image"
+									>
+										<Image size={13} />
+										<span class="hidden sm:inline">Copy Image</span>
+									</button>
+
+									<button
+										type="button"
+										class="app-btn app-btn-secondary app-btn-sm"
 										onclick={() => (lightboxOpen = true)}
 										title="Fullscreen preview"
 									>
-										<Maximize2 size={13} />
+										<Maximize size={13} />
 									</button>
 								</div>
 							{/if}

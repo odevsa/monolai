@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { MAX_CHART_POINTS } from '$lib';
 	import { hostApi } from '$lib/api/host';
-	import AreaChart from '$lib/components/AreaChart.svelte';
-	import { Alert, PageHeader } from '$lib/components/ds';
+	import { Alert, AreaChart, PageHeader } from '$lib/components/ds';
 	import { t } from '$lib/i18n';
 	import {
 		getStatusType,
@@ -385,7 +384,7 @@
 				<div class="flex items-center gap-3">
 					<div class="flex items-center gap-2">
 						<Monitor size={16} class="text-[var(--primary)]" />
-						<h3 class="app-card-title text-sm">Host System Details</h3>
+						<h3 class="app-card-title text-sm">{t('sysinfo.hostDetails')}</h3>
 					</div>
 				</div>
 
@@ -399,7 +398,7 @@
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-							>Operating System</span
+							>{t('sysinfo.osTitle')}</span
 						>
 						<span class="text-sm font-semibold text-[var(--text-primary)]"
 							>{sysinfo.os.name} {sysinfo.os.os_version}</span
@@ -409,7 +408,7 @@
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-							>Kernel Version</span
+							>{t('sysinfo.kernelVersion')}</span
 						>
 						<span class="text-sm font-semibold text-[var(--text-primary)]"
 							>{sysinfo.os.kernel_version}</span
@@ -419,7 +418,7 @@
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-							>Hostname</span
+							>{t('sysinfo.hostname')}</span
 						>
 						<span class="text-sm font-semibold text-[var(--text-primary)]"
 							>{sysinfo.os.hostname}</span
@@ -429,7 +428,7 @@
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-							>System Uptime</span
+							>{t('sysinfo.uptimeTitle')}</span
 						>
 						<span class="text-sm font-semibold text-[var(--text-primary)]"
 							>{formatUptime(sysinfo.os.uptime_seconds)}</span
@@ -440,7 +439,7 @@
 						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 							<span
 								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-								>Dedicated GPU</span
+								>{t('sysinfo.dedicatedGpu')}</span
 							>
 							<span
 								class="text-sm font-semibold text-[var(--text-primary)] truncate"
@@ -453,7 +452,7 @@
 						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 							<span
 								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-								>Dedicated VRAM</span
+								>{t('sysinfo.vramTitle')}</span
 							>
 							<span class="text-sm font-semibold text-[var(--text-primary)]">
 								{formatBytes(sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes ?? 0)}

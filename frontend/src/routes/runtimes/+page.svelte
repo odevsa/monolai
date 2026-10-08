@@ -1,35 +1,26 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import {
-		Boxes,
-		Download,
-		ExternalLink,
-		RefreshCw,
-		Trash2,
-		Cpu,
-		FolderCheck
-	} from '@lucide/svelte';
-	import { askConfirm } from '$lib/confirmStore';
-	import { headerState } from '$lib/state/header.svelte';
 	import { runtimesApi } from '$lib/api/runtimes';
-	import type { Runtime, InstallProgress, AccelerationOption } from '$lib/types/runtimes';
-	import { t } from '$lib/i18n';
-	import {
-		Button,
-		Badge,
-		Card,
-		Select,
-		PageHeader,
-		Alert,
-		EmptyState,
-		Label,
-		DiagonalLabel
-	} from '$lib/components/ds';
-	import { refreshFeatures } from '$lib/featuresStore';
-	import { formatBytes } from '$lib/utils/format';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
 	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		DiagonalLabel,
+		EmptyState,
+		PageHeader,
+		Select
+	} from '$lib/components/ds';
+	import { askConfirm } from '$lib/confirmStore';
+	import { refreshFeatures } from '$lib/featuresStore';
+	import { t } from '$lib/i18n';
+	import { headerState } from '$lib/state/header.svelte';
+	import type { Runtime } from '$lib/types/runtimes';
+	import { formatBytes } from '$lib/utils/format';
+	import { Boxes, Cpu, Download, FolderCheck, RefreshCw, Trash } from '@lucide/svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	const localIcons: Record<string, string> = {
 		'llama-cpp': llamaIcon,
@@ -255,7 +246,7 @@
 		{:else if runtimes.length === 0}
 			<EmptyState
 				title={t('runtimes.noRuntimesFound')}
-				description="No executable runtime backends configured on the server."
+				description={t('runtimes.noRuntimesDesc')}
 				icon={Boxes}
 			/>
 		{:else}
@@ -306,7 +297,7 @@
 														target="_blank"
 														rel="noopener noreferrer"
 														class="text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold text-xs transition-colors truncate"
-														title="Visit official repository"
+														title={t('runtimes.visitRepo')}
 													>
 														{runtime.website}
 													</a>
@@ -371,7 +362,7 @@
 												>{t('runtimes.accelerationLabel')}</span
 											>
 											<span class="text-[11px] text-[var(--text-muted)] truncate text-right"
-												>Choose GPU backend or CUDA version</span
+												>{t('runtimes.selectHardwareDesc')}</span
 											>
 										</div>
 										<div class="w-full">
@@ -386,7 +377,7 @@
 														opt.label +
 														(opt.is_recommended ? ` (${t('runtimes.recommendedBadge')})` : '')
 												}))}
-												placeholder="Select hardware target..."
+												placeholder={t('runtimes.selectHardwarePlaceholder')}
 												ariaLabel={t('runtimes.accelerationLabel')}
 											/>
 										</div>
@@ -470,7 +461,7 @@
 										onclick={() => uninstallRuntime(runtime)}
 										title="Uninstall this runtime"
 									>
-										<Trash2 size={13} />
+										<Trash size={13} />
 										<span>{t('common.uninstall')}</span>
 									</Button>
 

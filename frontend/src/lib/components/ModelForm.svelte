@@ -1,27 +1,27 @@
 <script lang="ts">
-	import { untrack, onMount } from 'svelte';
+	import { copyToClipboard } from '$lib/utils/clipboard';
 	import {
-		Info,
-		Plus,
-		Trash2,
-		RotateCcw,
-		Save,
-		AlertCircle,
-		Sliders,
-		Terminal,
-		Copy,
-		Check
-	} from '@lucide/svelte';
-	import {
+		customTextToFlags,
+		extractCleanModelName,
+		flagsToCustomText,
 		getFilePath,
 		getFileRelativePath,
-		resolveFullPath,
-		flagsToCustomText,
-		customTextToFlags,
-		extractCleanModelName
+		resolveFullPath
 	} from '$lib/utils/model';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import Select from '$lib/components/Select.svelte';
+	import {
+		Check,
+		CircleAlert,
+		Copy,
+		Info,
+		Plus,
+		RotateCcw,
+		Save,
+		SlidersVertical,
+		Terminal,
+		Trash
+	} from '@lucide/svelte';
+	import { onMount, untrack } from 'svelte';
+	import Select from './ds/molecules/Select.svelte';
 
 	interface RuntimeItem {
 		id: string;
@@ -384,7 +384,7 @@
 <div class="model-form-container">
 	{#if formError}
 		<div class="error-banner">
-			<AlertCircle size={16} />
+			<CircleAlert size={16} />
 			<span>{formError}</span>
 		</div>
 	{/if}
@@ -455,7 +455,7 @@
 							class="subtab-btn {activeFormTab === 'flags' ? 'active' : ''}"
 							onclick={() => (activeFormTab = 'flags')}
 						>
-							<Sliders size={14} />
+							<SlidersVertical size={14} />
 							<span>Form</span>
 						</button>
 
@@ -519,7 +519,7 @@
 										onclick={() => removeFlag(flagKey)}
 										title="Remove flag"
 									>
-										<Trash2 size={14} />
+										<Trash size={14} />
 									</button>
 								</div>
 

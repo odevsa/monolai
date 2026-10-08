@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import { X } from '@lucide/svelte';
+	import type { Snippet } from 'svelte';
 
 	let {
 		open = $bindable(false),

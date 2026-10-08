@@ -1,29 +1,24 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Snippet } from 'svelte';
+	import { featuresState, refreshFeatures } from '$lib/state/features.svelte';
 	import {
-		featuresState,
-		refreshFeatures,
-		type FeatureCheckResult
-	} from '$lib/state/features.svelte';
-	import {
-		MessageSquare,
-		Image as ImageIcon,
-		Code,
 		Binary,
-		FileText,
-		Headphones,
-		Mic,
-		Eye,
-		Sparkles,
 		Box,
 		Boxes,
 		ChevronRight,
 		CircleAlert,
-		RefreshCw
+		Code,
+		Eye,
+		FileText,
+		Headphones,
+		Image as ImageIcon,
+		MessageSquare,
+		Mic,
+		RefreshCw,
+		Sparkles
 	} from '@lucide/svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Alert from '$lib/components/Alert.svelte';
+	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
+	import Card from './Card.svelte';
 
 	interface Props {
 		features: string[] | string;

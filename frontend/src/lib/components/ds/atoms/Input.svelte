@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import { X } from '@lucide/svelte';
 
 	let {
 		value = $bindable(''),

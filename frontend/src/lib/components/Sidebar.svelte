@@ -1,46 +1,38 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { APP_VERSION } from '$lib/version';
-	import Logo from '$lib/components/Logo.svelte';
+	import { page } from '$app/state';
+	import { chatsApi } from '$lib/api/chats';
+	import { FeatureGate, Logo, ModelBadge } from '$lib/components/ds';
+	import { askConfirm } from '$lib/confirmStore';
+	import { checkFeature, featuresStore } from '$lib/featuresStore';
+	import { chatTabs, runtimesRefreshFn, syncRecentChats } from '$lib/headerStore';
+	import { t } from '$lib/i18n';
 	import {
-		MessageSquare,
+		getStatusType,
+		runningModelsState,
+		startRunningStatePolling,
+		unloadAllModels,
+		unloadModel
+	} from '$lib/runningModelsStore';
+	import { imageGalleryState } from '$lib/state';
+	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
+	import { APP_VERSION } from '$lib/version';
+	import {
 		Activity,
-		Settings,
-		Boxes,
 		Box,
+		Boxes,
+		Image as ImageIcon,
+		MessageSquare,
 		PanelLeftClose,
 		PanelLeftOpen,
-		Search,
-		Cpu,
-		HardDrive,
-		X,
-		Power,
 		Plus,
-		Trash2,
-		Image as ImageIcon,
-		MemoryStick,
-		Gpu
+		Power,
+		Search,
+		Settings,
+		Trash,
+		X
 	} from '@lucide/svelte';
-	import { chatTabs, syncRecentChats, runtimesRefreshFn } from '$lib/headerStore';
-	import { askConfirm } from '$lib/confirmStore';
-	import ModelBadge from '$lib/components/ModelBadge.svelte';
-	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import { featuresStore, checkFeature } from '$lib/featuresStore';
-	import {
-		runningModelsState,
-		runningModels,
-		unloadingModelIds,
-		getStatusType,
-		startRunningStatePolling,
-		unloadModel,
-		unloadAllModels
-	} from '$lib/runningModelsStore';
-	import { t } from '$lib/i18n';
-	import { chatsApi } from '$lib/api/chats';
-	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
-	import { imageGalleryState } from '$lib/state';
+	import { onMount } from 'svelte';
 
 	let {
 		effectiveTheme = 'dark',
@@ -430,7 +422,7 @@
 								></span>
 								<ModelBadge
 									model={model.model_id}
-									variant="inline"
+									variant="clean"
 									showIcon={false}
 									class="truncate text-xs font-medium"
 								/>
@@ -529,7 +521,7 @@
 											title="Delete chat"
 											aria-label="Delete chat"
 										>
-											<Trash2 size={13} />
+											<Trash size={13} />
 										</button>
 									</div>
 								{/each}
@@ -554,7 +546,7 @@
 									title={t('image.clearHistory')}
 									aria-label={t('image.clearHistory')}
 								>
-									<Trash2 size={13} />
+									<Trash size={13} />
 								</button>
 							{/if}
 						</div>
@@ -625,7 +617,7 @@
 											title={t('image.deleteImage')}
 											aria-label={t('image.deleteImage')}
 										>
-											<Trash2 size={13} />
+											<Trash size={13} />
 										</button>
 									</div>
 								{/each}

@@ -1,6 +1,6 @@
 <script lang="ts">
+	import { Check, ChevronDown, Search } from '@lucide/svelte';
 	import { onMount } from 'svelte';
-	import { ChevronDown, Check, Search } from '@lucide/svelte';
 
 	export interface SelectOption {
 		value: string;

@@ -1,22 +1,23 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	import {
-		Settings2,
-		HardDrive,
-		Cpu,
-		Zap,
-		Copy,
-		Check,
-		Edit2,
-		X,
-		Save,
-		RefreshCw,
-		AlertCircle,
-		FileCode,
-		ShieldCheck,
-		Network
-	} from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
+	import {
+		CircleAlert,
+		Check,
+		Copy,
+		Cpu,
+		FileCode,
+		HardDrive,
+		Network,
+		Pencil,
+		RefreshCw,
+		Save,
+		Settings,
+		ShieldCheck,
+		X,
+		Zap
+	} from '@lucide/svelte';
+	import { getContext, onMount } from 'svelte';
 
 	interface ConfigStatus {
 		is_valid: boolean;
@@ -265,11 +266,11 @@
 			<h4
 				class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2 leading-none"
 			>
-				<Settings2 size={18} class="text-[var(--primary)] shrink-0" />
-				<span>Active Configuration & Storage</span>
+				<Settings size={18} class="text-[var(--primary)] shrink-0" />
+				<span>{t('settings.configStorageTitle')}</span>
 			</h4>
 			<p class="m-0 text-[0.725rem] text-[var(--text-muted)] mt-1.5 leading-relaxed">
-				Disk configuration file, model storage, runtimes, and chosen hardware target.
+				{t('settings.configStorageDesc')}
 			</p>
 		</div>
 
@@ -280,8 +281,8 @@
 					onclick={() => loadConfigData(true)}
 					disabled={isRefreshing || isLoading}
 					class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer"
-					title="Refresh configuration"
-					aria-label="Refresh configuration"
+					title={t('settings.refreshConfig')}
+					aria-label={t('settings.refreshConfig')}
 				>
 					<RefreshCw size={13} class={isRefreshing ? 'animate-spin text-[var(--primary)]' : ''} />
 				</button>
@@ -293,15 +294,15 @@
 						disabled={isLoading || !configStatus}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--primary)] text-xs text-[var(--text-primary)] font-medium transition cursor-pointer shadow-2xs"
 					>
-						<Edit2 size={13} class="text-[var(--primary)]" />
-						<span>Edit</span>
+						<Pencil size={13} class="text-[var(--primary)]" />
+						<span>{t('common.edit')}</span>
 					</button>
 				{:else}
 					<div
 						class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-400 text-xs font-semibold"
 						title="Storage paths, host, and port are managed by the Docker container"
 					>
-						<span>Docker Environment</span>
+						<span>{t('settings.dockerEnv')}</span>
 					</div>
 				{/if}
 			{:else}
@@ -312,7 +313,7 @@
 					class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer"
 				>
 					<X size={13} />
-					<span>Cancel</span>
+					<span>{t('common.cancel')}</span>
 				</button>
 			{/if}
 		</div>
@@ -323,7 +324,7 @@
 		<div
 			class="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 text-red-500 px-3.5 py-2.5 rounded-xl text-xs"
 		>
-			<AlertCircle size={15} class="shrink-0" />
+			<CircleAlert size={15} class="shrink-0" />
 			<span>{fetchError}</span>
 		</div>
 	{/if}
@@ -332,7 +333,7 @@
 		<div
 			class="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 text-red-500 px-3.5 py-2.5 rounded-xl text-xs"
 		>
-			<AlertCircle size={15} class="shrink-0" />
+			<CircleAlert size={15} class="shrink-0" />
 			<span>{saveError}</span>
 		</div>
 	{/if}
@@ -342,7 +343,7 @@
 			class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-3.5 py-2.5 rounded-xl text-xs font-semibold animate-in fade-in duration-200"
 		>
 			<ShieldCheck size={15} />
-			<span>Configuration updated and saved to disk successfully!</span>
+			<span>{t('settings.configSaved')}</span>
 		</div>
 	{/if}
 

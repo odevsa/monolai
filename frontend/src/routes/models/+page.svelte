@@ -1,32 +1,37 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import {
-		Box,
-		Plus,
-		Edit2,
-		Trash2,
-		FileText,
-		AlertTriangle,
-		ArrowLeft,
-		Search,
-		Copy,
-		Check,
-		X
-	} from '@lucide/svelte';
 	import { modelsApi, runtimesApi } from '$lib/api';
-	import type { ModelRecord, ModelFileItem, RunningModelStatus } from '$lib/types/models';
-	import type { Runtime, RuntimeManifest } from '$lib/types/runtimes';
-	import { t } from '$lib/i18n';
-	import { Button, Badge, Select, PageHeader, Alert, EmptyState } from '$lib/components/ds';
-	import ModelBadge from '$lib/components/ModelBadge.svelte';
+	import {
+		Alert,
+		Badge,
+		Button,
+		EmptyState,
+		ModelBadge,
+		PageHeader,
+		Select
+	} from '$lib/components/ds';
 	import ModelForm from '$lib/components/ModelForm.svelte';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
-	import { getMainModelFilePath } from '$lib/utils/model';
-	import { formatBytes } from '$lib/utils/format';
-	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { refreshFeatures } from '$lib/featuresStore';
+	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
+	import type { ModelFileItem, ModelRecord, RunningModelStatus } from '$lib/types/models';
+	import type { Runtime, RuntimeManifest } from '$lib/types/runtimes';
+	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { formatBytes } from '$lib/utils/format';
+	import { getMainModelFilePath } from '$lib/utils/model';
+	import {
+		AlertTriangle,
+		ArrowLeft,
+		Box,
+		FileText,
+		Pencil,
+		Plus,
+		Search,
+		Trash2,
+		X
+	} from '@lucide/svelte';
+	import { onMount } from 'svelte';
 
 	let registeredModels = $state<ModelRecord[]>([]);
 	let runtimes = $state<Runtime[]>([]);
@@ -331,7 +336,7 @@
 							type="button"
 							class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-0 cursor-pointer p-0"
 							onclick={() => (searchQuery = '')}
-							title="Clear search"
+							title={t('models.clearSearch')}
 						>
 							<X size={13} />
 						</button>
@@ -344,7 +349,7 @@
 						bind:value={selectedRuntimeFilter}
 						options={runtimeFilterOptions}
 						placeholder={t('models.allRuntimes')}
-						ariaLabel="Filter by runtime"
+						ariaLabel={t('models.filterByRuntime')}
 					/>
 				</div>
 
@@ -354,7 +359,7 @@
 						bind:value={selectedStatusFilter}
 						options={statusFilterOptions}
 						placeholder={t('models.allStatuses')}
-						ariaLabel="Filter by status"
+						ariaLabel={t('models.filterByStatus')}
 					/>
 				</div>
 			</div>
@@ -384,8 +389,8 @@
 				</EmptyState>
 			{:else if filteredModels.length === 0}
 				<EmptyState
-					title="No models match your search"
-					description="Try adjusting your filters or search keywords."
+					title={t('models.noMatchingModels')}
+					description={t('models.noMatchingModelsDesc')}
 					icon={Search}
 				>
 					{#snippet actions()}
@@ -397,7 +402,7 @@
 								selectedStatusFilter = 'all';
 							}}
 						>
-							Clear Filters
+							{t('models.clearFilters')}
 						</Button>
 					{/snippet}
 				</EmptyState>
@@ -481,7 +486,7 @@
 									onclick={() => startEditModel(model)}
 									title={t('common.edit')}
 								>
-									<Edit2 size={13} />
+									<Pencil size={13} />
 									<span>{t('common.edit')}</span>
 								</Button>
 								<Button

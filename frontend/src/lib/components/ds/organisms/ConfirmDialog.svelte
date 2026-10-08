@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { tick } from 'svelte';
 	import { confirmState } from '$lib/state/confirm.svelte';
-	import { AlertTriangle, Info, Trash2, X } from '@lucide/svelte';
+	import { Info, Trash, TriangleAlert, X } from '@lucide/svelte';
+	import { tick } from 'svelte';
 	import Button from '../atoms/Button.svelte';
 
 	let current = $derived(confirmState.current);
@@ -62,9 +62,9 @@
 							: 'bg-[var(--primary-light)] text-[var(--primary)]'}"
 				>
 					{#if current.variant === 'danger'}
-						<Trash2 size={20} />
+						<Trash size={20} />
 					{:else if current.variant === 'warning'}
-						<AlertTriangle size={20} />
+						<TriangleAlert size={20} />
 					{:else}
 						<Info size={20} />
 					{/if}

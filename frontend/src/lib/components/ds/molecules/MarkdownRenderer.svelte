@@ -1,7 +1,7 @@
 <script lang="ts">
-	import CodeBlock from '$lib/components/CodeBlock.svelte';
-	import { parseMarkdownToBlocks } from '$lib/utils/markdown';
 	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { parseMarkdownToBlocks } from '$lib/utils/markdown';
+	import CodeBlock from './CodeBlock.svelte';
 
 	let { content = '' }: { content?: string } = $props();
 
