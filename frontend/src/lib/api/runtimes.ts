@@ -9,9 +9,10 @@ export const runtimesApi = {
 	getManifestById: (id: string) =>
 		api.get<RuntimeManifest>(`/api/runtime-manifests/${encodeURIComponent(id)}`),
 
-	install: (id: string, acceleration?: string) =>
+	install: (id: string, hardware?: string) =>
 		api.post<{ status: string }>(`/api/runtimes/${encodeURIComponent(id)}/install`, {
-			acceleration
+			hardware,
+			acceleration: hardware
 		}),
 
 	uninstall: (id: string) => api.delete<void>(`/api/runtimes/${encodeURIComponent(id)}`),

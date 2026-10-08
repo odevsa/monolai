@@ -1,6 +1,8 @@
 id: sd-cpp
 name: "Stable Diffusion C++ Server"
-version: "master-929-3f8527a"
+version: "master-945-a1ded76"
+variables:
+  commit: "a1ded76"
 website: "https://github.com/leejet/stable-diffusion.cpp"
 description: |
   Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image,
@@ -13,44 +15,44 @@ downloads:
   linux:
     x86_64:
       cpu:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64.zip"
         archive_type: "zip"
       vulkan:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
         archive_type: "zip"
       rocm:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Linux-Ubuntu-24.04-x86_64-rocm-7.14.0.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64-rocm-7.14.0.zip"
         archive_type: "zip"
   windows:
     x86_64:
       cpu:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cpu-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cpu-x64.zip"
         archive_type: "zip"
       cuda:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cuda12-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12-x64.zip"
         archive_type: "zip"
         extra_archives:
           - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
             archive_type: "zip"
       cuda-12:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-cuda12-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12-x64.zip"
         archive_type: "zip"
         extra_archives:
           - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
             archive_type: "zip"
       vulkan:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-vulkan-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-vulkan-x64.zip"
         archive_type: "zip"
       rocm:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-win-rocm-7.14.0-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-rocm-7.14.0-x64.zip"
         archive_type: "zip"
   macos:
     arm64:
       metal:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Darwin-macOS-26.6.2-arm64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-26.6.2-arm64.zip"
         archive_type: "zip"
       cpu:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-3f8527a-bin-Darwin-macOS-26.6.2-arm64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-26.6.2-arm64.zip"
         archive_type: "zip"
 
 flags:

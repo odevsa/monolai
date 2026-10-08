@@ -17,6 +17,13 @@ use std::time::Duration;
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InstallRuntimeRequest {
     pub hardware: Option<String>,
+    pub acceleration: Option<String>,
+}
+
+impl InstallRuntimeRequest {
+    pub fn resolved_target(&self) -> Option<String> {
+        self.hardware.clone().or_else(|| self.acceleration.clone())
+    }
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -58,7 +65,12 @@ pub async fn install_runtime_handler(
     Path(runtime_id): Path<String>,
     payload: Option<Json<InstallRuntimeRequest>>,
 ) -> AppResult<Json<OperationResponse>> {
-    let hardware_override = payload.and_then(|p| p.hardware.clone());
+    let hardware_override = payload.and_then(|p| p.resolved_target());
+    tracing::info!(
+        "API POST /api/runtimes/{}/install received hardware_override: {:?}",
+        runtime_id,
+        hardware_override
+    );
     state.runtime_service.install(&runtime_id, hardware_override).await?;
 
     Ok(Json(OperationResponse {
@@ -135,3 +147,24 @@ pub async fn uninstall_runtime_handler(
         message: format!("Runtime '{}' uninstalled successfully", runtime_id),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_install_request() {
+        let json1 = r#"{"hardware":"cuda-13.4"}"#;
+        let req1: InstallRuntimeRequest = serde_json::from_str(json1).unwrap();
+        assert_eq!(req1.resolved_target().as_deref(), Some("cuda-13.4"));
+
+        let json2 = r#"{"acceleration":"cuda-13.4"}"#;
+        let req2: InstallRuntimeRequest = serde_json::from_str(json2).unwrap();
+        assert_eq!(req2.resolved_target().as_deref(), Some("cuda-13.4"));
+
+        let json3 = r#"{"hardware":"cuda-13.4","acceleration":"cuda-13.4"}"#;
+        let req3: InstallRuntimeRequest = serde_json::from_str(json3).unwrap();
+        assert_eq!(req3.resolved_target().as_deref(), Some("cuda-13.4"));
+    }
+}
+

@@ -29,7 +29,7 @@
 
 	<div class="flex flex-col gap-1">
 		<h4 class="text-sm sm:text-base font-bold text-[var(--text-primary)]">{title}</h4>
-		
+
 		{#if description}
 			<p class="text-xs text-[var(--text-muted)] max-w-sm leading-relaxed">
 				{description}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Box } from '@lucide/svelte';
 	import { parseModelDetails } from '$lib/utils/model';
+	import Badge from './ds/atoms/Badge.svelte';
 
 	let {
 		model,
@@ -24,7 +25,7 @@
 		{#if showIcon}
 			<Box size={iconSize} class="model-badge-icon" />
 		{/if}
-		
+
 		<span class="model-name-text" title={parsed.name}>{parsed.name}</span>
 
 		{#each parsed.tags as tag}
@@ -37,7 +38,7 @@
 	.model-badge-container {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 0.25rem;
 		width: fit-content;
 		max-width: 100%;
 		min-width: 0;
@@ -49,17 +50,19 @@
 		background: color-mix(in srgb, var(--bg-surface) 80%, black 20%);
 		border: 1px solid var(--border-color);
 		border-radius: 0.5rem;
-		padding: 0.25rem 0.55rem;
+		padding: 0.25rem 0.25rem;
+		padding-left: 0.4rem;
 	}
 
 	.model-badge-container.badge-full {
 		background: color-mix(in srgb, var(--bg-surface) 80%, black 20%);
 		border: 1px solid var(--border-color);
 		border-radius: 0.5rem;
-		padding: 0.25rem 0.55rem;
 		display: flex;
 		justify-content: space-between;
 		width: 100%;
+		padding: 0.25rem 0.25rem;
+		padding-left: 0.4rem;
 	}
 
 	.model-badge-container.full {
@@ -93,7 +96,6 @@
 
 	.model-tag {
 		background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-		border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
 		border-radius: 9999px;
 		padding: 0.1rem 0.45rem;
 		font-size: 0.7rem;

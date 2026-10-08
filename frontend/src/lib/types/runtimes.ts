@@ -25,6 +25,8 @@ export interface Runtime {
 	features: string[];
 	is_installed: boolean;
 	installed_path: string | null;
+	installed_version?: string | null;
+	has_update?: boolean;
 	active_acceleration: string;
 	installed_acceleration: string | null;
 	available_accelerations: AccelerationOption[];
@@ -46,6 +48,7 @@ export interface RuntimeManifest {
 	id: string;
 	name: string;
 	description: string;
+	variables?: Record<string, string>;
 	features?: string[];
 	flags: ManifestFlag[];
 }

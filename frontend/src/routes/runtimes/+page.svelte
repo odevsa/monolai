@@ -15,7 +15,17 @@
 	import { runtimesApi } from '$lib/api/runtimes';
 	import type { Runtime, InstallProgress, AccelerationOption } from '$lib/types/runtimes';
 	import { t } from '$lib/i18n';
-	import { Button, Badge, Card, Select, PageHeader, Alert, EmptyState, Label, DiagonalLabel } from '$lib/components/ds';
+	import {
+		Button,
+		Badge,
+		Card,
+		Select,
+		PageHeader,
+		Alert,
+		EmptyState,
+		Label,
+		DiagonalLabel
+	} from '$lib/components/ds';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { formatBytes } from '$lib/utils/format';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
@@ -152,6 +162,10 @@
 			listenProgress(runtimeId);
 
 			const chosenHardware = selectedAccelerations[runtimeId];
+			console.log(
+				`[Runtimes] Initiating install for '${runtimeId}' with chosen hardware:`,
+				chosenHardware
+			);
 			await runtimesApi.install(runtimeId, chosenHardware);
 		} catch (err: any) {
 			console.error(`Failed to install runtime ${runtimeId}:`, err);
@@ -183,12 +197,30 @@
 
 		try {
 			await runtimesApi.uninstall(runtime.id);
+			delete selectedAccelerations[runtime.id];
 			await fetchRuntimes();
 			refreshFeatures(true);
 		} catch (err: any) {
 			console.error(`Failed to uninstall runtime ${runtime.id}:`, err);
 			error = err?.message || 'Failed to uninstall runtime';
 		}
+	}
+
+	async function confirmUpdateRuntime(runtime: Runtime) {
+		const confirmed = await askConfirm(
+			t('runtimes.updateConfirmMsg', {
+				name: runtime.name,
+				from: runtime.installed_version || 'unknown',
+				to: runtime.version
+			}),
+			t('runtimes.updateConfirmTitle'),
+			'primary',
+			t('common.update'),
+			t('common.cancel')
+		);
+
+		if (!confirmed) return;
+		await installRuntime(runtime.id);
 	}
 </script>
 
@@ -234,7 +266,9 @@
 
 					<Card class="relative">
 						{#if runtime.is_installed}
-							<DiagonalLabel text={t('runtimes.installed')} />
+							<DiagonalLabel
+								text={runtime.has_update ? t('common.update') : t('common.installed')}
+							/>
 						{/if}
 
 						<div class="flex flex-col gap-4 justify-between h-full">
@@ -257,25 +291,39 @@
 										</div>
 
 										<div class="min-w-0 flex-1">
-											<div class="flex flex-col gap-0">
-												<h3
-													class="m-0 text-base font-bold text-[var(--text-primary)] truncate"
-													title={runtime.name}
-												>
-													{runtime.name}
-												</h3>
+											<div class="flex flex-col gap-0.5">
+												<div class="flex items-center gap-2 flex-wrap">
+													<h3
+														class="m-0 text-base font-bold text-[var(--text-primary)] truncate"
+														title={runtime.name}
+													>
+														{runtime.name}
+													</h3>
+												</div>
 												{#if runtime.website}
 													<a
 														href={runtime.website}
 														target="_blank"
 														rel="noopener noreferrer"
-														class="text-[var(--primary)] hover:text-[var(--primary-hover)] text-xs transition-colors truncate"
+														class="text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold text-xs transition-colors truncate"
 														title="Visit official repository"
 													>
 														{runtime.website}
 													</a>
 												{/if}
-												<span class="text-[var(--text-muted)] text-xs">Version: {runtime.version}</span>
+												<div
+													class="flex items-center gap-1.5 text-[var(--text-muted)] text-xs flex-wrap font-mono"
+												>
+													{#if runtime.is_installed && runtime.installed_version}
+														<span>v{runtime.installed_version}</span>
+														{#if runtime.has_update}
+															<span class="text-[var(--text-muted)]">&rarr;</span>
+															<span class="text-[var(--primary)]">v{runtime.version}</span>
+														{/if}
+													{:else}
+														<span>v{runtime.version}</span>
+													{/if}
+												</div>
 											</div>
 										</div>
 									</div>
@@ -291,7 +339,7 @@
 									{#if runtime.features && runtime.features.length > 0}
 										<div class="flex items-center gap-1.5 flex-wrap">
 											{#each runtime.features as feat}
-												<Badge variant="pill">{feat}</Badge>
+												<Badge variant="muted" rounded="rounded-md">{feat}</Badge>
 											{/each}
 										</div>
 									{/if}
@@ -300,13 +348,15 @@
 								<!-- Installed Binary Path Hint -->
 								{#if runtime.is_installed && runtime.installed_path}
 									<div
-										class="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-muted)]"
+										class="flex items-center gap-2 px-1 py-1 rounded-xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-muted)]"
 									>
-										<FolderCheck size={13} class="text-emerald-400 shrink-0" />
+										<FolderCheck size={13} class="text-emerald-400 shrink-0 ml-1" />
 										<span class="truncate" title={runtime.installed_path}
 											>{runtime.installed_path}</span
 										>
-										<Badge variant="success">{runtime.installed_acceleration}</Badge>
+										<Badge variant="success" rounded="rounded-md" class="ml-auto"
+											>{runtime.installed_acceleration}</Badge
+										>
 									</div>
 								{/if}
 
@@ -327,6 +377,9 @@
 										<div class="w-full">
 											<Select
 												bind:value={selectedAccelerations[runtime.id]}
+												onchange={(val) => {
+													selectedAccelerations[runtime.id] = val;
+												}}
 												options={runtime.available_accelerations.map((opt) => ({
 													value: opt.id,
 													label:
@@ -408,7 +461,7 @@
 										onclick={() => installRuntime(runtime.id)}
 									>
 										<Download size={14} />
-										<span>{t('runtimes.installBtn')}</span>
+										<span>{t('common.install')}</span>
 									</Button>
 								{:else}
 									<Button
@@ -418,18 +471,30 @@
 										title="Uninstall this runtime"
 									>
 										<Trash2 size={13} />
-										<span>{t('runtimes.uninstallBtn')}</span>
+										<span>{t('common.uninstall')}</span>
 									</Button>
 
-									<Button
-										variant="secondary"
-										size="sm"
-										onclick={() => installRuntime(runtime.id)}
-										title="Reinstall or update runtime to latest package"
-									>
-										<RefreshCw size={13} />
-										<span>Reinstall</span>
-									</Button>
+									{#if runtime.has_update}
+										<Button
+											variant="primary"
+											size="sm"
+											onclick={() => confirmUpdateRuntime(runtime)}
+											title="Update runtime to latest manifest version"
+										>
+											<Download size={13} />
+											<span>{t('common.update')}</span>
+										</Button>
+									{:else}
+										<Button
+											variant="secondary"
+											size="sm"
+											onclick={() => installRuntime(runtime.id)}
+											title="Reinstall runtime package"
+										>
+											<RefreshCw size={13} />
+											<span>{t('common.reinstall')}</span>
+										</Button>
+									{/if}
 								{/if}
 							</div>
 						</div>

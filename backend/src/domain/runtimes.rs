@@ -47,6 +47,12 @@ pub fn format_acceleration_label(id: &str) -> String {
             let ver = s.trim_start_matches("cuda-");
             format!("NVIDIA CUDA {}", ver)
         }
+        "openvino" => "Intel OpenVINO".to_string(),
+        "sycl" => "Intel oneAPI SYCL".to_string(),
+        "sycl-fp32" => "Intel SYCL (FP32)".to_string(),
+        "sycl-fp16" => "Intel SYCL (FP16)".to_string(),
+        "snapdragon" => "Qualcomm Snapdragon".to_string(),
+        "opencl-adreno" => "Qualcomm OpenCL Adreno".to_string(),
         other => other.to_string(),
     }
 }
@@ -56,6 +62,8 @@ pub struct RuntimeManifest {
     pub id: String,
     pub name: String,
     pub version: String,
+    #[serde(default)]
+    pub variables: HashMap<String, String>,
     #[serde(default)]
     pub icon: Option<String>,
     #[serde(default)]
@@ -72,6 +80,14 @@ pub struct RuntimeManifest {
 }
 
 impl RuntimeManifest {
+    pub fn interpolate_string(&self, template: &str) -> String {
+        let mut result = template.replace("{version}", &self.version);
+        for (key, val) in &self.variables {
+            result = result.replace(&format!("{{{}}}", key), val);
+        }
+        result
+    }
+
     pub fn get_download_target(&self, os: &str, arch: &str, acceleration: &str) -> Option<DownloadTarget> {
         let os_key = if os == "darwin" { "macos" } else { os };
         let arch_key = if arch == "aarch64" { "arm64" } else { arch };
@@ -81,13 +97,13 @@ impl RuntimeManifest {
 
         let interpolate = |dt: &DownloadTarget| -> DownloadTarget {
             DownloadTarget {
-                url: dt.url.replace("{version}", &self.version),
+                url: self.interpolate_string(&dt.url),
                 archive_type: dt.archive_type.clone(),
                 extra_archives: dt
                     .extra_archives
                     .iter()
                     .map(|ea| ExtraArchive {
-                        url: ea.url.replace("{version}", &self.version),
+                        url: self.interpolate_string(&ea.url),
                         archive_type: ea.archive_type.clone(),
                     })
                     .collect(),
@@ -193,6 +209,8 @@ pub struct RuntimeItem {
     pub features: Vec<String>,
     pub is_installed: bool,
     pub installed_path: Option<String>,
+    pub installed_version: Option<String>,
+    pub has_update: bool,
     pub active_acceleration: String,
     pub installed_acceleration: Option<String>,
     pub available_accelerations: Vec<AccelerationOption>,

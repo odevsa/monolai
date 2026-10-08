@@ -87,4 +87,16 @@ mod tests {
         let target = target.unwrap();
         assert!(target.url.contains("llama-"));
     }
+
+    #[test]
+    fn test_manifest_custom_variables_interpolation() {
+        let sd = get_manifest_for_runtime(None, "sd-cpp").expect("sd-cpp manifest should exist");
+        assert_eq!(sd.variables.get("commit").map(|s| s.as_str()), Some("a1ded76"));
+
+        let target = sd.get_download_target("linux", "x86_64", "vulkan").expect("vulkan target should exist");
+        assert!(target.url.contains("master-945-a1ded76"), "URL should contain version: {}", target.url);
+        assert!(target.url.contains("sd-master-a1ded76-bin"), "URL should contain interpolated {{commit}}: {}", target.url);
+        assert!(!target.url.contains("{commit}"), "URL must not contain raw {{commit}}: {}", target.url);
+    }
 }
+

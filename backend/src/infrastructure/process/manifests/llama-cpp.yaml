@@ -1,6 +1,6 @@
 id: llama-cpp
 name: "LLaMA C++ Server"
-version: "b11146"
+version: "b11476"
 website: "https://github.com/ggml-org/llama.cpp"
 description: |
   High-performance LLM inference engine in C/C++ supporting text generation,
@@ -42,6 +42,18 @@ downloads:
       rocm:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-rocm-10.0-x64.tar.gz"
         archive_type: "tar.gz"
+      openvino:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-openvino-2026.4.1-x64.tar.gz"
+        archive_type: "tar.gz"
+      sycl:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-sycl-fp32-x64.tar.gz"
+        archive_type: "tar.gz"
+      sycl-fp32:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-sycl-fp32-x64.tar.gz"
+        archive_type: "tar.gz"
+      sycl-fp16:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-sycl-fp16-x64.tar.gz"
+        archive_type: "tar.gz"
     arm64:
       cpu:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-arm64.tar.gz"
@@ -61,6 +73,13 @@ downloads:
         extra_archives:
           - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.4-arm64.tar.gz"
             archive_type: "tar.gz"
+      snapdragon:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-linux-arm64-snapdragon.tar.gz"
+        archive_type: "tar.gz"
+    s390x:
+      cpu:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-s390x.tar.gz"
+        archive_type: "tar.gz"
   windows:
     x86_64:
       cpu:
@@ -90,9 +109,18 @@ downloads:
       rocm:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-rocm-10.0-x64.zip"
         archive_type: "zip"
+      openvino:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-openvino-2026.4.1-x64.zip"
+        archive_type: "zip"
+      sycl:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-sycl-x64.zip"
+        archive_type: "zip"
     arm64:
       cpu:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cpu-arm64.zip"
+        archive_type: "zip"
+      vulkan:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-vulkan-arm64.zip"
         archive_type: "zip"
       cuda:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.4-arm64.zip"
@@ -106,6 +134,9 @@ downloads:
         extra_archives:
           - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.4-arm64.zip"
             archive_type: "zip"
+      opencl-adreno:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-opencl-adreno-arm64.zip"
+        archive_type: "zip"
   macos:
     arm64:
       metal:
@@ -120,6 +151,14 @@ downloads:
         archive_type: "tar.gz"
       cpu:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-macos-x64.tar.gz"
+        archive_type: "tar.gz"
+  android:
+    arm64:
+      cpu:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-android-arm64.tar.gz"
+        archive_type: "tar.gz"
+      snapdragon:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-android-arm64-snapdragon.tar.gz"
         archive_type: "tar.gz"
 
 flags:

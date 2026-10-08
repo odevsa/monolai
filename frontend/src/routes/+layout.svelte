@@ -1,21 +1,22 @@
 <script lang="ts">
-	import '../app.css';
-	import { onMount, setContext } from 'svelte';
-	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { chatsApi, configApi } from '$lib/api';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { askConfirm } from '$lib/confirmStore';
-	import Sidebar from '$lib/components/Sidebar.svelte';
-	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
-	import Logo from '$lib/components/Logo.svelte';
-	import { PanelLeftOpen, Plus, X, RefreshCw, Trash2 } from '@lucide/svelte';
-	import { t } from '$lib/i18n';
-	import { configApi, chatsApi } from '$lib/api';
-	import type { ConfigStatus } from '$lib/types/config';
-	import { headerState, selectChatTab, closeChatTab, addChatTab } from '$lib/state/header.svelte';
-	import { resolveEffectiveTheme, getThemeType, type ThemeId } from '$lib/themes';
+	import Badge from '$lib/components/ds/atoms/Badge.svelte';
 	import FeatureGate from '$lib/components/FeatureGate.svelte';
+	import Logo from '$lib/components/Logo.svelte';
+	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import { askConfirm } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
+	import { t } from '$lib/i18n';
+	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
+	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
+	import type { ConfigStatus } from '$lib/types/config';
+	import { PanelLeftOpen, Plus, RefreshCw, Trash2, X } from '@lucide/svelte';
+	import { onMount, setContext } from 'svelte';
+	import '../app.css';
 
 	let { children } = $props();
 
@@ -137,6 +138,7 @@
 		}
 	});
 	let isMobileLogoHovered = $state(false);
+	let isConnection = !headerState.sysinfoConnected && headerState.sysinfoReconnectFn;
 </script>
 
 <div
@@ -242,14 +244,13 @@
 							</FeatureGate>
 						{/if}
 						{#if isSysinfoPage}
-							<div
-								class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg pointer-events-auto"
+							<Badge
+								variant={!headerState.sysinfoConnected && headerState.sysinfoReconnectFn
+									? 'warning'
+									: 'success'}
+								pulse
+								blur
 							>
-								<span
-									class="w-2 h-2 rounded-full shrink-0 transition-all duration-200 {headerState.sysinfoConnected
-										? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] animate-pulse'
-										: 'bg-red-500'}"
-								></span>
 								<span class="truncate">
 									{headerState.sysinfoConnected
 										? t('sysinfo.streamActive')
@@ -258,14 +259,16 @@
 								{#if !headerState.sysinfoConnected && headerState.sysinfoReconnectFn}
 									<button
 										type="button"
-										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-[var(--text-muted)] cursor-pointer rounded hover:text-[var(--text-primary)]"
+										class="flex items-center justify-center p-0.5 border-0 bg-transparent {isConnection
+											? 'text-amber-400'
+											: 'text-emerald-400'} cursor-pointer rounded"
 										onclick={() => headerState.sysinfoReconnectFn?.()}
 										title={t('sysinfo.reconnectStream')}
 									>
 										<RefreshCw size={13} class="animate-spin" />
 									</button>
 								{/if}
-							</div>
+							</Badge>
 						{/if}
 						{#if isRuntimesPage}
 							<button

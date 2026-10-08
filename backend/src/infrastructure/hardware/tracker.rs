@@ -642,13 +642,7 @@ fn detect_hardware_internal() -> HardwareReport {
 pub fn resolve_target_acceleration(configured_hw: Option<&str>) -> String {
     let report = detect_hardware();
     match configured_hw {
-        Some("cuda") => "cuda".to_string(),
-        Some(s) if s.starts_with("cuda") => s.to_string(),
-        Some("rocm") => "rocm".to_string(),
-        Some("vulkan") => "vulkan".to_string(),
-        Some("metal") => "metal".to_string(),
-        Some("oneapi") => "oneapi".to_string(),
-        Some("cpu") => "cpu".to_string(),
+        Some(s) if !s.trim().is_empty() && s.trim() != "auto" => s.trim().to_string(),
         _ => report.recommended_acceleration,
     }
 }

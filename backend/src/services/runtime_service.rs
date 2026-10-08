@@ -2,7 +2,7 @@ use crate::core::config::AppConfig;
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{AccelerationOption, InstallProgress, RuntimeItem, RuntimeManifest};
 use crate::infrastructure::downloader::{
-    find_installed_binary, get_installed_acceleration, install_runtime, uninstall_runtime,
+    find_installed_binary, get_installed_metadata, install_runtime, uninstall_runtime,
     RuntimeInstallerManager,
 };
 use crate::infrastructure::hardware::{detect_hardware, resolve_target_acceleration};
@@ -57,7 +57,12 @@ impl RuntimeService {
             let is_installed = binary_path.is_some();
             let installed_path = binary_path.map(|p| p.to_string_lossy().to_string());
             let progress = self.installer_manager.get_progress(&manifest.id);
-            let installed_accel = get_installed_acceleration(&runtimes_dir, &manifest.id);
+            let installed_meta = get_installed_metadata(&runtimes_dir, &manifest.id);
+            let installed_accel = installed_meta.as_ref().map(|m| m.acceleration.clone());
+            let installed_version = installed_meta.as_ref().map(|m| m.version.clone());
+            let has_update = is_installed
+                && installed_version.is_some()
+                && installed_version.as_deref() != Some(&manifest.version);
 
             let avail_keys = manifest.get_available_accelerations(&hw_report.os, &hw_report.arch);
             let mut avail_options = Vec::new();
@@ -68,6 +73,8 @@ impl RuntimeService {
                     if key == active_accel
                         || (active_accel == "cuda" && key.starts_with("cuda"))
                         || (active_accel == "metal" && key == "metal")
+                        || (active_accel == "rocm" && key.starts_with("rocm"))
+                        || (active_accel == "sycl" && key.starts_with("sycl"))
                     {
                         recommended_found = true;
                         true
@@ -87,7 +94,13 @@ impl RuntimeService {
             }
 
             if !recommended_found && !avail_options.is_empty() {
-                avail_options[0].is_recommended = true;
+                if let Some(vulkan_opt) = avail_options.iter_mut().find(|o| o.id == "vulkan" && hw_report.available_accelerations.contains(&"vulkan".to_string())) {
+                    vulkan_opt.is_recommended = true;
+                } else if let Some(cpu_opt) = avail_options.iter_mut().find(|o| o.id == "cpu") {
+                    cpu_opt.is_recommended = true;
+                } else {
+                    avail_options[0].is_recommended = true;
+                }
             }
 
             items.push(RuntimeItem {
@@ -100,6 +113,8 @@ impl RuntimeService {
                 features: manifest.features,
                 is_installed,
                 installed_path,
+                installed_version,
+                has_update,
                 active_acceleration: active_accel.clone(),
                 installed_acceleration: installed_accel,
                 available_accelerations: avail_options,
@@ -173,3 +188,44 @@ impl RuntimeService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::downloader::RuntimeInstallerManager;
+    use tokio::sync::RwLock;
+
+    #[tokio::test]
+    async fn test_runtime_recommendation_never_defaults_to_cuda_without_gpu() {
+        let mut cfg = crate::core::config::AppConfig::default();
+        cfg.hardware = Some("auto".to_string());
+        cfg.runtimes = Some("/tmp".to_string());
+
+        let service = RuntimeService::new(
+            Arc::new(RuntimeInstallerManager::new()),
+            Arc::new(RwLock::new(cfg)),
+            None,
+        );
+
+        let items = service.get_runtimes().await;
+        let llama = items.iter().find(|i| i.id == "llama-cpp").expect("llama-cpp should exist");
+
+        let rec = llama.available_accelerations.iter().find(|a| a.is_recommended);
+        assert!(rec.is_some(), "There must be a recommended acceleration");
+
+        let hw = crate::infrastructure::hardware::tracker::detect_hardware();
+        if !hw.available_accelerations.contains(&"cuda".to_string()) {
+            assert_ne!(
+                rec.unwrap().id,
+                "cuda-12.8",
+                "Non-CUDA machine must NOT have cuda-12.8 recommended"
+            );
+            assert!(
+                rec.unwrap().id == "vulkan" || rec.unwrap().id == "cpu",
+                "Expected vulkan or cpu, got {}",
+                rec.unwrap().id
+            );
+        }
+    }
+}
+

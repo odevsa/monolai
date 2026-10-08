@@ -281,9 +281,7 @@
 
 		{#if isEditingModel}
 			<!-- Dedicated Form Container -->
-			<div
-				class="bg-[var(--bg-surface)] rounded-2xl p-5 sm:p-7 shadow-sm"
-			>
+			<div class="bg-[var(--bg-surface)] rounded-2xl p-5 sm:p-7 shadow-sm">
 				<div class="flex items-center gap-2.5 pb-4 mb-5 border-b border-[var(--border-color)]">
 					<div
 						class="w-8 h-8 rounded-xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center border-0"
@@ -431,9 +429,9 @@
 										{model.id}
 									</span>
 
-									<Badge variant="pill">{model.runtime}</Badge>
-									
-									{#if true || isRunning}
+									<Badge variant="muted" rounded="rounded-md">{model.runtime}</Badge>
+
+									{#if isRunning}
 										<Badge variant="success" pulse={true}>
 											Running :{runningInfo?.port}
 										</Badge>

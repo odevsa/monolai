@@ -1,8 +1,8 @@
 <script lang="ts">
-	let { 
+	let {
 		text
 	}: {
-		text: string
+		text: string;
 	} = $props();
 </script>
 

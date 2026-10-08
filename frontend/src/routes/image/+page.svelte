@@ -1,19 +1,20 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
+	import { generateImages } from '$lib/api/openai';
 	import Alert from '$lib/components/Alert.svelte';
-	import Badge from '$lib/components/Badge.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import Badge from '$lib/components/ds/atoms/Badge.svelte';
+	import FeatureGate from '$lib/components/FeatureGate.svelte';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Select from '$lib/components/Select.svelte';
-	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import { featuresState, onFeaturesChange } from '$lib/state/features.svelte';
-	import { imageGalleryState } from '$lib/state';
+	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
+	import { imageGalleryState } from '$lib/state';
+	import { featuresState, onFeaturesChange } from '$lib/state/features.svelte';
+	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import {
-		Box,
-		Boxes,
 		Check,
 		ChevronDown,
 		ChevronUp,
@@ -23,17 +24,11 @@
 		Image as ImageIcon,
 		Maximize2,
 		RefreshCw,
-		RotateCcwClock,
 		Sliders,
 		Sparkles,
-		Trash,
 		X
 	} from '@lucide/svelte';
-	import { generateImages } from '$lib/api/openai';
-	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
-	import type { ModelRecord } from '$lib/types/models';
-	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
-	import { t } from '$lib/i18n';
+	import { onMount } from 'svelte';
 
 	const SIZE_OPTIONS = [
 		{ value: '256x256', label: '256 × 256 (Square - Draft)' },
@@ -451,7 +446,7 @@
 								<h3 class="app-card-title text-sm">Prompt Studio</h3>
 							</div>
 							{#if isModelRunning}
-								<Badge variant="success" dot>Active</Badge>
+								<Badge variant="success" pulse>Active</Badge>
 							{/if}
 						</div>
 
@@ -739,9 +734,9 @@
 										"{selectedResultImage.prompt}"
 									</span>
 									<div class="flex items-center gap-2 shrink-0">
-										<Badge variant="pill">{selectedResultImage.size}</Badge>
+										<Badge variant="muted" rounded="rounded-md">{selectedResultImage.size}</Badge>
 										{#if selectedResultImage.generationTimeSecs}
-											<Badge variant="pill">
+											<Badge variant="muted" rounded="rounded-md">
 												{formatElapsedTime(selectedResultImage.generationTimeSecs)}
 											</Badge>
 										{/if}
@@ -816,9 +811,9 @@
 				>
 					<div class="flex items-center gap-2 min-w-0">
 						<ModelBadge model={selectedResultImage.model} variant="inline" class="text-xs" />
-						<Badge variant="pill">{selectedResultImage.size}</Badge>
+						<Badge variant="muted" rounded="rounded-md">{selectedResultImage.size}</Badge>
 						{#if selectedResultImage.generationTimeSecs}
-							<Badge variant="pill"
+							<Badge variant="muted" rounded="rounded-md"
 								>{formatElapsedTime(selectedResultImage.generationTimeSecs)}</Badge
 							>
 						{/if}

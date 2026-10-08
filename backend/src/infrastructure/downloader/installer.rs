@@ -1,6 +1,7 @@
 use crate::domain::{InstallProgress, RuntimeManifest};
 use crate::infrastructure::hardware::{detect_hardware, resolve_target_acceleration};
 use futures_util::StreamExt;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufReader};
@@ -41,18 +42,26 @@ impl RuntimeInstallerManager {
     }
 }
 
-pub fn get_installed_acceleration(runtimes_dir: &Path, runtime_id: &str) -> Option<String> {
-    let meta_path = runtimes_dir.join(runtime_id).join(".monolai_metadata.json");
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledMetadata {
+    pub runtime_id: String,
+    pub version: String,
+    pub acceleration: String,
+    pub installed_at: u64,
+}
+
+pub fn get_installed_metadata(runtimes_dir: &Path, runtime_id: &str) -> Option<InstalledMetadata> {
+    let meta_path = runtimes_dir.join(runtime_id).join(".metadata.json");
     if let Ok(content) = fs::read_to_string(meta_path) {
-        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-            return val.get("acceleration").and_then(|a| a.as_str()).map(|s| s.to_string());
+        if let Ok(meta) = serde_json::from_str::<InstalledMetadata>(&content) {
+            return Some(meta);
         }
     }
     None
 }
 
 fn save_installed_metadata(dest_dir: &Path, runtime_id: &str, version: &str, acceleration: &str) {
-    let meta_path = dest_dir.join(".monolai_metadata.json");
+    let meta_path = dest_dir.join(".metadata.json");
     let json = serde_json::json!({
         "runtime_id": runtime_id,
         "version": version,
