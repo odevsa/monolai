@@ -61,7 +61,10 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     models
 }
 
-pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) -> (bool, Option<String>) {
+pub fn check_model_file_exists<P: AsRef<Path>>(
+    models_dir: P,
+    flags_json: &str,
+) -> (bool, Option<String>) {
     let models_dir = models_dir.as_ref();
 
     let flags_map: serde_json::Value = match serde_json::from_str(flags_json) {
@@ -74,7 +77,14 @@ pub fn check_model_file_exists<P: AsRef<Path>>(models_dir: P, flags_json: &str) 
         None => return (false, None),
     };
 
-    let primary_keys = ["--model", "-m", "--weights", "-w", "--model-path", "--checkpoint"];
+    let primary_keys = [
+        "--model",
+        "-m",
+        "--weights",
+        "-w",
+        "--model-path",
+        "--checkpoint",
+    ];
     let mut file_val: Option<String> = None;
 
     for k in primary_keys {
@@ -136,7 +146,8 @@ mod tests {
 
     #[test]
     fn test_check_model_file_not_found() {
-        let (exists, path) = check_model_file_exists("/tmp/nonexistent", "{\"--model\": \"fake.gguf\"}");
+        let (exists, path) =
+            check_model_file_exists("/tmp/nonexistent", "{\"--model\": \"fake.gguf\"}");
         assert!(!exists);
         assert_eq!(path, Some("fake.gguf".to_string()));
     }

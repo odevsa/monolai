@@ -15,6 +15,7 @@ export interface ChatMessage {
 	duration?: string;
 	speed?: string;
 	modelTags?: string[];
+	model_tags?: string;
 	status?: string;
 	created_at?: string;
 }

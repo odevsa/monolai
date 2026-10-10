@@ -6,10 +6,7 @@ use crate::core::error::{AppError, AppResult};
 use crate::domain::HardwareReport;
 use crate::infrastructure::hardware::detect_hardware;
 use crate::state::AppState;
-use axum::{
-    extract::State,
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
@@ -108,7 +105,10 @@ pub async fn save_setup_config_handler(
         payload.host.as_deref()
     };
     let port = if in_docker {
-        std::env::var("PORT").ok().and_then(|p| p.parse().ok()).or(Some(8080))
+        std::env::var("PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .or(Some(8080))
     } else {
         payload.port
     };

@@ -1,19 +1,19 @@
-use crate::config::GuiConfig;
-use crate::supervisor::{ProcessSupervisor, ServerStatus};
-use crate::theme::Theme;
-use crate::ui::components;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Rounding, Stroke, Ui, Vec2};
-use std::time::{Duration, Instant};
+
+use crate::core::config::GuiConfig;
+use crate::core::status::ServerStatus;
+use crate::supervisor::SupervisorHandle;
+use crate::ui::app::FeedbackState;
+use crate::ui::components;
+use crate::ui::theme::Theme;
 
 pub fn show_main_header(
     ui: &mut Ui,
-    _ctx: &egui::Context,
     theme: &Theme,
     status: &ServerStatus,
     on_settings: impl FnOnce(),
 ) {
     ui.horizontal(|ui| {
-        // App title and small icon on header
         ui.label(
             RichText::new("Monolai")
                 .color(theme.text_primary)
@@ -21,9 +21,7 @@ pub fn show_main_header(
                 .size(16.0),
         );
 
-        // Header controls (right-aligned)
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            // Settings Navigation Button
             let settings_btn = ui.add(
                 egui::Button::new(
                     RichText::new("Settings")
@@ -35,13 +33,15 @@ pub fn show_main_header(
                 .stroke(Stroke::new(1.0_f32, theme.border))
                 .rounding(Rounding::same(6.0)),
             );
-            if settings_btn.on_hover_text("Configure server and directories").clicked() {
+            if settings_btn
+                .on_hover_text("Configure server and directories")
+                .clicked()
+            {
                 on_settings();
             }
 
             ui.add_space(8.0);
 
-            // Status Badge with vector dot
             let (badge_bg, badge_border, dot_color, text_color, text) = match status {
                 ServerStatus::Running { .. } => (
                     theme.emerald_bg,
@@ -64,13 +64,9 @@ pub fn show_main_header(
                     theme.amber,
                     "STOPPING",
                 ),
-                ServerStatus::Error(_) | ServerStatus::UnexpectedExit { .. } => (
-                    theme.red_bg,
-                    theme.red,
-                    theme.red,
-                    theme.red,
-                    "ERROR",
-                ),
+                ServerStatus::Error(_) | ServerStatus::UnexpectedExit { .. } => {
+                    (theme.red_bg, theme.red, theme.red, theme.red, "ERROR")
+                }
                 ServerStatus::Stopped => (
                     theme.bg_surface,
                     theme.border,
@@ -89,18 +85,12 @@ pub fn show_main_header(
                     ui.horizontal(|ui| {
                         components::draw_status_dot(ui, dot_color, 3.5);
                         ui.add_space(3.0);
-                        ui.label(
-                            RichText::new(text)
-                                .color(text_color)
-                                .size(10.0)
-                                .strong(),
-                        );
+                        ui.label(RichText::new(text).color(text_color).size(10.0).strong());
                     });
                 });
         });
     });
 
-    // Clean spacing without separator line
     ui.add_space(10.0);
 }
 
@@ -109,16 +99,12 @@ pub fn show_main_screen(
     ctx: &egui::Context,
     theme: &Theme,
     config: &GuiConfig,
-    supervisor: &ProcessSupervisor,
+    status: &ServerStatus,
+    supervisor: &SupervisorHandle,
     logo_dark: Option<&egui::TextureHandle>,
     logo_light: Option<&egui::TextureHandle>,
-    copied_feedback: &mut Option<Instant>,
-    alert_message: &Option<(String, Instant)>,
-    on_start_error: impl FnOnce(String),
+    feedback: &mut FeedbackState,
 ) {
-    let status = supervisor.get_status();
-
-    // Prominent Centered Hero Section with Larger Logo
     ui.vertical_centered(|ui| {
         let logo = if theme.is_dark { logo_dark } else { logo_light };
         if let Some(logo_tex) = logo {
@@ -154,8 +140,12 @@ pub fn show_main_screen(
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
 
-            match &status {
-                ServerStatus::Running { url, port, started_at } => {
+            match status {
+                ServerStatus::Running {
+                    url,
+                    port,
+                    started_at,
+                } => {
                     let uptime = started_at.elapsed().as_secs();
                     let mins = uptime / 60;
                     let secs = uptime % 60;
@@ -200,14 +190,19 @@ pub fn show_main_screen(
                                 );
 
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                    let copied = copied_feedback
-                                        .map(|t| t.elapsed() < Duration::from_secs(2))
-                                        .unwrap_or(false);
-
-                                    let copy_btn_text = if copied { "Copied!" } else { "Copy" };
-                                    if ui.add_sized([65.0, 26.0], egui::Button::new(RichText::new(copy_btn_text).size(11.0))).clicked() {
+                                    let copied_active = feedback.is_copied_active();
+                                    let copy_btn_text = if copied_active { "Copied!" } else { "Copy" };
+                                    if ui
+                                        .add_sized(
+                                            [65.0, 26.0],
+                                            egui::Button::new(
+                                                RichText::new(copy_btn_text).size(11.0),
+                                            ),
+                                        )
+                                        .clicked()
+                                    {
                                         ctx.output_mut(|o| o.copied_text = url.clone());
-                                        *copied_feedback = Some(Instant::now());
+                                        feedback.copied = Some(std::time::Instant::now());
                                     }
                                 });
                             });
@@ -282,9 +277,11 @@ pub fn show_main_screen(
                                     .size(15.0),
                             );
                             ui.label(
-                                RichText::new("Click Start Service below to launch the local AI backend.")
-                                    .color(theme.text_secondary)
-                                    .size(12.0),
+                                RichText::new(
+                                    "Click Start Service below to launch the local AI backend.",
+                                )
+                                .color(theme.text_secondary)
+                                .size(12.0),
                             );
                         });
                     });
@@ -300,7 +297,9 @@ pub fn show_main_screen(
                                     .strong()
                                     .size(15.0),
                             );
-                            let code_str = exit_code.map(|c| c.to_string()).unwrap_or_else(|| "N/A".to_string());
+                            let code_str = exit_code
+                                .map(|c| c.to_string())
+                                .unwrap_or_else(|| "N/A".to_string());
                             ui.label(
                                 RichText::new(format!("Exit status code: {}", code_str))
                                     .color(theme.text_secondary)
@@ -320,11 +319,7 @@ pub fn show_main_screen(
                                     .strong()
                                     .size(15.0),
                             );
-                            ui.label(
-                                RichText::new(err)
-                                    .color(theme.text_secondary)
-                                    .size(12.0),
-                            );
+                            ui.label(RichText::new(err).color(theme.text_secondary).size(12.0));
                         });
                     });
                 }
@@ -353,7 +348,7 @@ pub fn show_main_screen(
                     .rounding(Rounding::same(6.0)),
                 );
                 if stop_btn.clicked() {
-                    let _ = supervisor.stop();
+                    supervisor.stop();
                 }
 
                 let restart_btn = ui.add_sized(
@@ -369,7 +364,7 @@ pub fn show_main_screen(
                     .rounding(Rounding::same(6.0)),
                 );
                 if restart_btn.clicked() {
-                    let _ = supervisor.restart(config);
+                    supervisor.restart(config.clone());
                 }
             });
         }
@@ -386,9 +381,7 @@ pub fn show_main_screen(
                 .rounding(Rounding::same(6.0)),
             );
             if start_btn.clicked() {
-                if let Err(e) = supervisor.start(config) {
-                    on_start_error(e);
-                }
+                supervisor.start(config.clone());
             }
         }
         ServerStatus::Starting | ServerStatus::Stopping => {
@@ -402,21 +395,18 @@ pub fn show_main_screen(
     }
 
     // 3. Error Banner Alert Message if present
-    if let Some((msg, created_at)) = alert_message {
-        if created_at.elapsed() < Duration::from_secs(6) {
-            ui.add_space(12.0);
-            egui::Frame::none()
-                .fill(theme.red_bg)
-                .stroke(Stroke::new(1.0_f32, theme.red))
-                .rounding(Rounding::same(6.0))
-                .inner_margin(12.0)
-                .show(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    ui.label(RichText::new(msg).color(theme.red).size(12.0));
-                });
-        }
+    if let Some(msg) = feedback.current_alert() {
+        ui.add_space(12.0);
+        egui::Frame::none()
+            .fill(theme.red_bg)
+            .stroke(Stroke::new(1.0_f32, theme.red))
+            .rounding(Rounding::same(6.0))
+            .inner_margin(12.0)
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(RichText::new(msg).color(theme.red).size(12.0));
+            });
     }
 
     ui.add_space(16.0);
-
 }

@@ -9,5 +9,6 @@ export { default as FormField } from './FormField.svelte';
 export { default as MarkdownRenderer } from './MarkdownRenderer.svelte';
 export { default as MetricTile } from './MetricTile.svelte';
 export { default as ModelBadge } from './ModelBadge.svelte';
+export { default as ModelSelect } from './ModelSelect.svelte';
 export { default as Select } from './Select.svelte';
 export { default as Tabs } from './Tabs.svelte';

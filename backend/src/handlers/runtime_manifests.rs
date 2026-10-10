@@ -41,6 +41,9 @@ pub async fn get_runtime_manifest_by_id_handler(
     if let Some(manifest) = state.runtime_service.manifest_by_id(&id) {
         Ok(Json(manifest))
     } else {
-        Err(AppError::not_found(format!("Runtime manifest for '{}' not found", id)))
+        Err(AppError::not_found(format!(
+            "Runtime manifest for '{}' not found",
+            id
+        )))
     }
 }

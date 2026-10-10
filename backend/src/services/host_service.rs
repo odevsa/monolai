@@ -1,6 +1,4 @@
-use crate::domain::{
-    CpuInfo, HostMetricsTick, OsInfo, RamInfo, SysInfoResponse, VramInfo,
-};
+use crate::domain::{CpuInfo, HostMetricsTick, OsInfo, RamInfo, SysInfoResponse, VramInfo};
 use crate::infrastructure::hardware::GpuTracker;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -126,7 +126,7 @@
 			</p>
 		</div>
 
-		<div class="w-full sm:w-72 mt-1">
+		<div class="w-full mt-1">
 			<Select
 				value={i18n.currentLocale}
 				options={AVAILABLE_LOCALES.map((l) => ({

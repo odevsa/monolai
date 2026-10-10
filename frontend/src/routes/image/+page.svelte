@@ -7,10 +7,11 @@
 		Card,
 		FeatureGate,
 		ModelBadge,
+		ModelSelect,
 		PageHeader,
 		Select
 	} from '$lib/components/ds';
-	import { t } from '$lib/i18n';
+	import { t, tArray } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
 	import { imageGalleryState } from '$lib/state';
 	import { featuresState, onFeaturesChange } from '$lib/state/features.svelte';
@@ -50,61 +51,9 @@
 		{ value: '4', label: '4 Images' }
 	];
 
-	const RANDOM_PROMPTS: string[] = [
-		'A futuristic cyberpunk city with neon reflections in rain, cinematic lighting, volumetric fog, 8k resolution',
-		'Majestic snow-capped mountain range under a galaxy night sky with the Milky Way, ultra-detailed landscape',
-		'Studio portrait of a cute red panda wearing vintage aviator goggles and a leather jacket, 35mm photograph',
-		'Serene Japanese zen garden with blooming cherry blossoms, mossy stones, Koi pond, soft morning mist',
-		'Hyper-realistic macro photography of a crystal butterfly resting on a glowing bioluminescent flower',
-		'Epic fantasy castle perched on a floating island surrounded by golden sunset clouds and waterfalls',
-		'Cozy coffee shop interior on a rainy afternoon, warm ambient lighting, wooden furniture, steam from coffee cup',
-		'Steampunk airship soaring through thunderous storm clouds with brass gears and glowing copper conduits',
-		'Enchanted ancient forest with giant glowing mushrooms, ethereal light rays filtering through trees, fairies',
-		'Portrait of an astronaut floating in deep space looking back at Earth, visor reflecting stars, cinematic 8k',
-		'A cute baby dragon sleeping curled up around a pile of shiny gold coins and gemstones, 3d render style',
-		'Gothic cathedral interior with colorful stained-glass windows projecting kaleidoscopic light onto stone floor',
-		'Vibrant coral reef teeming with exotic sea creatures, manta rays, sunbeams penetrating clear turquoise water',
-		'Futuristic sports car speeding across a desert highway at twilight, motion blur, taillight light trails',
-		'Mythical white phoenix with glowing feathered wings rising from gentle blue flames, fantasy art illustration',
-		'Modern minimalist villa built into ocean cliffside with infinity pool and panoramic sunset horizon',
-		'A cybernetic samurai warrior standing in a neon-drenched Tokyo alleyway at night, reflections, blade glowing',
-		'Whimsical treehouse village connected by rope bridges in an autumn forest with falling golden leaves',
-		'Intricate mechanical watch mechanism with exposed brass gears, tourbillon movement, macro lens photography',
-		'Ancient Egyptian temple ruins during a golden hour sandstorm, mysterious statues partially buried in dunes',
-		'Cute fluffy cat wearing an astronaut helmet, floating weightlessly in space with tiny floating fish snacks',
-		'Watercolor painting of a quaint European cobblestone canal street with bicycles and flower pots',
-		'Bioluminescent underwater cavern with glowing jellyfishes illuminating ancient submerged stone statues',
-		'Retro 1980s synthwave sunset grid landscape with neon palm trees, wireframe mountains, chrome aesthetics',
-		'Dramatic cinematic shot of a lone wanderer with a staff standing before an ancient colossal stone portal',
-		'Isometric 3D diorama of a cozy miniature bookstore room, warm reading lamp, detailed bookshelves, tiny cat',
-		'Close-up portrait of an elven princess with silver braided hair and delicate emerald jewelry, fantasy concept art',
-		'Nordic fjord landscape with a small wooden red cabin on the shore, mirror reflections in calm fjord water',
-		'A friendly robot gardener watering colorful alien flowers in an orbital glass greenhouse dome',
-		'Surreal dreamscape with melting pocket watches draped over branches, floating clockwork gears, Dali style',
-		'Golden retriever puppy sitting proudly in a meadow of lavender flowers, golden hour soft bokeh lighting',
-		'Victorian library with towering dark wood bookcases, spiral staircases, leather armchairs, rolling ladders',
-		'An imposing storm giant forged of lightning and storm clouds towering over a rugged mountain ridge',
-		'Cyberpunk street food stall with vapor steam rising, neon Japanese signage, appetizing noodle bowls, rain',
-		'Art nouveau illustration of a maiden surrounded by climbing vines, stylized floral patterns and gold leaf accents',
-		'A cozy rustic cabin surrounded by deep winter snow with warm glowing windows and smoke rising from chimney',
-		'Majestic stag with glowing crystal antlers standing in a misty twilight forest glade',
-		'Sci-fi laboratory with holographic displays, glowing particle accelerator ring, high-tech cleanroom aesthetic',
-		'Portrait of a wise owl with steampunk brass monocle, gears, and leather collar against dark library backdrop',
-		'Tropical island paradise with turquoise water, overwater wooden bungalows, pristine white sand beach, sunny day',
-		'Candid street photograph in Paris at dusk, wet pavement reflecting street lamps, vintage Citroen car parked',
-		'Futuristic modular lunar colony base with glass biodomes and solar arrays under starry black space sky',
-		'An ornate porcelain teacup filled with swirling galaxies and miniature stars, ethereal tabletop photography',
-		'Vintage oil painting of a majestic clipper ship battling stormy ocean waves with torn sails and lightning',
-		'Charming small bakery window display filled with artisan sourdough breads, croissants, and fruit pastries',
-		'A cute little robot sitting alone on a grassy hill watching a colorful sunset, Pixar style animation render',
-		'Dramatic portrait of an ancient Norse warrior in fur armor standing on a snowy mountain peak at dusk',
-		'Floating sky island archipelago with waterfalls dropping into infinite sky, vibrant lush greenery, sunny daylight',
-		'Vibrant Holi festival celebration with colorful powder explosions in air, smiling people, joyful cinematic capture',
-		'Abstract geometric architectural sculpture of smooth concrete and glass intersecting with desert sunlight and shadows'
-	];
-
 	// Component State
 	let selectedModel = $state<string>('');
+	let randomPrompts = $derived(tArray('image.randomPrompts'));
 
 	// Generation Form State
 	let prompt = $state('');
@@ -176,13 +125,6 @@
 		}
 	});
 
-	let modelSelectOptions = $derived(
-		registeredImageModels.map((m) => ({
-			value: m.id,
-			label: `${m.id} (${m.runtime})`
-		}))
-	);
-
 	let currentModelRecord = $derived(registeredImageModels.find((m) => m.id === selectedModel));
 
 	$effect(() => {
@@ -222,16 +164,34 @@
 			generationElapsed = Math.floor((Date.now() - startTime) / 100) / 10;
 		}, 100);
 
-		const parsedSeed = seed !== '' && !isNaN(Number(seed)) ? Number(seed) : undefined;
+		const rawPrompt = prompt.trim();
+		const userProvidedSeed =
+			seed !== '' && !isNaN(Number(seed)) && Number(seed) >= 0 ? Number(seed) : undefined;
+		const effectiveSeed =
+			userProvidedSeed !== undefined ? userProvidedSeed : Math.floor(Math.random() * 2147483647);
 		const n = parseInt(selectedCount, 10) || 1;
+
+		const extraArgs: Record<string, any> = {
+			seed: effectiveSeed,
+			sample_steps: Number(steps) || 20,
+			cfg_scale: Number(cfgScale) || 7.5
+		};
+		if (negativePrompt.trim()) {
+			extraArgs.negative_prompt = negativePrompt.trim();
+		}
+
+		const promptWithExtraArgs = rawPrompt.includes('<sd_cpp_extra_args>')
+			? rawPrompt
+			: `${rawPrompt} <sd_cpp_extra_args>${JSON.stringify(extraArgs)}</sd_cpp_extra_args>`;
 
 		// Standard OpenAI Images Generations Request body
 		const requestBody: Record<string, any> = {
 			model: selectedModel,
-			prompt: prompt.trim(),
+			prompt: promptWithExtraArgs,
 			n,
 			size: selectedSize,
-			response_format: 'b64_json'
+			response_format: 'b64_json',
+			seed: effectiveSeed
 		};
 
 		if (negativePrompt.trim()) {
@@ -242,9 +202,6 @@
 		}
 		if (cfgScale) {
 			requestBody.cfg_scale = Number(cfgScale);
-		}
-		if (parsedSeed !== undefined && parsedSeed >= 0) {
-			requestBody.seed = parsedSeed;
 		}
 
 		try {
@@ -268,13 +225,13 @@
 				return {
 					id: `img-${Date.now()}-${idx}`,
 					timestamp: Date.now(),
-					prompt: prompt.trim(),
+					prompt: rawPrompt,
 					negativePrompt: negativePrompt.trim() || undefined,
 					model: selectedModel,
 					size: selectedSize,
 					steps,
 					cfgScale,
-					seed: parsedSeed,
+					seed: effectiveSeed,
 					src: imageSrc,
 					generationTimeSecs: totalSecs
 				};
@@ -309,12 +266,13 @@
 	}
 
 	function insertRandomPrompt() {
-		if (RANDOM_PROMPTS.length === 0) return;
+		const list = randomPrompts;
+		if (list.length === 0) return;
 		let nextPrompt = prompt;
 		let attempts = 0;
 		while (attempts < 10) {
-			const candidate = RANDOM_PROMPTS[Math.floor(Math.random() * RANDOM_PROMPTS.length)];
-			if (candidate !== prompt || RANDOM_PROMPTS.length === 1) {
+			const candidate = list[Math.floor(Math.random() * list.length)];
+			if (candidate !== prompt || list.length === 1) {
 				nextPrompt = candidate;
 				break;
 			}
@@ -391,6 +349,7 @@
 		if (typeof window !== 'undefined') {
 			window.addEventListener('monolai:model-unload', onUnload);
 		}
+
 		return () => {
 			unsubFeatures();
 			if (typeof window !== 'undefined') {
@@ -437,24 +396,24 @@
 							</div>
 
 							<!-- Model Selector -->
-							<div class="flex flex-col gap-1">
+							<div class="flex flex-col gap-1.5">
 								<div class="flex items-center justify-between">
 									<label
 										for="image-model-select"
 										class="text-xs font-semibold text-[var(--text-secondary)]"
 									>
-										Model
+										{t('image.modelLabel')}
 									</label>
-									{#if currentModelRecord}
-										<span class="text-[11px] text-[var(--text-muted)] font-mono">
-											{currentModelRecord.runtime}
-										</span>
-									{/if}
 								</div>
-								<Select
+
+								<ModelSelect
+									id="image-model-select"
 									bind:value={selectedModel}
-									options={modelSelectOptions}
-									placeholder="Select an image model..."
+									models={registeredImageModels}
+									onopen={loadImageModels}
+									placeholder={t('image.selectModelPlaceholder')}
+									label={t('image.selectActiveModel')}
+									emptyText={t('image.noModelsRegistered')}
 								/>
 							</div>
 
@@ -468,17 +427,17 @@
 										>
 											Prompt
 										</label>
-										<button
-											type="button"
-											class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
-											onclick={insertRandomPrompt}
-											title="Generate random prompt from the list"
-										>
-											<Dices size={13} class="text-[var(--primary)]" />
-											<span>Random</span>
-										</button>
+										<span class="text-[11px] text-[var(--text-muted)]"> (Ctrl+Enter) </span>
 									</div>
-									<span class="text-[11px] text-[var(--text-muted)]"> Ctrl+Enter to generate </span>
+									<button
+										type="button"
+										class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+										onclick={insertRandomPrompt}
+										title="Generate random prompt from the list"
+									>
+										<Dices size={13} class="text-[var(--primary)]" />
+										<span>Random</span>
+									</button>
 								</div>
 								<textarea
 									id="image-prompt"
@@ -486,7 +445,7 @@
 									onkeydown={handleKeyDown}
 									rows={4}
 									placeholder="Describe what you want to see in detail..."
-									class="w-full p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+									class="w-full p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
 									disabled={isGenerating}></textarea>
 							</div>
 
@@ -502,7 +461,7 @@
 									bind:value={negativePrompt}
 									rows={2}
 									placeholder="Items or styles to avoid (e.g. blurry, deformed, low quality, artifacts)..."
-									class="w-full p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)]"
+									class="w-full p-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)]"
 									disabled={isGenerating}></textarea>
 							</div>
 
@@ -588,14 +547,41 @@
 										</div>
 
 										<div class="col-span-2 flex flex-col gap-1">
-											<label for="image-seed-input" class="text-[11px] text-[var(--text-muted)]">
-												Seed (leave empty for random)
-											</label>
+											<div class="flex items-center justify-between">
+												<label for="image-seed-input" class="text-[11px] text-[var(--text-muted)]">
+													{t('image.seedLabel')}
+												</label>
+												<div class="flex items-center gap-2">
+													<button
+														type="button"
+														class="text-[10px] text-[var(--primary)] hover:underline flex items-center gap-1 cursor-pointer"
+														onclick={() => {
+															seed = Math.floor(Math.random() * 2147483647);
+														}}
+														title={t('image.randomizeSeed')}
+													>
+														<Dices size={12} />
+														<span>{t('image.randomizeSeed')}</span>
+													</button>
+													{#if seed !== ''}
+														<button
+															type="button"
+															class="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+															onclick={() => {
+																seed = '';
+															}}
+															title={t('image.clearSeed')}
+														>
+															{t('image.clearSeed')}
+														</button>
+													{/if}
+												</div>
+											</div>
 											<input
 												id="image-seed-input"
 												type="number"
 												bind:value={seed}
-												placeholder="-1 (Random)"
+												placeholder={t('image.seedPlaceholder')}
 												class="w-full px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
 											/>
 										</div>
@@ -607,7 +593,7 @@
 							<div class="pt-2">
 								<button
 									type="button"
-									class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all"
+									class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all"
 									disabled={isGenerating || !prompt.trim() || !selectedModel}
 									onclick={handleGenerate}
 								>
@@ -641,7 +627,7 @@
 							</div>
 
 							{#if selectedResultImage}
-								<div class="flex items-center gap-1.5">
+								<div class="flex items-center ml-auto gap-1.5">
 									<button
 										type="button"
 										class="app-btn app-btn-secondary app-btn-sm"
@@ -649,22 +635,15 @@
 										title="Download image"
 									>
 										<Download size={13} />
-										<span class="hidden sm:inline">Download</span>
 									</button>
 
 									<button
 										type="button"
 										class="app-btn app-btn-secondary app-btn-sm"
 										onclick={() => reuseParameters(selectedResultImage!)}
-										title="Copy prompt"
+										title="Reuse prompt"
 									>
-										{#if copiedPrompt}
-											<Check size={13} class="text-emerald-500" />
-											<span class="text-emerald-500 hidden sm:inline">Copied</span>
-										{:else}
-											<Copy size={13} />
-											<span class="hidden sm:inline">Prompt</span>
-										{/if}
+										<Copy size={13} />
 									</button>
 
 									<button
@@ -674,7 +653,6 @@
 										title="Copy image"
 									>
 										<Image size={13} />
-										<span class="hidden sm:inline">Copy Image</span>
 									</button>
 
 									<button
@@ -691,7 +669,7 @@
 
 						<!-- Main Image Display Container -->
 						<div
-							class="w-full min-h-[380px] max-h-[580px] rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center relative overflow-hidden group select-none"
+							class="w-full min-h-[380px] max-h-[580px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center relative overflow-hidden group select-none"
 						>
 							{#if isGenerating}
 								<!-- Loading State -->
@@ -716,7 +694,7 @@
 
 								<!-- Hover Overlay Pill with Meta -->
 								<div
-									class="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)]/80 flex items-center justify-between gap-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-auto"
+									class="absolute bottom-3 left-3 right-3 p-3 rounded-lg bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)]/80 flex items-center justify-between gap-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-auto"
 								>
 									<span class="truncate text-[var(--text-primary)] font-medium">
 										"{selectedResultImage.prompt}"
@@ -736,7 +714,7 @@
 									class="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm"
 								>
 									<div
-										class="w-12 h-12 rounded-2xl bg-[var(--bg-surface)] text-[var(--text-muted)] flex items-center justify-center border border-[var(--border-color)]"
+										class="w-12 h-12 rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] flex items-center justify-center border border-[var(--border-color)]"
 									>
 										<ImageIcon size={24} />
 									</div>
@@ -839,7 +817,7 @@
 
 				<!-- Prompt details at bottom -->
 				<div
-					class="w-full p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]"
+					class="w-full p-2 rounded-lg bg-[var(--bg-surface-hover)] text-xs text-[var(--text-secondary)]"
 				>
 					<span class="font-semibold text-[var(--text-primary)]">Prompt:</span>
 					{selectedResultImage.prompt}

@@ -6,19 +6,15 @@ use tray_icon::{
     Icon, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
 
-#[derive(Debug, Clone)]
-pub enum TrayAction {
-    OpenDashboard,
-    Quit,
-}
+use crate::core::events::TrayAction;
+use crate::platform::window;
 
-struct TrayContext {
-    supervisor: crate::supervisor::ProcessSupervisor,
-    tx: Sender<TrayAction>,
+struct TrayHandlerState {
+    action_tx: Sender<TrayAction>,
     egui_ctx: egui::Context,
 }
 
-static TRAY_CTX: Mutex<Option<TrayContext>> = Mutex::new(None);
+static TRAY_STATE: Mutex<Option<TrayHandlerState>> = Mutex::new(None);
 
 pub struct TrayManager {
     _tray_icon: TrayIcon,
@@ -29,10 +25,7 @@ pub struct TrayManager {
 }
 
 impl TrayManager {
-    pub fn new(
-        egui_ctx: egui::Context,
-        supervisor: crate::supervisor::ProcessSupervisor,
-    ) -> Result<Self, String> {
+    pub fn new(egui_ctx: egui::Context) -> Result<Self, String> {
         let menu = Menu::new();
 
         let status_item = MenuItem::with_id("status", "○ Monolai: Stopped", false, None);
@@ -45,8 +38,8 @@ impl TrayManager {
         let _ = menu.append(&PredefinedMenuItem::separator());
         let _ = menu.append(&quit_item);
 
-        let icon_running = Self::load_icon(include_bytes!("../assets/tray/tray-running.png"))?;
-        let icon_stopped = Self::load_icon(include_bytes!("../assets/tray/tray-stopped.png"))?;
+        let icon_running = Self::load_icon(include_bytes!("../../assets/tray/tray-running.png"))?;
+        let icon_stopped = Self::load_icon(include_bytes!("../../assets/tray/tray-stopped.png"))?;
 
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
@@ -58,10 +51,9 @@ impl TrayManager {
 
         let (action_tx, action_rx) = channel();
 
-        if let Ok(mut guard) = TRAY_CTX.lock() {
-            *guard = Some(TrayContext {
-                supervisor,
-                tx: action_tx,
+        if let Ok(mut guard) = TRAY_STATE.lock() {
+            *guard = Some(TrayHandlerState {
+                action_tx,
                 egui_ctx: egui_ctx.clone(),
             });
         }
@@ -69,21 +61,17 @@ impl TrayManager {
         MenuEvent::set_event_handler(Some(|event: MenuEvent| {
             let id = event.id.as_ref().to_string();
 
-            if let Ok(guard) = TRAY_CTX.lock() {
-                if let Some(ref tc) = *guard {
+            if let Ok(guard) = TRAY_STATE.lock() {
+                if let Some(ref state) = *guard {
                     match id.as_str() {
                         "show_panel" => {
-                            crate::ui::components::restore_window(&tc.egui_ctx);
-                            let _ = tc.tx.send(TrayAction::OpenDashboard);
-                            tc.egui_ctx.request_repaint();
+                            window::restore_window(&state.egui_ctx);
+                            let _ = state.action_tx.send(TrayAction::OpenDashboard);
+                            state.egui_ctx.request_repaint();
                         }
                         "quit" => {
-                            let _ = tc.supervisor.stop();
-                            let _ = tc.tx.send(TrayAction::Quit);
-                            tc.egui_ctx.request_repaint();
-                            tc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                            std::thread::sleep(std::time::Duration::from_millis(150));
-                            std::process::exit(0);
+                            let _ = state.action_tx.send(TrayAction::Quit);
+                            state.egui_ctx.request_repaint();
                         }
                         _ => {}
                     }
@@ -91,27 +79,25 @@ impl TrayManager {
             }
         }));
 
-        TrayIconEvent::set_event_handler(Some(|event: TrayIconEvent| {
-            match event {
-                TrayIconEvent::DoubleClick {
-                    button: MouseButton::Left,
-                    ..
-                }
-                | TrayIconEvent::Click {
-                    button: MouseButton::Left,
-                    button_state: MouseButtonState::Up,
-                    ..
-                } => {
-                    if let Ok(guard) = TRAY_CTX.lock() {
-                        if let Some(ref tc) = *guard {
-                            crate::ui::components::restore_window(&tc.egui_ctx);
-                            let _ = tc.tx.send(TrayAction::OpenDashboard);
-                            tc.egui_ctx.request_repaint();
-                        }
+        TrayIconEvent::set_event_handler(Some(|event: TrayIconEvent| match event {
+            TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            }
+            | TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } => {
+                if let Ok(guard) = TRAY_STATE.lock() {
+                    if let Some(ref state) = *guard {
+                        window::restore_window(&state.egui_ctx);
+                        let _ = state.action_tx.send(TrayAction::OpenDashboard);
+                        state.egui_ctx.request_repaint();
                     }
                 }
-                _ => {}
             }
+            _ => {}
         }));
 
         Ok(Self {
@@ -134,9 +120,13 @@ impl TrayManager {
 
     pub fn update_status(&mut self, is_running: bool, port: u16) {
         if is_running {
-            let _ = self.status_item.set_text(format!("● Monolai: Running (:{})", port));
+            let _ = self
+                .status_item
+                .set_text(format!("● Monolai: Running (:{})", port));
             let _ = self._tray_icon.set_icon(Some(self.icon_running.clone()));
-            let _ = self._tray_icon.set_tooltip(Some(format!("Monolai: Running on port {}", port)));
+            let _ = self
+                ._tray_icon
+                .set_tooltip(Some(format!("Monolai: Running on port {}", port)));
         } else {
             let _ = self.status_item.set_text("○ Monolai: Stopped");
             let _ = self._tray_icon.set_icon(Some(self.icon_stopped.clone()));

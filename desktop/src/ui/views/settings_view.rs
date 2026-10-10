@@ -1,16 +1,14 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Rounding, Stroke, Ui};
 
-use crate::config::GuiConfig;
-use crate::theme::Theme;
+use crate::core::config::GuiConfig;
+use crate::platform::autostart;
+use crate::supervisor::SupervisorHandle;
+use crate::ui::app::{FeedbackState, MaintenanceUiState};
 use crate::ui::components;
+use crate::ui::theme::Theme;
 
-/// Renders top navigation bar for the Settings screen.
-pub fn show_settings_header(
-    ui: &mut Ui,
-    theme: &Theme,
-    go_back: &mut bool,
-) {
+pub fn show_settings_header(ui: &mut Ui, theme: &Theme, on_back: impl FnOnce()) {
     ui.horizontal(|ui| {
         let back_btn = ui.add(
             egui::Button::new(
@@ -24,7 +22,7 @@ pub fn show_settings_header(
             .rounding(Rounding::same(6.0)),
         );
         if back_btn.clicked() {
-            *go_back = true;
+            on_back();
         }
 
         ui.add_space(8.0);
@@ -38,19 +36,15 @@ pub fn show_settings_header(
     });
 
     ui.add_space(10.0);
-    // Header separator line removed as per user request
 }
 
-/// Renders settings cards: Server & Network, Hardware Acceleration, Storage Directories, Behavior, Save button, and Data Management.
 pub fn show_settings_screen(
     ui: &mut Ui,
     theme: &Theme,
     config: &mut GuiConfig,
-    supervisor: &crate::supervisor::ProcessSupervisor,
-    config_saved_feedback: &mut Option<Instant>,
-    confirm_clean_storage: &mut Option<Instant>,
-    confirm_factory_reset: &mut Option<Instant>,
-    maintenance_status: &mut Option<(String, bool, Instant)>,
+    supervisor: &SupervisorHandle,
+    feedback: &mut FeedbackState,
+    maintenance: &mut MaintenanceUiState,
 ) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
@@ -58,7 +52,6 @@ pub fn show_settings_screen(
             const CONTROL_H: f32 = 32.0;
             const CARD_PAD: f32 = 16.0;
 
-            // Leave space for the scrollbar on the right (14px gutter) so it stays outside the cards
             let card_w = (ui.available_width() - 14.0).max(100.0);
             let inner_w = (card_w - CARD_PAD * 2.0).max(100.0);
 
@@ -234,10 +227,7 @@ pub fn show_settings_screen(
             ui.add_space(18.0);
 
             // Save Preferences Button
-            let saved = config_saved_feedback
-                .map(|t| t.elapsed() < Duration::from_secs(2))
-                .unwrap_or(false);
-
+            let saved = feedback.is_saved_active();
             let save_text = if saved { "Settings Saved Successfully!" } else { "Save Preferences" };
             let save_color = if saved { theme.emerald } else { theme.primary };
 
@@ -250,25 +240,10 @@ pub fn show_settings_screen(
                 )
                 .clicked()
             {
-                let _ = crate::config::set_autostart_app(config.autostart_app, config.minimize_on_start);
+                let _ = autostart::set_autostart_app(config.autostart_app, config.minimize_on_start);
                 let _ = config.save();
-
-                // If backend is running, notify it immediately via HTTP API so it reloads in real-time
-                let payload = serde_json::json!({
-                    "models": config.models_dir.trim(),
-                    "runtimes": config.runtimes_dir.trim(),
-                    "hardware": config.hardware.trim(),
-                    "host": config.host.trim(),
-                    "port": config.port,
-                });
-                if let Ok(body) = serde_json::to_string(&payload) {
-                    let _ = ureq::post(&format!("http://127.0.0.1:{}/api/config/setup", config.port))
-                        .set("Content-Type", "application/json")
-                        .timeout(Duration::from_millis(500))
-                        .send_string(&body);
-                }
-
-                *config_saved_feedback = Some(Instant::now());
+                supervisor.notify_config(config.clone());
+                feedback.saved = Some(Instant::now());
             }
 
             ui.add_space(20.0);
@@ -307,34 +282,34 @@ pub fn show_settings_screen(
                     );
                     ui.add_space(8.0);
 
-                    let clean_confirming = confirm_clean_storage
-                        .map(|t| t.elapsed() < Duration::from_secs(5))
-                        .unwrap_or(false);
+                    let in_progress = maintenance.in_progress;
+                    let clean_confirming = maintenance.is_clean_confirming();
 
-                    let (clean_btn_text, clean_btn_fill, clean_btn_color) = if clean_confirming {
+                    let (clean_btn_text, clean_btn_fill, clean_btn_color) = if in_progress {
+                        ("Maintenance in progress...", theme.bg_primary, theme.text_muted)
+                    } else if clean_confirming {
                         ("Click to Confirm: Wipe Storage Database", Color32::from_rgb(220, 38, 38), Color32::WHITE)
                     } else {
                         ("Clean Storage", theme.bg_primary, theme.text_primary)
                     };
 
-                    let clean_btn = ui.add_sized(
-                        [inner_w, CONTROL_H],
+                    let clean_btn = ui.add_enabled(
+                        !in_progress,
                         egui::Button::new(RichText::new(clean_btn_text).strong().size(12.0).color(clean_btn_color))
                             .fill(clean_btn_fill)
                             .stroke(Stroke::new(1.0_f32, if clean_confirming { Color32::from_rgb(220, 38, 38) } else { theme.border }))
-                            .rounding(Rounding::same(6.0)),
+                            .rounding(Rounding::same(6.0))
+                            .min_size(egui::Vec2::new(inner_w, CONTROL_H)),
                     );
 
                     if clean_btn.clicked() {
                         if clean_confirming {
-                            match supervisor.run_maintenance_flag("--clean-storage", Some(config)) {
-                                Ok(msg) => *maintenance_status = Some((msg, true, Instant::now())),
-                                Err(err) => *maintenance_status = Some((err, false, Instant::now())),
-                            }
-                            *confirm_clean_storage = None;
+                            maintenance.confirm_clean = None;
+                            maintenance.in_progress = true;
+                            supervisor.run_maintenance("--clean-storage", Some(config.clone()));
                         } else {
-                            *confirm_clean_storage = Some(Instant::now());
-                            *confirm_factory_reset = None;
+                            maintenance.confirm_clean = Some(Instant::now());
+                            maintenance.confirm_reset = None;
                         }
                     }
 
@@ -352,52 +327,45 @@ pub fn show_settings_screen(
                     );
                     ui.add_space(8.0);
 
-                    let reset_confirming = confirm_factory_reset
-                        .map(|t| t.elapsed() < Duration::from_secs(5))
-                        .unwrap_or(false);
+                    let reset_confirming = maintenance.is_reset_confirming();
 
-                    let (reset_btn_text, reset_btn_fill, reset_btn_color) = if reset_confirming {
+                    let (reset_btn_text, reset_btn_fill, reset_btn_color) = if in_progress {
+                        ("Maintenance in progress...", theme.bg_primary, theme.text_muted)
+                    } else if reset_confirming {
                         ("Click to Confirm: Factory Reset Everything", Color32::from_rgb(185, 28, 28), Color32::WHITE)
                     } else {
                         ("Factory Reset", theme.bg_primary, theme.red)
                     };
 
-                    let reset_btn = ui.add_sized(
-                        [inner_w, CONTROL_H],
+                    let reset_btn = ui.add_enabled(
+                        !in_progress,
                         egui::Button::new(RichText::new(reset_btn_text).strong().size(12.0).color(reset_btn_color))
                             .fill(reset_btn_fill)
                             .stroke(Stroke::new(1.0_f32, if reset_confirming { Color32::from_rgb(185, 28, 28) } else { theme.red }))
-                            .rounding(Rounding::same(6.0)),
+                            .rounding(Rounding::same(6.0))
+                            .min_size(egui::Vec2::new(inner_w, CONTROL_H)),
                     );
 
                     if reset_btn.clicked() {
                         if reset_confirming {
-                            match supervisor.run_maintenance_flag("--factory-reset", Some(config)) {
-                                Ok(msg) => {
-                                    *config = GuiConfig::default();
-                                    let _ = config.save();
-                                    *maintenance_status = Some((msg, true, Instant::now()));
-                                }
-                                Err(err) => *maintenance_status = Some((err, false, Instant::now())),
-                            }
-                            *confirm_factory_reset = None;
+                            maintenance.confirm_reset = None;
+                            maintenance.in_progress = true;
+                            supervisor.run_maintenance("--factory-reset", Some(config.clone()));
                         } else {
-                            *confirm_factory_reset = Some(Instant::now());
-                            *confirm_clean_storage = None;
+                            maintenance.confirm_reset = Some(Instant::now());
+                            maintenance.confirm_clean = None;
                         }
                     }
 
-                    if let Some((msg, is_ok, time)) = maintenance_status {
-                        if time.elapsed() < Duration::from_secs(6) {
-                            ui.add_space(12.0);
-                            let banner_color = if *is_ok { theme.emerald } else { theme.red };
-                            ui.label(
-                                RichText::new(msg.as_str())
-                                    .color(banner_color)
-                                    .strong()
-                                    .size(12.0),
-                            );
-                        }
+                    if let Some((msg, is_ok)) = maintenance.current_status() {
+                        ui.add_space(12.0);
+                        let banner_color = if is_ok { theme.emerald } else { theme.red };
+                        ui.label(
+                            RichText::new(msg)
+                                .color(banner_color)
+                                .strong()
+                                .size(12.0),
+                        );
                     }
                 });
 

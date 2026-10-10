@@ -20,9 +20,7 @@ use axum::{
         (status = 500, description = "Internal server error")
     )
 )]
-pub async fn v1_models_handler(
-    State(state): State<AppState>,
-) -> AppResult<Json<OpenAiModelList>> {
+pub async fn v1_models_handler(State(state): State<AppState>) -> AppResult<Json<OpenAiModelList>> {
     let models = state.proxy_service.list_v1_models().await?;
     Ok(Json(models))
 }

@@ -20,10 +20,13 @@ use crate::{
         host::{sysinfo_handler, sysinfo_stream_handler},
         models::{
             available_models_handler, create_model_handler, delete_model_handler,
-            get_models_handler, get_running_models_handler, load_model_handler, swap_model_handler,
-            unload_all_models_handler, unload_model_handler, update_model_handler,
+            get_models_handler, get_running_models_handler, load_model_handler,
+            running_models_stream_handler, swap_model_handler, unload_all_models_handler,
+            unload_model_handler, update_model_handler,
         },
-        openai_proxy::{sdcpp_proxy_handler, v1_model_by_id_handler, v1_models_handler, v1_proxy_handler},
+        openai_proxy::{
+            sdcpp_proxy_handler, v1_model_by_id_handler, v1_models_handler, v1_proxy_handler,
+        },
         runtime_manifests::{get_runtime_manifest_by_id_handler, get_runtime_manifests_handler},
         runtimes::{
             install_runtime_handler, install_stream_handler, runtimes_handler,
@@ -62,6 +65,7 @@ fn api_router() -> Router<AppState> {
         .route("/host/usage", get(sysinfo_stream_handler))
         .route("/hardware/detect", get(hardware_detect_handler))
         .route("/state", get(get_running_models_handler))
+        .route("/state/stream", get(running_models_stream_handler))
         // Config & Setup
         .route("/config/status", get(config_status_handler))
         .route("/config/setup", post(save_setup_config_handler))
@@ -69,7 +73,10 @@ fn api_router() -> Router<AppState> {
         .route("/runtimes", get(runtimes_handler))
         .route("/runtimes/:id/install", post(install_runtime_handler))
         .route("/runtimes/:id/install/stream", get(install_stream_handler))
-        .route("/runtimes/:id", axum::routing::delete(uninstall_runtime_handler))
+        .route(
+            "/runtimes/:id",
+            axum::routing::delete(uninstall_runtime_handler),
+        )
         .route("/runtime-manifests", get(get_runtime_manifests_handler))
         .route(
             "/runtime-manifests/:id",
@@ -133,7 +140,16 @@ fn sdcpp_router() -> Router<AppState> {
 fn swagger_router() -> Router<AppState> {
     Router::new()
         .merge(SwaggerUi::new("/api/swagger").url("/api/openapi.json", ApiDoc::openapi()))
-        .route("/api/docs", get(|| async { Redirect::permanent("/api/swagger/") }))
-        .route("/swagger", get(|| async { Redirect::permanent("/api/swagger/") }))
-        .route("/docs", get(|| async { Redirect::permanent("/api/swagger/") }))
+        .route(
+            "/api/docs",
+            get(|| async { Redirect::permanent("/api/swagger/") }),
+        )
+        .route(
+            "/swagger",
+            get(|| async { Redirect::permanent("/api/swagger/") }),
+        )
+        .route(
+            "/docs",
+            get(|| async { Redirect::permanent("/api/swagger/") }),
+        )
 }

@@ -1,14 +1,16 @@
 mod core;
-mod domain;
-mod infrastructure;
-mod services;
 mod docs;
+mod domain;
 mod handlers;
+mod infrastructure;
 mod routes;
+mod services;
 mod state;
 
 use clap::Parser;
-use core::config::{expand_tilde, get_default_config_path, get_default_db_path, load_config, PathResolver};
+use core::config::{
+    expand_tilde, get_default_config_path, get_default_db_path, load_config, PathResolver,
+};
 use infrastructure::db::{init_db, ChatRepository, ModelRepository, SettingRepository};
 use infrastructure::downloader::RuntimeInstallerManager;
 use infrastructure::hardware::GpuTracker;
@@ -144,11 +146,18 @@ async fn main() {
     // 3. Initialize SQLite DB pool
     let db_pool = match init_db(&db_path_str).await {
         Ok(pool) => {
-            tracing::info!("SQLite database initialized successfully at: {}", db_path_str);
+            tracing::info!(
+                "SQLite database initialized successfully at: {}",
+                db_path_str
+            );
             pool
         }
         Err(err) => {
-            tracing::error!("Failed to initialize SQLite database at {}: {}", db_path_str, err);
+            tracing::error!(
+                "Failed to initialize SQLite database at {}: {}",
+                db_path_str,
+                err
+            );
             panic!("Database initialization failed: {}", err);
         }
     };
@@ -170,7 +179,12 @@ async fn main() {
     let gpu_tracker = Arc::new(GpuTracker::new());
 
     if let Some(ref gpu) = gpu_tracker.primary_gpu() {
-        tracing::info!("Detected primary GPU: {} (vendor: {}, dedicated: {})", gpu.name, gpu.vendor, gpu.is_dedicated);
+        tracing::info!(
+            "Detected primary GPU: {} (vendor: {}, dedicated: {})",
+            gpu.name,
+            gpu.vendor,
+            gpu.is_dedicated
+        );
     } else {
         tracing::info!("No dedicated GPU detected on host system.");
     }
@@ -199,10 +213,7 @@ async fn main() {
         extra_manifests_path,
     ));
 
-    let host_service = Arc::new(HostService::new(
-        Arc::new(Mutex::new(sys)),
-        gpu_tracker,
-    ));
+    let host_service = Arc::new(HostService::new(Arc::new(Mutex::new(sys)), gpu_tracker));
 
     let proxy_service = Arc::new(ProxyService::new(
         model_repo,
@@ -241,8 +252,15 @@ async fn main() {
         Ok(l) => l,
         Err(e) => {
             tracing::error!("Failed to bind to {}: {}", addr, e);
-            eprintln!("\nFatal error: Failed to bind to port {} ({}).", addr.port(), e);
-            eprintln!("Tip: Check if another process or Docker container is already using port {}.\n", addr.port());
+            eprintln!(
+                "\nFatal error: Failed to bind to port {} ({}).",
+                addr.port(),
+                e
+            );
+            eprintln!(
+                "Tip: Check if another process or Docker container is already using port {}.\n",
+                addr.port()
+            );
             std::process::exit(1);
         }
     };

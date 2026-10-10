@@ -125,7 +125,10 @@ pub fn get_default_runtimes_dir() -> PathBuf {
     } else if let Some(data_dir) = dirs::data_local_dir() {
         data_dir.join("monolai").join("runtimes")
     } else if let Some(home) = dirs::home_dir() {
-        home.join(".local").join("share").join("monolai").join("runtimes")
+        home.join(".local")
+            .join("share")
+            .join("monolai")
+            .join("runtimes")
     } else {
         PathBuf::from("runtimes")
     }
@@ -186,7 +189,9 @@ port: {}
 }
 
 pub fn is_running_in_docker() -> bool {
-    std::env::var("DOCKER").map(|v| v == "true" || v == "1").unwrap_or(false)
+    std::env::var("DOCKER")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false)
         || Path::new("/.dockerenv").exists()
         || Path::new("/run/.containerenv").exists()
         || (std::env::var("MODELS_DIR").as_deref() == Ok("/app/models")
@@ -206,11 +211,19 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let default_host = "0.0.0.0".to_string();
     let default_port = 8080u16;
 
-    let env_models = std::env::var("MODELS_DIR").ok().filter(|m| !m.trim().is_empty());
-    let env_runtimes = std::env::var("RUNTIMES_DIR").ok().filter(|r| !r.trim().is_empty());
-    let env_hardware = std::env::var("HARDWARE").ok().filter(|h| !h.trim().is_empty());
+    let env_models = std::env::var("MODELS_DIR")
+        .ok()
+        .filter(|m| !m.trim().is_empty());
+    let env_runtimes = std::env::var("RUNTIMES_DIR")
+        .ok()
+        .filter(|r| !r.trim().is_empty());
+    let env_hardware = std::env::var("HARDWARE")
+        .ok()
+        .filter(|h| !h.trim().is_empty());
     let env_host = std::env::var("HOST").ok().filter(|h| !h.trim().is_empty());
-    let env_port = std::env::var("PORT").ok().and_then(|p| p.parse::<u16>().ok());
+    let env_port = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok());
 
     let initial_host = env_host.clone().unwrap_or_else(|| default_host.clone());
     let initial_port = env_port.unwrap_or(default_port);
@@ -266,7 +279,9 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
             hardware,
             host: initial_host,
             port: initial_port,
-            error_message: Some("Configuration file does not exist yet. Please complete initial setup.".to_string()),
+            error_message: Some(
+                "Configuration file does not exist yet. Please complete initial setup.".to_string(),
+            ),
             example_yaml,
             cli_command_example,
         };
@@ -388,7 +403,10 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         error_message: if is_valid {
             None
         } else {
-            Some("Configuration is missing required fields (models, runtimes, or hardware).".to_string())
+            Some(
+                "Configuration is missing required fields (models, runtimes, or hardware)."
+                    .to_string(),
+            )
         },
         example_yaml,
         cli_command_example,
@@ -447,8 +465,13 @@ port: {}
         p
     );
 
-    fs::write(&target_path, yaml_content)
-        .map_err(|e| format!("Failed to write configuration file at {}: {}", target_path.display(), e))?;
+    fs::write(&target_path, yaml_content).map_err(|e| {
+        format!(
+            "Failed to write configuration file at {}: {}",
+            target_path.display(),
+            e
+        )
+    })?;
 
     Ok(())
 }

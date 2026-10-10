@@ -1,12 +1,18 @@
 use crate::core::error::AppResult;
 use crate::domain::{CreateModelPayload, ModelItem, ModelRecord, RunningModelStatus};
 use crate::state::AppState;
+use async_stream::stream;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::Json,
+    response::{
+        sse::{Event, KeepAlive, Sse},
+        Json,
+    },
 };
+use futures_util::stream::Stream;
 use serde::Deserialize;
+use std::{convert::Infallible, time::Duration};
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct GetModelsQuery {
@@ -188,9 +194,7 @@ pub async fn unload_model_handler(
         (status = 500, description = "Failed to unload model processes", body = String)
     )
 )]
-pub async fn unload_all_models_handler(
-    State(state): State<AppState>,
-) -> AppResult<StatusCode> {
+pub async fn unload_all_models_handler(State(state): State<AppState>) -> AppResult<StatusCode> {
     state.model_service.unload_all_models().await?;
     Ok(StatusCode::OK)
 }
@@ -209,4 +213,48 @@ pub async fn get_running_models_handler(
 ) -> Json<Vec<RunningModelStatus>> {
     let list = state.model_service.get_running_models().await;
     Json(list)
+}
+
+/// Real-time SSE stream of running model states
+#[utoipa::path(
+    get,
+    path = "/api/state/stream",
+    tag = "Models",
+    responses(
+        (status = 200, description = "SSE stream of running model states", content_type = "text/event-stream")
+    )
+)]
+pub async fn running_models_stream_handler(
+    State(state): State<AppState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let model_service = state.model_service.clone();
+    let mut receiver = model_service.subscribe_state();
+    let initial_status = model_service.get_running_models().await;
+
+    let stream = stream! {
+        if let Ok(json_str) = serde_json::to_string(&initial_status) {
+            yield Ok(Event::default().data(json_str));
+        }
+
+        loop {
+            match receiver.recv().await {
+                Ok(status) => {
+                    if let Ok(json_str) = serde_json::to_string(&status) {
+                        yield Ok(Event::default().data(json_str));
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                    let current = model_service.get_running_models().await;
+                    if let Ok(json_str) = serde_json::to_string(&current) {
+                        yield Ok(Event::default().data(json_str));
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    break;
+                }
+            }
+        }
+    };
+
+    Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
 }

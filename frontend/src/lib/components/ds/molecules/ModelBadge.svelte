@@ -39,7 +39,6 @@
 		align-items: center;
 		flex-wrap: nowrap;
 		gap: 0.25rem;
-		width: fit-content;
 		max-width: 100%;
 		min-width: 0;
 		vertical-align: middle;
@@ -69,6 +68,7 @@
 	}
 
 	.model-badge-container.inline {
+		width: fit-content;
 		border: none;
 		background: transparent;
 		padding: 0;
@@ -89,6 +89,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		margin-right: auto;
 	}
 
 	.clean .model-name-text,

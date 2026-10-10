@@ -98,9 +98,16 @@ impl ModelService {
         Ok(model)
     }
 
-    pub async fn update_model(&self, id: &str, mut payload: CreateModelPayload) -> AppResult<ModelRecord> {
+    pub async fn update_model(
+        &self,
+        id: &str,
+        mut payload: CreateModelPayload,
+    ) -> AppResult<ModelRecord> {
         if self.repo.get_by_id(id).await?.is_none() {
-            return Err(AppError::not_found(format!("Model with ID '{}' not found.", id)));
+            return Err(AppError::not_found(format!(
+                "Model with ID '{}' not found.",
+                id
+            )));
         }
 
         let runtime = payload.runtime.trim().to_string();
@@ -123,12 +130,26 @@ impl ModelService {
 
     pub async fn load_model(&self, id: &str) -> AppResult<RunningModelStatus> {
         let cfg = self.config.read().await.clone();
-        load_model_process(&self.process_manager, &self.repo, &self.setting_repo, &cfg, id).await
+        load_model_process(
+            &self.process_manager,
+            &self.repo,
+            &self.setting_repo,
+            &cfg,
+            id,
+        )
+        .await
     }
 
     pub async fn swap_model(&self, id: &str) -> AppResult<RunningModelStatus> {
         let cfg = self.config.read().await.clone();
-        swap_model_process(&self.process_manager, &self.repo, &self.setting_repo, &cfg, id).await
+        swap_model_process(
+            &self.process_manager,
+            &self.repo,
+            &self.setting_repo,
+            &cfg,
+            id,
+        )
+        .await
     }
 
     pub async fn unload_model(&self, id: &str) -> AppResult<()> {
@@ -141,5 +162,9 @@ impl ModelService {
 
     pub async fn get_running_models(&self) -> Vec<RunningModelStatus> {
         self.process_manager.get_all_running_status().await
+    }
+
+    pub fn subscribe_state(&self) -> tokio::sync::broadcast::Receiver<Vec<RunningModelStatus>> {
+        self.process_manager.subscribe_state()
     }
 }

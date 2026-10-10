@@ -46,7 +46,10 @@
 		"version": "Version",
 		"language": "Language",
 		"english": "English",
-		"spanish": "Spanish (Español)"
+		"spanish": "Spanish (Español)",
+		"selectModel": "Select Model",
+		"selectActiveModel": "SELECT ACTIVE MODEL",
+		"noModelsRegistered": "No models registered"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -115,7 +118,10 @@
 		"countLabel": "Number of Images",
 		"stepsLabel": "Sampling Steps",
 		"cfgScaleLabel": "CFG Scale",
-		"seedLabel": "Seed (-1 for random)",
+		"seedLabel": "Seed",
+		"randomizeSeed": "Randomize",
+		"clearSeed": "Clear",
+		"seedPlaceholder": "Random (new seed every run)",
 		"galleryTitle": "Generated Images",
 		"sessionHistory": "Session History",
 		"searchPrompts": "Search prompts...",
@@ -128,7 +134,33 @@
 		"downloadImage": "Download image",
 		"deleteImage": "Delete image",
 		"generationTime": "Generated in {{time}}s",
-		"missingRuntimeAlert": "Stable Diffusion runtime or registered model missing."
+		"missingRuntimeAlert": "Stable Diffusion runtime or registered model missing.",
+		"modelLabel": "Model",
+		"selectActiveModel": "SELECT ACTIVE MODEL",
+		"noModelsRegistered": "No models registered",
+		"selectModelPlaceholder": "Select Model",
+		"randomPrompts": [
+			"A futuristic cyberpunk city with neon reflections in rain, cinematic lighting, volumetric fog, 8k resolution",
+			"Majestic snow-capped mountain range under a galaxy night sky with the Milky Way, ultra-detailed landscape",
+			"Studio portrait of a cute red panda wearing vintage aviator goggles and a leather jacket, 35mm photograph",
+			"Serene Japanese zen garden with blooming cherry blossoms, mossy stones, Koi pond, soft morning mist",
+			"Hyper-realistic macro photography of a crystal butterfly resting on a glowing bioluminescent flower",
+			"Cozy coffee shop interior on a rainy afternoon, warm ambient lighting, wooden furniture, steam from coffee cup",
+			"Steampunk airship soaring through thunderous storm clouds with brass gears and glowing copper conduits",
+			"Enchanted ancient forest with giant glowing mushrooms, ethereal light rays filtering through trees, fairies",
+			"Portrait of an astronaut floating in deep space looking back at Earth, visor reflecting stars, cinematic 8k",
+			"A cute baby dragon sleeping curled up around a pile of shiny gold coins and gemstones, 3d render style",
+			"Victorian library with towering dark wood bookcases, spiral staircases, leather armchairs, rolling ladders",
+			"An imposing storm giant forged of lightning and storm clouds towering over a rugged mountain ridge",
+			"Cyberpunk street food stall with vapor steam rising, neon Japanese signage, appetizing noodle bowls, rain",
+			"Art nouveau illustration of a maiden surrounded by climbing vines, stylized floral patterns and gold leaf accents",
+			"A cozy rustic cabin surrounded by deep winter snow with warm glowing windows and smoke rising from chimney",
+			"Majestic stag with glowing crystal antlers standing in a misty twilight forest glade",
+			"Sci-fi laboratory with holographic displays, glowing particle accelerator ring, high-tech cleanroom aesthetic",
+			"Portrait of a wise owl with steampunk brass monocle, gears, and leather collar against dark library backdrop",
+			"Tropical island paradise with turquoise water, overwater wooden bungalows, pristine white sand beach, sunny day",
+			"Candid street photograph in Paris at dusk, wet pavement reflecting street lamps, vintage Citroen car parked"
+		]
 	},
 	"models": {
 		"pageTitle": "Models Management",

@@ -52,16 +52,14 @@ mod tests {
             .unwrap();
 
         let msg_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO chat_messages (id, chat_id, role, content) VALUES (?, ?, ?, ?)",
-        )
-        .bind(&msg_id)
-        .bind(&chat_id)
-        .bind("user")
-        .bind("Hello Monolai!")
-        .execute(&pool)
-        .await
-        .unwrap();
+        sqlx::query("INSERT INTO chat_messages (id, chat_id, role, content) VALUES (?, ?, ?, ?)")
+            .bind(&msg_id)
+            .bind(&chat_id)
+            .bind("user")
+            .bind("Hello Monolai!")
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM chat_messages WHERE chat_id = ?")
             .bind(&chat_id)

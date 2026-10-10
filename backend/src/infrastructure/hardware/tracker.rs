@@ -11,7 +11,10 @@ pub struct GpuTracker {
     nvidia_smi_path: Option<PathBuf>,
 }
 
-fn run_cmd_no_window<P: AsRef<Path>>(cmd_path: P, args: &[&str]) -> std::io::Result<std::process::Output> {
+fn run_cmd_no_window<P: AsRef<Path>>(
+    cmd_path: P,
+    args: &[&str],
+) -> std::io::Result<std::process::Output> {
     let mut cmd = Command::new(cmd_path.as_ref());
     cmd.args(args);
     #[cfg(windows)]
@@ -61,7 +64,10 @@ fn query_nvidia_smi_gpus(smi_path: &Path) -> Vec<GpuInfo> {
     let mut list = Vec::new();
     if let Ok(output) = run_cmd_no_window(
         smi_path,
-        &["--query-gpu=name,driver_version,memory.total", "--format=csv,noheader,nounits"],
+        &[
+            "--query-gpu=name,driver_version,memory.total",
+            "--format=csv,noheader,nounits",
+        ],
     ) {
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -69,7 +75,10 @@ fn query_nvidia_smi_gpus(smi_path: &Path) -> Vec<GpuInfo> {
                 let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
                 if !parts.is_empty() && !parts[0].is_empty() {
                     let name = parts[0].to_string();
-                    let driver = parts.get(1).filter(|s| !s.is_empty()).map(|s| s.to_string());
+                    let driver = parts
+                        .get(1)
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string());
                     let mem_bytes = parts
                         .get(2)
                         .and_then(|s| s.parse::<u64>().ok())
@@ -135,7 +144,8 @@ fn detect_windows_display_controllers() -> Vec<GpuInfo> {
                                 || name_lower.contains("gtx")
                                 || name_lower.contains("tesla")
                                 || name_lower.contains("titan");
-                            let is_amd = name_lower.contains("amd") || name_lower.contains("radeon");
+                            let is_amd =
+                                name_lower.contains("amd") || name_lower.contains("radeon");
                             let is_intel = name_lower.contains("intel");
 
                             let vendor = if is_nvidia {
@@ -208,10 +218,26 @@ fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
                         .to_lowercase();
 
                     let (vendor, is_dedicated, default_name) = match vendor_hex.as_str() {
-                        "0x10de" => ("NVIDIA".to_string(), true, "NVIDIA Graphics Controller".to_string()),
-                        "0x1002" => ("AMD".to_string(), true, "AMD Radeon Graphics Controller".to_string()),
-                        "0x8086" => ("Intel".to_string(), false, "Intel Graphics Controller".to_string()),
-                        _ => ("Unknown".to_string(), false, "PCI Display Controller".to_string()),
+                        "0x10de" => (
+                            "NVIDIA".to_string(),
+                            true,
+                            "NVIDIA Graphics Controller".to_string(),
+                        ),
+                        "0x1002" => (
+                            "AMD".to_string(),
+                            true,
+                            "AMD Radeon Graphics Controller".to_string(),
+                        ),
+                        "0x8086" => (
+                            "Intel".to_string(),
+                            false,
+                            "Intel Graphics Controller".to_string(),
+                        ),
+                        _ => (
+                            "Unknown".to_string(),
+                            false,
+                            "PCI Display Controller".to_string(),
+                        ),
                     };
 
                     let mut mem_total = None;
@@ -312,7 +338,10 @@ fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
 #[cfg(target_os = "macos")]
 fn detect_macos_gpus() -> Vec<GpuInfo> {
     let mut list = Vec::new();
-    if let Ok(out) = Command::new("sysctl").args(["-n", "machdep.cpu.brand_string"]).output() {
+    if let Ok(out) = Command::new("sysctl")
+        .args(["-n", "machdep.cpu.brand_string"])
+        .output()
+    {
         let brand = String::from_utf8_lossy(&out.stdout).trim().to_string();
         if brand.contains("Apple") {
             list.push(GpuInfo {
@@ -396,9 +425,11 @@ impl GpuTracker {
 
         let mut sorted = gpus.clone();
         sorted.sort_by(|a, b| {
-            b.is_dedicated
-                .cmp(&a.is_dedicated)
-                .then_with(|| b.memory_total_bytes.unwrap_or(0).cmp(&a.memory_total_bytes.unwrap_or(0)))
+            b.is_dedicated.cmp(&a.is_dedicated).then_with(|| {
+                b.memory_total_bytes
+                    .unwrap_or(0)
+                    .cmp(&a.memory_total_bytes.unwrap_or(0))
+            })
         });
 
         let primary_gpu = sorted.into_iter().next();
@@ -406,7 +437,10 @@ impl GpuTracker {
         Self {
             gpus,
             primary_gpu,
-            usage_cache: Mutex::new((GpuUsageStats::default(), Instant::now() - Duration::from_secs(10))),
+            usage_cache: Mutex::new((
+                GpuUsageStats::default(),
+                Instant::now() - Duration::from_secs(10),
+            )),
             nvidia_smi_path,
         }
     }
@@ -463,11 +497,9 @@ impl GpuTracker {
                             gpu_usage,
                             vram_used_bytes: vram_used,
                             vram_total_bytes: vram_total,
-                            vram_free_bytes: vram_free.or_else(|| {
-                                match (vram_total, vram_used) {
-                                    (Some(t), Some(u)) => Some(t.saturating_sub(u)),
-                                    _ => None,
-                                }
+                            vram_free_bytes: vram_free.or_else(|| match (vram_total, vram_used) {
+                                (Some(t), Some(u)) => Some(t.saturating_sub(u)),
+                                _ => None,
                             }),
                             vram_percentage,
                         };

@@ -46,7 +46,10 @@
 		"version": "Versión",
 		"language": "Idioma",
 		"english": "Inglés (English)",
-		"spanish": "Español"
+		"spanish": "Español",
+		"selectModel": "Seleccionar Modelo",
+		"selectActiveModel": "SELECCIONAR MODELO ACTIVO",
+		"noModelsRegistered": "No hay modelos registrados"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -115,7 +118,10 @@
 		"countLabel": "Cantidad de imágenes",
 		"stepsLabel": "Pasos de muestreo",
 		"cfgScaleLabel": "Escala CFG",
-		"seedLabel": "Semilla (-1 para aleatorio)",
+		"seedLabel": "Semilla",
+		"randomizeSeed": "Aleatorizar",
+		"clearSeed": "Limpiar",
+		"seedPlaceholder": "Aleatorio (nueva semilla cada vez)",
 		"galleryTitle": "Imágenes generadas",
 		"sessionHistory": "Historial de sesión",
 		"searchPrompts": "Buscar prompts...",
@@ -128,7 +134,33 @@
 		"downloadImage": "Descargar imagen",
 		"deleteImage": "Eliminar imagen",
 		"generationTime": "Generado en {{time}}s",
-		"missingRuntimeAlert": "Falta el runtime de Stable Diffusion o el modelo registrado."
+		"missingRuntimeAlert": "Falta el runtime de Stable Diffusion o el modelo registrado.",
+		"modelLabel": "Modelo",
+		"selectActiveModel": "SELECCIONAR MODELO ACTIVO",
+		"noModelsRegistered": "No hay modelos registrados",
+		"selectModelPlaceholder": "Seleccionar Modelo",
+		"randomPrompts": [
+			"Una ciudad cyberpunk futurista con reflejos de neón en la lluvia, iluminación cinematográfica, niebla volumétrica, resolución 8k",
+			"Majestuosa cordillera nevada bajo un cielo nocturno estrellado con la Vía Láctea, paisaje ultradetallado",
+			"Retrato de estudio de un adorable panda rojo con gafas de aviador vintage y chaqueta de cuero, fotografía de 35 mm",
+			"Sereno jardín zen japonés con cerezos en flor, piedras con musgo, estanque de peces koi, suave niebla matutina",
+			"Fotografía macro hiperrealista de una mariposa de cristal posada sobre una flor bioluminiscente brillante",
+			"Interior de una acogedora cafetería en una tarde lluviosa, cálida iluminación ambiental, muebles de madera, vapor de taza de café",
+			"Dirigible steampunk surcando nubes de tormenta atronadoras con engranajes de latón y conductos de cobre brillantes",
+			"Antiguo bosque encantado con setas gigantes brillantes, rayos de luz etéreos filtrándose entre los árboles, hadas",
+			"Retrato de un astronauta flotando en el espacio profundo mirando hacia la Tierra, visor reflejando estrellas, cinematográfico 8k",
+			"Un tierno dragón bebé durmiendo acurrucado sobre una pila de monedas de oro brillantes y piedras preciosas, estilo render 3D",
+			"Biblioteca victoriana con imponentes estanterías de madera oscura, escaleras de caracol, sillones de cuero, escaleras correderas",
+			"Un imponente gigante de la tormenta forjado con relámpagos y nubes tempestuosas sobre una cresta montañosa escarpada",
+			"Puesto callejero de comida cyberpunk con vapor humeante, letreros de neón japoneses, apetitosos tazones de fideos, lluvia",
+			"Ilustración art nouveau de una doncella rodeada de enredaderas, motivos florales estilizados y detalles en pan de oro",
+			"Una acogedora cabaña rústica rodeada de profunda nieve invernal con cálidas ventanas iluminadas y humo saliendo de la chimenea",
+			"Majestuoso ciervo con astas de cristal brillantes de pie en un claro de bosque brumoso al atardecer",
+			"Laboratorio de ciencia ficción con pantallas holográficas, anillo acelerador de partículas brillante, estética de sala limpia de alta tecnología",
+			"Retrato de un búho sabio con monóculo steampunk de latón, engranajes y collar de cuero sobre un fondo de biblioteca oscura",
+			"Isla tropical paradisíaca con aguas turquesas, bungalows de madera sobre el agua, prístina playa de arena blanca, día soleado",
+			"Fotografía callejera espontánea en París al anochecer, pavimento mojado reflejando las farolas, coche clásico Citroën estacionado"
+		]
 	},
 	"models": {
 		"pageTitle": "Gestión de Modelos",

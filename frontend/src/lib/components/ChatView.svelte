@@ -7,6 +7,7 @@
 	import { syncRecentChats } from '$lib/headerStore';
 	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
+	import { chatsState } from '$lib/state';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { generateUUID } from '$lib/utils/common';
 	import {
@@ -456,13 +457,10 @@
 		}
 	});
 
-	// Sync top 5 header tabs with backend chats
+	// Sync top header tabs and conversations with backend chats
 	async function refreshHeaderTabs(targetId?: string) {
 		try {
-			const chats = await chatsApi.list();
-			if (chats) {
-				syncRecentChats(chats, targetId || sessionChatId);
-			}
+			await chatsState.ensureLoaded(targetId || sessionChatId);
 		} catch (e) {
 			console.error('Error syncing header tabs:', e);
 		}
@@ -694,13 +692,9 @@
 		if (!chatId && sessionChatId === activeId) {
 			try {
 				const chatTitle = text.length > 25 ? text.slice(0, 25) + '...' : text;
-				await fetch('/api/chats', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: activeId, title: chatTitle })
-				});
+				await chatsApi.create({ id: activeId, title: chatTitle });
 				goto(`/chat/${activeId}`, { replaceState: true, keepFocus: true });
-				refreshHeaderTabs(activeId);
+				chatsState.notifyUpdated(activeId);
 			} catch (e) {
 				console.error('Error creating chat session:', e);
 			}
@@ -720,12 +714,8 @@
 
 			if (messages.length <= 2) {
 				const newTitle = text.length > 25 ? text.slice(0, 25) + '...' : text;
-				await fetch(`/api/chats/${encodeURIComponent(activeId)}`, {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ title: newTitle })
-				});
-				refreshHeaderTabs();
+				await chatsApi.update(activeId, newTitle);
+				chatsState.notifyUpdated(activeId);
 			}
 
 			await fetch(`/api/chats/${encodeURIComponent(activeId)}/messages`, {
@@ -1594,7 +1584,7 @@
 								<ModelBadge model={selectedModel} variant="inline" />
 							{:else}
 								<Box size={14} class="model-box-icon" />
-								<span class="model-name-text">Select LLM</span>
+								<span class="model-name-text">Select a Model</span>
 							{/if}
 						</button>
 
@@ -1606,7 +1596,7 @@
 								role="presentation"
 							></div>
 							<div class="popover-menu model-menu">
-								<div class="menu-label">SELECT ACTIVE LLM</div>
+								<div class="menu-label">SELECT ACTIVE MODEL</div>
 								{#if registeredChatModels.length === 0}
 									<div class="empty-menu-text">No chat models registered</div>
 								{:else}

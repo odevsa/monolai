@@ -14,7 +14,7 @@
 		unloadAllModels,
 		unloadModel
 	} from '$lib/runningModelsStore';
-	import { imageGalleryState } from '$lib/state';
+	import { chatsState, imageGalleryState } from '$lib/state';
 	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
 	import { APP_VERSION } from '$lib/version';
 	import {
@@ -57,17 +57,7 @@
 		$featuresStore.isInitialized && checkFeature($featuresStore, 'chat').isSatisfied
 	);
 
-	let conversations = $state<ChatConversation[]>([]);
-
-	async function fetchChats() {
-		try {
-			const data = await chatsApi.list();
-			conversations = data || [];
-			syncRecentChats(conversations);
-		} catch {
-			// ignore polling errors
-		}
-	}
+	let conversations = $derived(chatsState.conversations);
 
 	async function deleteChat(id: string, e: MouseEvent) {
 		e.stopPropagation();
@@ -82,12 +72,10 @@
 		if (!confirmed) return;
 
 		try {
-			await chatsApi.delete(id);
-			chatTabs.update((tabs) => tabs.filter((t) => t.id !== id));
+			await chatsState.deleteChat(id);
 			if (currentPath === `/chat/${id}`) {
 				goto('/chat');
 			}
-			await fetchChats();
 		} catch (err) {
 			console.error('Error deleting chat:', err);
 		}
@@ -99,22 +87,11 @@
 	}
 
 	onMount(() => {
+		chatsState.ensureLoaded();
 		const stopPolling = startRunningStatePolling(2500);
 		return () => {
 			stopPolling();
 		};
-	});
-
-	$effect(() => {
-		if (isChatPage && isChatAvailable) {
-			fetchChats();
-			const interval = setInterval(() => {
-				fetchChats();
-			}, 3000);
-			return () => {
-				clearInterval(interval);
-			};
-		}
 	});
 
 	function toggleCollapse() {

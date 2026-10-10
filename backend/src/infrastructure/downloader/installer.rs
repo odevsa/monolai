@@ -75,15 +75,11 @@ fn save_installed_metadata(dest_dir: &Path, runtime_id: &str, version: &str, acc
 }
 
 fn flatten_single_child_dir(dir: &Path) -> io::Result<()> {
-    let entries: Vec<_> = fs::read_dir(dir)?
-        .filter_map(|e| e.ok())
-        .collect();
+    let entries: Vec<_> = fs::read_dir(dir)?.filter_map(|e| e.ok()).collect();
 
     if entries.len() == 1 && entries[0].file_type().map_or(false, |t| t.is_dir()) {
         let child_dir = entries[0].path();
-        let sub_entries: Vec<_> = fs::read_dir(&child_dir)?
-            .filter_map(|e| e.ok())
-            .collect();
+        let sub_entries: Vec<_> = fs::read_dir(&child_dir)?.filter_map(|e| e.ok()).collect();
         for sub in sub_entries {
             let dest = dir.join(sub.file_name());
             fs::rename(sub.path(), dest)?;
@@ -99,12 +95,16 @@ fn extract_archive_file(
     extract_dir: &Path,
 ) -> Result<(), String> {
     if archive_type == "zip" || archive_path.to_string_lossy().ends_with(".zip") {
-        let file = File::open(archive_path).map_err(|e| format!("Failed to open zip archive: {}", e))?;
+        let file =
+            File::open(archive_path).map_err(|e| format!("Failed to open zip archive: {}", e))?;
         let reader = BufReader::new(file);
-        let mut zip = zip::ZipArchive::new(reader).map_err(|e| format!("Failed to parse zip archive: {}", e))?;
+        let mut zip = zip::ZipArchive::new(reader)
+            .map_err(|e| format!("Failed to parse zip archive: {}", e))?;
 
         for i in 0..zip.len() {
-            let mut zip_file = zip.by_index(i).map_err(|e| format!("Failed to read zip entry: {}", e))?;
+            let mut zip_file = zip
+                .by_index(i)
+                .map_err(|e| format!("Failed to read zip entry: {}", e))?;
             let outpath = match zip_file.enclosed_name() {
                 Some(path) => extract_dir.join(path),
                 None => continue,
@@ -115,18 +115,24 @@ fn extract_archive_file(
             } else {
                 if let Some(p) = outpath.parent() {
                     if !p.exists() {
-                        fs::create_dir_all(p).map_err(|e| format!("Failed to create parent dir: {}", e))?;
+                        fs::create_dir_all(p)
+                            .map_err(|e| format!("Failed to create parent dir: {}", e))?;
                     }
                 }
-                let mut outfile = File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
-                io::copy(&mut zip_file, &mut outfile).map_err(|e| format!("Failed to copy file: {}", e))?;
+                let mut outfile =
+                    File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
+                io::copy(&mut zip_file, &mut outfile)
+                    .map_err(|e| format!("Failed to copy file: {}", e))?;
             }
         }
     } else if archive_type == "tar.gz" || archive_path.to_string_lossy().ends_with(".tar.gz") {
-        let file = File::open(archive_path).map_err(|e| format!("Failed to open tar.gz archive: {}", e))?;
+        let file = File::open(archive_path)
+            .map_err(|e| format!("Failed to open tar.gz archive: {}", e))?;
         let tar = flate2::read::GzDecoder::new(file);
         let mut archive = tar::Archive::new(tar);
-        archive.unpack(extract_dir).map_err(|e| format!("Failed to unpack tar.gz: {}", e))?;
+        archive
+            .unpack(extract_dir)
+            .map_err(|e| format!("Failed to unpack tar.gz: {}", e))?;
     } else {
         return Err(format!("Unsupported archive format: {}", archive_type));
     }
@@ -151,7 +157,11 @@ async fn download_and_stream(
         .map_err(|e| format!("Failed to initiate download: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download failed with HTTP status {}: {}", response.status(), url));
+        return Err(format!(
+            "Download failed with HTTP status {}: {}",
+            response.status(),
+            url
+        ));
     }
 
     let total_bytes = response.content_length().unwrap_or(0);
@@ -204,7 +214,9 @@ async fn download_and_stream(
     }
 
     use tokio::io::AsyncWriteExt;
-    file.flush().await.map_err(|e| format!("Failed to flush archive file: {}", e))?;
+    file.flush()
+        .await
+        .map_err(|e| format!("Failed to flush archive file: {}", e))?;
     Ok(downloaded_bytes)
 }
 
@@ -224,7 +236,11 @@ pub fn find_installed_binary(runtimes_dir: &Path, manifest: &RuntimeManifest) ->
         return Some(direct_bin_exe);
     }
 
-    if let Ok(entries) = walkdir::WalkDir::new(&target_dir).max_depth(3).into_iter().collect::<Result<Vec<_>, _>>() {
+    if let Ok(entries) = walkdir::WalkDir::new(&target_dir)
+        .max_depth(3)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+    {
         for entry in entries {
             if entry.file_type().is_file() {
                 let name = entry.file_name().to_string_lossy();
@@ -241,8 +257,13 @@ pub fn find_installed_binary(runtimes_dir: &Path, manifest: &RuntimeManifest) ->
 pub fn uninstall_runtime(runtimes_dir: &Path, runtime_id: &str) -> Result<(), String> {
     let target_dir = runtimes_dir.join(runtime_id);
     if target_dir.exists() {
-        fs::remove_dir_all(&target_dir).map_err(|e| format!("Failed to remove runtime directory: {}", e))?;
-        tracing::info!("Uninstalled runtime '{}' from {}", runtime_id, target_dir.display());
+        fs::remove_dir_all(&target_dir)
+            .map_err(|e| format!("Failed to remove runtime directory: {}", e))?;
+        tracing::info!(
+            "Uninstalled runtime '{}' from {}",
+            runtime_id,
+            target_dir.display()
+        );
     }
     Ok(())
 }
@@ -324,7 +345,9 @@ pub async fn install_runtime(
         0.0,
         download_span_per_archive,
         Some(main_msg),
-    ).await {
+    )
+    .await
+    {
         Ok(bytes) => total_downloaded_bytes += bytes,
         Err(err) => {
             let _ = fs::remove_file(&main_archive_path);
@@ -376,7 +399,9 @@ pub async fn install_runtime(
             base_p,
             download_span_per_archive,
             Some(extra_msg),
-        ).await {
+        )
+        .await
+        {
             Ok(bytes) => {
                 total_downloaded_bytes += bytes;
                 extra_archive_paths.push((extra_path, extra.archive_type.clone()));
@@ -471,7 +496,10 @@ pub async fn install_runtime(
         if let Err(e) = extract_sub {
             tracing::warn!("Warning during extra archive extraction: {}", e);
         } else {
-            if let Ok(entries) = walkdir::WalkDir::new(&temp_sub).into_iter().collect::<Result<Vec<_>, _>>() {
+            if let Ok(entries) = walkdir::WalkDir::new(&temp_sub)
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()
+            {
                 for entry in entries {
                     if entry.file_type().is_file() {
                         let rel = entry.path().strip_prefix(&temp_sub).unwrap_or(entry.path());
@@ -487,15 +515,25 @@ pub async fn install_runtime(
         let _ = fs::remove_dir_all(&temp_sub);
     }
 
-    save_installed_metadata(&temp_extract_dir, &runtime_id, &manifest.version, &acceleration);
+    save_installed_metadata(
+        &temp_extract_dir,
+        &runtime_id,
+        &manifest.version,
+        &acceleration,
+    );
 
     let final_dest_dir = runtimes_dir.join(&runtime_id);
     let _ = fs::remove_dir_all(&final_dest_dir);
 
     let _ = flatten_single_child_dir(&temp_extract_dir);
 
-    fs::rename(&temp_extract_dir, &final_dest_dir)
-        .map_err(|e| format!("Failed to move extracted runtime to {}: {}", final_dest_dir.display(), e))?;
+    fs::rename(&temp_extract_dir, &final_dest_dir).map_err(|e| {
+        format!(
+            "Failed to move extracted runtime to {}: {}",
+            final_dest_dir.display(),
+            e
+        )
+    })?;
 
     let _ = fs::remove_file(&main_archive_path);
     let _ = fs::remove_dir_all(&temp_extract_dir);
@@ -503,20 +541,32 @@ pub async fn install_runtime(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        if let Ok(entries) = walkdir::WalkDir::new(&final_dest_dir).into_iter().collect::<Result<Vec<_>, _>>() {
+        if let Ok(entries) = walkdir::WalkDir::new(&final_dest_dir)
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+        {
             for entry in entries {
                 if entry.file_type().is_file() {
                     let file_name = entry.file_name().to_string_lossy();
-                    if file_name == manifest.binary_name || file_name.starts_with("llama-") || file_name.starts_with("sd-") {
-                        let _ = fs::set_permissions(entry.path(), fs::Permissions::from_mode(0o755));
+                    if file_name == manifest.binary_name
+                        || file_name.starts_with("llama-")
+                        || file_name.starts_with("sd-")
+                    {
+                        let _ =
+                            fs::set_permissions(entry.path(), fs::Permissions::from_mode(0o755));
                     }
                 }
             }
         }
     }
 
-    let resolved_binary = find_installed_binary(&runtimes_dir, manifest)
-        .ok_or_else(|| format!("Binary '{}' not found after extraction in {}", manifest.binary_name, final_dest_dir.display()))?;
+    let resolved_binary = find_installed_binary(&runtimes_dir, manifest).ok_or_else(|| {
+        format!(
+            "Binary '{}' not found after extraction in {}",
+            manifest.binary_name,
+            final_dest_dir.display()
+        )
+    })?;
 
     installer_mgr.update_progress(InstallProgress {
         runtime_id: runtime_id.clone(),

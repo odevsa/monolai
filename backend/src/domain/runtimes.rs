@@ -88,7 +88,12 @@ impl RuntimeManifest {
         result
     }
 
-    pub fn get_download_target(&self, os: &str, arch: &str, acceleration: &str) -> Option<DownloadTarget> {
+    pub fn get_download_target(
+        &self,
+        os: &str,
+        arch: &str,
+        acceleration: &str,
+    ) -> Option<DownloadTarget> {
         let os_key = if os == "darwin" { "macos" } else { os };
         let arch_key = if arch == "aarch64" { "arm64" } else { arch };
 

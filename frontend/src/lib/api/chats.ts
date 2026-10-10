@@ -4,7 +4,11 @@ import type { ChatConversation, ChatMessage } from '$lib/types/chat';
 export const chatsApi = {
 	list: () => api.get<ChatConversation[]>('/api/chats'),
 
-	create: (title?: string) => api.post<ChatConversation>('/api/chats', { title }),
+	create: (titleOrPayload?: string | { id?: string; title?: string }) => {
+		const payload =
+			typeof titleOrPayload === 'string' ? { title: titleOrPayload } : titleOrPayload || {};
+		return api.post<ChatConversation>('/api/chats', payload);
+	},
 
 	update: (id: string, title: string) =>
 		api.put<ChatConversation>(`/api/chats/${encodeURIComponent(id)}`, { title }),

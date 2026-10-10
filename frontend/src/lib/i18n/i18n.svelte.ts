@@ -4,9 +4,11 @@ import es from './locales/es.json';
 type TranslationSchema = typeof en;
 
 type NestedKeyOf<ObjectType extends object> = {
-	[Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
-		? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
-		: `${Key}`;
+	[Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends readonly unknown[]
+		? `${Key}`
+		: ObjectType[Key] extends object
+			? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
+			: `${Key}`;
 }[keyof ObjectType & (string | number)];
 
 export type TranslationKey = NestedKeyOf<TranslationSchema> | (string & {});
@@ -117,8 +119,38 @@ class I18nManager {
 
 		return result;
 	}
+
+	getRaw<T = unknown>(key: TranslationKey): T | undefined {
+		const catalog = this.catalogs[this.currentLocale] || this.catalogs.en;
+		const segments = key.split('.');
+		let current: any = catalog;
+
+		for (const segment of segments) {
+			if (current && typeof current === 'object' && segment in current) {
+				current = current[segment];
+			} else {
+				let fallback: any = this.catalogs.en;
+				for (const s of segments) {
+					if (fallback && typeof fallback === 'object' && s in fallback) {
+						fallback = fallback[s];
+					} else {
+						return undefined;
+					}
+				}
+				current = fallback;
+				break;
+			}
+		}
+
+		return current as T;
+	}
 }
 
 export const i18n = new I18nManager();
 export const t = (key: TranslationKey, params?: Record<string, string | number>) =>
 	i18n.t(key, params);
+export const tRaw = <T = unknown>(key: TranslationKey): T | undefined => i18n.getRaw<T>(key);
+export const tArray = (key: TranslationKey): string[] => {
+	const raw = i18n.getRaw<string[]>(key);
+	return Array.isArray(raw) ? raw : [];
+};

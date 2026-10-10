@@ -51,7 +51,13 @@ pub fn write_processes_json(db_dir: &Path, records: &HashMap<String, ProcessFile
     }
 }
 
-pub fn save_active_process_to_json(db_dir: &Path, model_id: &str, runtime: &str, pid: u32, port: u16) {
+pub fn save_active_process_to_json(
+    db_dir: &Path,
+    model_id: &str,
+    runtime: &str,
+    pid: u32,
+    port: u16,
+) {
     let mut records = read_processes_json(db_dir);
     records.insert(
         model_id.to_string(),
@@ -76,13 +82,16 @@ pub fn remove_active_process_from_json(db_dir: &Path, model_id: &str) {
 pub struct ProcessManager {
     pub running: Arc<Mutex<HashMap<String, RunningModel>>>,
     pub db_dir: PathBuf,
+    pub state_broadcast: tokio::sync::broadcast::Sender<Vec<RunningModelStatus>>,
 }
 
 impl ProcessManager {
     pub fn new(db_dir: PathBuf) -> Self {
+        let (state_broadcast, _) = tokio::sync::broadcast::channel(64);
         Self {
             running: Arc::new(Mutex::new(HashMap::new())),
             db_dir,
+            state_broadcast,
         }
     }
 
@@ -98,6 +107,15 @@ impl ProcessManager {
                 idle_seconds: m.last_active.elapsed().as_secs(),
             })
             .collect()
+    }
+
+    pub async fn notify_state_changed(&self) {
+        let status = self.get_all_running_status().await;
+        let _ = self.state_broadcast.send(status);
+    }
+
+    pub fn subscribe_state(&self) -> tokio::sync::broadcast::Receiver<Vec<RunningModelStatus>> {
+        self.state_broadcast.subscribe()
     }
 
     pub async fn mark_model_active(&self, model_id: &str) {
@@ -128,7 +146,12 @@ pub async fn load_model_process(
 ) -> AppResult<RunningModelStatus> {
     let model_record = match model_repo.get_by_id(model_id).await? {
         Some(m) => m,
-        None => return Err(AppError::not_found(format!("Model '{}' not found in database", model_id))),
+        None => {
+            return Err(AppError::not_found(format!(
+                "Model '{}' not found in database",
+                model_id
+            )))
+        }
     };
 
     let models_dir_str = config.models.as_deref().unwrap_or("");
@@ -206,6 +229,7 @@ pub async fn load_model_process(
             },
         );
     }
+    pm.notify_state_changed().await;
 
     let fail_with = |err_msg: String| {
         let pm_clone = pm.clone();
@@ -213,19 +237,22 @@ pub async fn load_model_process(
         let runtime_clone = runtime_id.clone();
         let err_clone = err_msg.clone();
         tokio::spawn(async move {
-            let mut map = pm_clone.running.lock().await;
-            map.insert(
-                id_clone.clone(),
-                RunningModel {
-                    model_id: id_clone,
-                    runtime_id: runtime_clone,
-                    pid: 0,
-                    port: 0,
-                    state: ModelState::Error(err_clone),
-                    last_active: Instant::now(),
-                    child: None,
-                },
-            );
+            {
+                let mut map = pm_clone.running.lock().await;
+                map.insert(
+                    id_clone.clone(),
+                    RunningModel {
+                        model_id: id_clone,
+                        runtime_id: runtime_clone,
+                        pid: 0,
+                        port: 0,
+                        state: ModelState::Error(err_clone),
+                        last_active: Instant::now(),
+                        child: None,
+                    },
+                );
+            }
+            pm_clone.notify_state_changed().await;
         });
         AppError::internal(err_msg)
     };
@@ -235,8 +262,8 @@ pub async fn load_model_process(
         Err(e) => return Err(fail_with(e)),
     };
 
-    let parsed_flags: HashMap<String, String> = serde_json::from_str(&model_record.flags)
-        .unwrap_or_default();
+    let parsed_flags: HashMap<String, String> =
+        serde_json::from_str(&model_record.flags).unwrap_or_default();
 
     let mut cmd = Command::new(&binary_path);
     let mut port_injected = false;
@@ -244,7 +271,11 @@ pub async fn load_model_process(
     let is_sd_server = runtime_id == "sd-cpp"
         || manifest.binary_name == "sd-server"
         || binary_path.ends_with("sd-server");
-    let port_flag = if is_sd_server { "--listen-port" } else { "--port" };
+    let port_flag = if is_sd_server {
+        "--listen-port"
+    } else {
+        "--port"
+    };
 
     if let Some(parent) = std::path::Path::new(&binary_path).parent() {
         cmd.current_dir(parent);
@@ -426,18 +457,27 @@ pub async fn load_model_process(
     }
 
     if is_ready {
-        let mut map = pm.running.lock().await;
-        if let Some(m) = map.get_mut(model_id) {
-            m.state = ModelState::Ready;
-            m.last_active = Instant::now();
-            return Ok(RunningModelStatus {
-                model_id: m.model_id.clone(),
-                runtime_id: m.runtime_id.clone(),
-                pid: m.pid,
-                port: m.port,
-                state: ModelState::Ready,
-                idle_seconds: 0,
-            });
+        let status = {
+            let mut map = pm.running.lock().await;
+            if let Some(m) = map.get_mut(model_id) {
+                m.state = ModelState::Ready;
+                m.last_active = Instant::now();
+                Some(RunningModelStatus {
+                    model_id: m.model_id.clone(),
+                    runtime_id: m.runtime_id.clone(),
+                    pid: m.pid,
+                    port: m.port,
+                    state: ModelState::Ready,
+                    idle_seconds: 0,
+                })
+            } else {
+                None
+            }
+        };
+
+        if let Some(s) = status {
+            pm.notify_state_changed().await;
+            return Ok(s);
         }
     }
 
@@ -463,6 +503,7 @@ pub async fn unload_model_process(
             return Ok(());
         }
     };
+    pm.notify_state_changed().await;
 
     let unload_timeout_secs: u64 = setting_repo.get_parsed("unload_timeout", 10).await;
 
@@ -525,15 +566,14 @@ pub async fn unload_all_model_processes(
     Ok(())
 }
 
-pub fn start_idle_auto_unload_loop(
-    pm: ProcessManager,
-    setting_repo: SettingRepository,
-) {
+pub fn start_idle_auto_unload_loop(pm: ProcessManager, setting_repo: SettingRepository) {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(10)).await;
 
-            let enabled: bool = setting_repo.get_parsed("idle_auto_unload_enabled", true).await;
+            let enabled: bool = setting_repo
+                .get_parsed("idle_auto_unload_enabled", true)
+                .await;
             if !enabled {
                 continue;
             }
@@ -567,6 +607,7 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
     let records = read_processes_json(&pm.db_dir);
     let mut updated_records = records.clone();
     let mut changed = false;
+    let mut state_changed = false;
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(1))
@@ -626,6 +667,8 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
                     child: None,
                 },
             );
+            drop(map);
+            state_changed = true;
         } else {
             tracing::info!(
                 "Cleaning up dead/unresponsive orphan process record for model '{}' (pid: {}) from processes.json",
@@ -646,6 +689,9 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
     if changed {
         write_processes_json(&pm.db_dir, &updated_records);
     }
+    if state_changed {
+        pm.notify_state_changed().await;
+    }
 }
 
 pub async fn swap_model_process(
@@ -656,7 +702,10 @@ pub async fn swap_model_process(
     model_id: &str,
 ) -> AppResult<RunningModelStatus> {
     if model_repo.get_by_id(model_id).await?.is_none() {
-        return Err(AppError::not_found(format!("Model '{}' not found in database", model_id)));
+        return Err(AppError::not_found(format!(
+            "Model '{}' not found in database",
+            model_id
+        )));
     }
 
     let wait_start = Instant::now();

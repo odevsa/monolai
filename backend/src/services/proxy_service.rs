@@ -167,7 +167,15 @@ impl ProxyService {
             }
 
             let cfg = self.config.read().await.clone();
-            match swap_model_process(&self.process_manager, &self.model_repo, &self.setting_repo, &cfg, &model_id).await {
+            match swap_model_process(
+                &self.process_manager,
+                &self.model_repo,
+                &self.setting_repo,
+                &cfg,
+                &model_id,
+            )
+            .await
+            {
                 Ok(running_status) => {
                     if running_status.state != ModelState::Ready || running_status.port == 0 {
                         return AppError::openai(
@@ -214,9 +222,71 @@ impl ProxyService {
         };
 
         let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
-        let upstream_url = format!("http://127.0.0.1:{}/v1/{}{}", target_port, path, query_suffix);
+        let upstream_url = format!(
+            "http://127.0.0.1:{}/v1/{}{}",
+            target_port, path, query_suffix
+        );
 
-        self.forward_http(upstream_url, method, headers, body_bytes, true).await
+        let mut final_body_bytes = body_bytes;
+
+        // If this is an image generation request forwarded to sd-server/sd-cpp, ensure
+        // parameters like seed, steps, cfg_scale, and negative_prompt are embedded via
+        // <sd_cpp_extra_args> if not already present in the prompt string.
+        if (path == "images/generations" || path.starts_with("images/generations"))
+            && !final_body_bytes.is_empty()
+        {
+            if let Ok(mut json_val) = serde_json::from_slice::<Value>(&final_body_bytes) {
+                if let Some(prompt_str) = json_val
+                    .get("prompt")
+                    .and_then(|p| p.as_str())
+                    .map(|s| s.to_string())
+                {
+                    if !prompt_str.contains("<sd_cpp_extra_args>") {
+                        let mut extra_args = serde_json::Map::new();
+
+                        // If seed is provided and non-negative, use it; otherwise default to -1 (random)
+                        // to prevent sd-server from falling back to default seed 42.
+                        let seed_val = match json_val.get("seed").and_then(|s| s.as_i64()) {
+                            Some(s) if s >= 0 => serde_json::json!(s),
+                            _ => serde_json::json!(-1),
+                        };
+                        extra_args.insert("seed".to_string(), seed_val);
+
+                        if let Some(neg) = json_val.get("negative_prompt") {
+                            extra_args.insert("negative_prompt".to_string(), neg.clone());
+                        }
+
+                        if let Some(steps) = json_val
+                            .get("steps")
+                            .or_else(|| json_val.get("sample_steps"))
+                        {
+                            extra_args.insert("sample_steps".to_string(), steps.clone());
+                        }
+
+                        if let Some(cfg) = json_val.get("cfg_scale") {
+                            extra_args.insert("cfg_scale".to_string(), cfg.clone());
+                        }
+
+                        let extra_json = serde_json::to_string(&extra_args).unwrap_or_default();
+                        let new_prompt = format!(
+                            "{} <sd_cpp_extra_args>{}</sd_cpp_extra_args>",
+                            prompt_str.trim(),
+                            extra_json
+                        );
+
+                        if let Some(obj) = json_val.as_object_mut() {
+                            obj.insert("prompt".to_string(), Value::String(new_prompt));
+                        }
+                        if let Ok(new_bytes) = serde_json::to_vec(&json_val) {
+                            final_body_bytes = Bytes::from(new_bytes);
+                        }
+                    }
+                }
+            }
+        }
+
+        self.forward_http(upstream_url, method, headers, final_body_bytes, true)
+            .await
     }
 
     pub async fn forward_sdcpp(
@@ -229,19 +299,31 @@ impl ProxyService {
     ) -> Response {
         let target_port: u16 = {
             let running_list = self.process_manager.get_all_running_status().await;
-            let ready_sd = running_list
-                .into_iter()
-                .find(|m| (m.runtime_id == "sd-cpp" || m.runtime_id.contains("sd")) && m.state == ModelState::Ready && m.port > 0);
+            let ready_sd = running_list.into_iter().find(|m| {
+                (m.runtime_id == "sd-cpp" || m.runtime_id.contains("sd"))
+                    && m.state == ModelState::Ready
+                    && m.port > 0
+            });
 
             if let Some(m) = ready_sd {
                 self.process_manager.mark_model_active(&m.model_id).await;
                 m.port
             } else {
                 let all_models = self.model_repo.get_all().await.unwrap_or_default();
-                let sd_model = all_models.into_iter().find(|m| m.runtime == "sd-cpp" || m.runtime.contains("sd"));
+                let sd_model = all_models
+                    .into_iter()
+                    .find(|m| m.runtime == "sd-cpp" || m.runtime.contains("sd"));
                 if let Some(m) = sd_model {
                     let cfg = self.config.read().await.clone();
-                    match swap_model_process(&self.process_manager, &self.model_repo, &self.setting_repo, &cfg, &m.id).await {
+                    match swap_model_process(
+                        &self.process_manager,
+                        &self.model_repo,
+                        &self.setting_repo,
+                        &cfg,
+                        &m.id,
+                    )
+                    .await
+                    {
                         Ok(running) => running.port,
                         Err(e) => {
                             return (
@@ -266,9 +348,13 @@ impl ProxyService {
         };
 
         let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
-        let upstream_url = format!("http://127.0.0.1:{}/sdcpp/{}{}", target_port, path, query_suffix);
+        let upstream_url = format!(
+            "http://127.0.0.1:{}/sdcpp/{}{}",
+            target_port, path, query_suffix
+        );
 
-        self.forward_http(upstream_url, method, headers, body_bytes, false).await
+        self.forward_http(upstream_url, method, headers, body_bytes, false)
+            .await
     }
 
     async fn forward_http(
@@ -298,7 +384,8 @@ impl ProxyService {
 
             match req_builder.send().await {
                 Ok(res) => {
-                    if res.status() == StatusCode::SERVICE_UNAVAILABLE && retry_count < max_retries {
+                    if res.status() == StatusCode::SERVICE_UNAVAILABLE && retry_count < max_retries
+                    {
                         let res_headers = res.headers().clone();
                         match res.bytes().await {
                             Ok(bytes) => {
@@ -313,16 +400,25 @@ impl ProxyService {
                                     retry_count += 1;
                                     continue;
                                 } else {
-                                    let mut response_builder = Response::builder().status(StatusCode::SERVICE_UNAVAILABLE);
+                                    let mut response_builder =
+                                        Response::builder().status(StatusCode::SERVICE_UNAVAILABLE);
                                     for (name, value) in &res_headers {
                                         let name_str = name.as_str().to_lowercase();
-                                        if name_str != "transfer-encoding" && name_str != "connection" {
+                                        if name_str != "transfer-encoding"
+                                            && name_str != "connection"
+                                        {
                                             response_builder = response_builder.header(name, value);
                                         }
                                     }
                                     return response_builder
                                         .body(Body::from(bytes))
-                                        .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response());
+                                        .unwrap_or_else(|_| {
+                                            (
+                                                StatusCode::INTERNAL_SERVER_ERROR,
+                                                "Proxy response error",
+                                            )
+                                                .into_response()
+                                        });
                                 }
                             }
                             Err(e) => {
@@ -369,8 +465,8 @@ impl ProxyService {
         let body_stream = upstream_res.bytes_stream();
         let response_body = Body::from_stream(body_stream);
 
-        response_builder
-            .body(response_body)
-            .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response())
+        response_builder.body(response_body).unwrap_or_else(|_| {
+            (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response()
+        })
     }
 }

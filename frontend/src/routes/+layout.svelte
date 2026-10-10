@@ -9,6 +9,7 @@
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
 	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
+	import { chatsState } from '$lib/state/chats.svelte';
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
 	import { PanelLeftOpen, Plus, RefreshCw, Trash2, X } from '@lucide/svelte';
@@ -53,11 +54,10 @@
 		if (!confirmed) return;
 
 		try {
-			await chatsApi.delete(id);
+			await chatsState.deleteChat(id);
 		} catch (err) {
 			console.error('Failed to delete active chat:', err);
 		}
-		headerState.chatTabs = headerState.chatTabs.filter((t) => t.id !== id);
 		if (typeof window !== 'undefined') {
 			goto('/chat');
 		}

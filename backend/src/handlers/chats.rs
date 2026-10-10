@@ -20,9 +20,7 @@ use axum::{
         (status = 500, description = "Database error", body = String)
     )
 )]
-pub async fn get_chats_handler(
-    State(state): State<AppState>,
-) -> AppResult<Json<Vec<ChatRecord>>> {
+pub async fn get_chats_handler(State(state): State<AppState>) -> AppResult<Json<Vec<ChatRecord>>> {
     let chats = state.chat_service.get_all_chats().await?;
     Ok(Json(chats))
 }
@@ -130,7 +128,10 @@ pub async fn create_chat_message_handler(
     Path(chat_id): Path<String>,
     Json(payload): Json<CreateChatMessagePayload>,
 ) -> AppResult<Json<ChatMessageRecord>> {
-    let message = state.chat_service.create_chat_message(&chat_id, payload).await?;
+    let message = state
+        .chat_service
+        .create_chat_message(&chat_id, payload)
+        .await?;
     Ok(Json(message))
 }
 
@@ -154,7 +155,10 @@ pub async fn update_chat_message_handler(
     Path((_chat_id, msg_id)): Path<(String, String)>,
     Json(payload): Json<UpdateChatMessagePayload>,
 ) -> AppResult<Json<ChatMessageRecord>> {
-    let message = state.chat_service.update_chat_message(&msg_id, payload).await?;
+    let message = state
+        .chat_service
+        .update_chat_message(&msg_id, payload)
+        .await?;
     Ok(Json(message))
 }
 

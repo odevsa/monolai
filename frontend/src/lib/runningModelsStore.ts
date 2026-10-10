@@ -50,5 +50,6 @@ export const unloadingModelIds = {
 export const fetchRunningState = () => runningModelsState.fetchRunningState();
 export const startRunningStatePolling = (intervalMs?: number) =>
 	runningModelsState.startPolling(intervalMs);
+export const startRunningStateStream = () => runningModelsState.startStreaming();
 export const unloadModel = (modelId: string) => runningModelsState.unloadModel(modelId);
 export const unloadAllModels = () => runningModelsState.unloadAllModels();

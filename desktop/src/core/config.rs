@@ -32,7 +32,14 @@ impl Default for GuiConfig {
 
         let default_runtimes = dirs::data_local_dir()
             .map(|p| p.join("monolai").join("runtimes"))
-            .or_else(|| dirs::home_dir().map(|h| h.join(".local").join("share").join("monolai").join("runtimes")))
+            .or_else(|| {
+                dirs::home_dir().map(|h| {
+                    h.join(".local")
+                        .join("share")
+                        .join("monolai")
+                        .join("runtimes")
+                })
+            })
             .unwrap_or_else(|| PathBuf::from("runtimes"))
             .to_string_lossy()
             .to_string();
@@ -76,7 +83,7 @@ impl GuiConfig {
             }
         }
 
-        // 2. config.yaml is the SINGLE SOURCE OF TRUTH for models, runtimes, hardware, host, and port!
+        // 2. config.yaml is the single source of truth for runtime directories & hardware!
         let yaml_path = Self::backend_yaml_path();
         if let Ok(contents) = fs::read_to_string(&yaml_path) {
             #[derive(Deserialize)]
@@ -145,7 +152,11 @@ impl GuiConfig {
                 let mut updated = update_yaml_field(&existing, "models", self.models_dir.trim());
                 updated = update_yaml_field(&updated, "runtimes", self.runtimes_dir.trim());
                 updated = update_yaml_field(&updated, "hardware", self.hardware.trim());
-                let host_val = if self.host.trim().is_empty() { "0.0.0.0" } else { self.host.trim() };
+                let host_val = if self.host.trim().is_empty() {
+                    "0.0.0.0"
+                } else {
+                    self.host.trim()
+                };
                 updated = update_yaml_field(&updated, "host", host_val);
                 update_yaml_field(&updated, "port", &self.port.to_string())
             } else {
@@ -254,60 +265,41 @@ pub fn update_yaml_field(content: &str, key: &str, value: &str) -> String {
     result
 }
 
-pub fn is_autostart_app_enabled() -> bool {
-    if let Ok(exe_path) = std::env::current_exe() {
-        let mut builder = auto_launch::AutoLaunchBuilder::new();
-        builder
-            .set_app_name("Monolai")
-            .set_app_path(&exe_path.to_string_lossy());
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        #[cfg(target_os = "windows")]
-        builder.set_windows_enable_mode(auto_launch::WindowsEnableMode::CurrentUser);
-
-        if let Ok(auto) = builder.build() {
-            return auto.is_enabled().unwrap_or(false);
-        }
+    #[test]
+    fn test_update_yaml_field_existing_key() {
+        let yaml = "models: /old/path\nport: 8080\n";
+        let updated = update_yaml_field(yaml, "models", "/new/path");
+        assert!(updated.contains("models: /new/path"));
+        assert!(updated.contains("port: 8080"));
     }
-    false
+
+    #[test]
+    fn test_update_yaml_field_commented_key() {
+        let yaml = "# hardware: auto\nport: 8080\n";
+        let updated = update_yaml_field(yaml, "hardware", "cuda");
+        assert!(updated.contains("hardware: cuda"));
+    }
+
+    #[test]
+    fn test_update_yaml_field_preserves_inline_comment() {
+        let yaml = "port: 8080 # default port\n";
+        let updated = update_yaml_field(yaml, "port", "9090");
+        assert!(updated.contains("port: 9090 # default port"));
+    }
+
+    #[test]
+    fn test_gui_config_default_values() {
+        let config = GuiConfig::default();
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.hardware, "auto");
+        assert!(config.minimize_on_start);
+        assert!(config.autostart_server);
+        assert!(config.autostart_app);
+    }
 }
 
-pub fn set_autostart_app(enable: bool, minimized: bool) -> Result<(), String> {
-    let exe_path = std::env::current_exe()
-        .map_err(|e| format!("Failed to get current executable path: {}", e))?;
-
-    #[cfg(target_os = "windows")]
-    {
-        // Clean up any stale HKLM Run entry created by past runs or elevated installers
-        let mut sys_builder = auto_launch::AutoLaunchBuilder::new();
-        sys_builder
-            .set_app_name("Monolai")
-            .set_app_path(&exe_path.to_string_lossy())
-            .set_windows_enable_mode(auto_launch::WindowsEnableMode::System);
-        if let Ok(sys_auto) = sys_builder.build() {
-            let _ = sys_auto.disable();
-        }
-    }
-
-    let mut builder = auto_launch::AutoLaunchBuilder::new();
-    builder
-        .set_app_name("Monolai")
-        .set_app_path(&exe_path.to_string_lossy());
-
-    #[cfg(target_os = "windows")]
-    builder.set_windows_enable_mode(auto_launch::WindowsEnableMode::CurrentUser);
-
-    if minimized {
-        builder.set_args(&["--minimized"]);
-    }
-
-    let auto = builder
-        .build()
-        .map_err(|e| format!("Failed to build autostart config: {}", e))?;
-
-    if enable {
-        let _ = auto.enable();
-    } else {
-        let _ = auto.disable();
-    }
-    Ok(())
-}

@@ -25,6 +25,7 @@ use utoipa::OpenApi;
         crate::handlers::models::unload_model_handler,
         crate::handlers::models::unload_all_models_handler,
         crate::handlers::models::get_running_models_handler,
+        crate::handlers::models::running_models_stream_handler,
         crate::handlers::chats::get_chats_handler,
         crate::handlers::chats::create_chat_handler,
         crate::handlers::chats::update_chat_handler,

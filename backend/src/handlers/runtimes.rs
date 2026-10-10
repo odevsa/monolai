@@ -71,7 +71,10 @@ pub async fn install_runtime_handler(
         runtime_id,
         hardware_override
     );
-    state.runtime_service.install(&runtime_id, hardware_override).await?;
+    state
+        .runtime_service
+        .install(&runtime_id, hardware_override)
+        .await?;
 
     Ok(Json(OperationResponse {
         success: true,
@@ -167,4 +170,3 @@ mod tests {
         assert_eq!(req3.resolved_target().as_deref(), Some("cuda-13.4"));
     }
 }
-

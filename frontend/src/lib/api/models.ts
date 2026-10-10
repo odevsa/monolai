@@ -84,6 +84,28 @@ export const modelsApi = {
 
 	getRunningState: () => api.get<RunningModelStatus[]>('/api/state'),
 
+	subscribeRunningState: (
+		onUpdate: (models: RunningModelStatus[]) => void,
+		onError?: (err: Event) => void
+	): (() => void) => {
+		const es = new EventSource('/api/state/stream');
+
+		es.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				onUpdate(data);
+			} catch (e) {
+				console.error('Error parsing running models SSE stream:', e);
+			}
+		};
+
+		if (onError) {
+			es.onerror = onError;
+		}
+
+		return () => es.close();
+	},
+
 	create: (payload: CreateModelPayload) => api.post<ModelRecord>('/api/models', payload),
 
 	update: (id: string, payload: UpdateModelPayload) =>

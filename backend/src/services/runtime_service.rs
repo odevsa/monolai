@@ -94,7 +94,12 @@ impl RuntimeService {
             }
 
             if !recommended_found && !avail_options.is_empty() {
-                if let Some(vulkan_opt) = avail_options.iter_mut().find(|o| o.id == "vulkan" && hw_report.available_accelerations.contains(&"vulkan".to_string())) {
+                if let Some(vulkan_opt) = avail_options.iter_mut().find(|o| {
+                    o.id == "vulkan"
+                        && hw_report
+                            .available_accelerations
+                            .contains(&"vulkan".to_string())
+                }) {
                     vulkan_opt.is_recommended = true;
                 } else if let Some(cpu_opt) = avail_options.iter_mut().find(|o| o.id == "cpu") {
                     cpu_opt.is_recommended = true;
@@ -126,20 +131,26 @@ impl RuntimeService {
         items
     }
 
-    pub async fn install(&self, runtime_id: &str, hardware_override: Option<String>) -> AppResult<()> {
+    pub async fn install(
+        &self,
+        runtime_id: &str,
+        hardware_override: Option<String>,
+    ) -> AppResult<()> {
         let (runtimes_dir, configured_hardware) = {
             let cfg = self.config.read().await;
             let dir = cfg.runtimes.as_deref().unwrap_or("").to_string();
             if dir.trim().is_empty() {
-                return Err(AppError::bad_request("Runtimes directory is not configured in config.yaml"));
+                return Err(AppError::bad_request(
+                    "Runtimes directory is not configured in config.yaml",
+                ));
             }
             let hw = cfg.hardware.clone();
             (crate::core::config::expand_tilde(dir), hw)
         };
 
-        let manifest = self
-            .manifest_by_id(runtime_id)
-            .ok_or_else(|| AppError::not_found(format!("Runtime manifest for '{}' not found", runtime_id)))?;
+        let manifest = self.manifest_by_id(runtime_id).ok_or_else(|| {
+            AppError::not_found(format!("Runtime manifest for '{}' not found", runtime_id))
+        })?;
 
         let hw = hardware_override.or(configured_hardware);
         let installer_mgr = self.installer_manager.clone();
@@ -167,7 +178,9 @@ impl RuntimeService {
             let cfg = self.config.read().await;
             let dir = cfg.runtimes.as_deref().unwrap_or("").to_string();
             if dir.trim().is_empty() {
-                return Err(AppError::bad_request("Runtimes directory is not configured in config.yaml"));
+                return Err(AppError::bad_request(
+                    "Runtimes directory is not configured in config.yaml",
+                ));
             }
             crate::core::config::expand_tilde(dir)
         };
@@ -208,9 +221,15 @@ mod tests {
         );
 
         let items = service.get_runtimes().await;
-        let llama = items.iter().find(|i| i.id == "llama-cpp").expect("llama-cpp should exist");
+        let llama = items
+            .iter()
+            .find(|i| i.id == "llama-cpp")
+            .expect("llama-cpp should exist");
 
-        let rec = llama.available_accelerations.iter().find(|a| a.is_recommended);
+        let rec = llama
+            .available_accelerations
+            .iter()
+            .find(|a| a.is_recommended);
         assert!(rec.is_some(), "There must be a recommended acceleration");
 
         let hw = crate::infrastructure::hardware::tracker::detect_hardware();
@@ -228,4 +247,3 @@ mod tests {
         }
     }
 }
-

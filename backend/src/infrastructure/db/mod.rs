@@ -12,7 +12,9 @@ pub use model_repo::ModelRepository;
 pub use setting_repo::SettingRepository;
 
 /// Initialize SQLite pool and execute embedded migrations.
-pub async fn init_db(database_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn init_db(
+    database_url: &str,
+) -> Result<SqlitePool, Box<dyn std::error::Error + Send + Sync>> {
     let clean_path = database_url
         .trim_start_matches("sqlite://")
         .trim_start_matches("sqlite:");
@@ -34,8 +36,7 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool, Box<dyn std::erro
         format!("sqlite:{}?mode=rwc", database_url)
     };
 
-    let options = SqliteConnectOptions::from_str(&connection_url)?
-        .create_if_missing(true);
+    let options = SqliteConnectOptions::from_str(&connection_url)?.create_if_missing(true);
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)

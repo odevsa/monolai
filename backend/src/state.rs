@@ -1,8 +1,6 @@
 use crate::core::config::{AppConfig, ConfigStatus, PathResolver};
 use crate::infrastructure::db::SettingRepository;
-use crate::services::{
-    ChatService, HostService, ModelService, ProxyService, RuntimeService,
-};
+use crate::services::{ChatService, HostService, ModelService, ProxyService, RuntimeService};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::RwLock;

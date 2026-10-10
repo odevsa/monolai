@@ -30,8 +30,8 @@ class RunningModelsStateManager {
 	runningModels = $state<RunningModelStatus[]>([]);
 	unloadingModelIds = $state<Set<string>>(new Set());
 
-	private activePollTimer: ReturnType<typeof setInterval> | null = null;
-	private pollRefCount = 0;
+	private closeStream: (() => void) | null = null;
+	private streamRefCount = 0;
 
 	private notify() {
 		for (const cb of listeners) {
@@ -43,40 +43,58 @@ class RunningModelsStateManager {
 		}
 	}
 
+	private updateState(data: RunningModelStatus[] | undefined | null) {
+		this.runningModels = data || [];
+		const currentIds = new Set((data || []).map((m) => m.model_id));
+		const updatedUnloading = new Set<string>();
+		for (const id of this.unloadingModelIds) {
+			if (currentIds.has(id)) {
+				updatedUnloading.add(id);
+			}
+		}
+		this.unloadingModelIds = updatedUnloading;
+		this.notify();
+	}
+
 	async fetchRunningState() {
 		try {
 			const data = await modelsApi.getRunningState();
-			this.runningModels = data || [];
-			const currentIds = new Set((data || []).map((m) => m.model_id));
-			const updatedUnloading = new Set<string>();
-			for (const id of this.unloadingModelIds) {
-				if (currentIds.has(id)) {
-					updatedUnloading.add(id);
-				}
-			}
-			this.unloadingModelIds = updatedUnloading;
-			this.notify();
+			this.updateState(data);
 		} catch {
-			// ignore polling errors
+			// ignore fetch errors
 		}
 	}
 
-	startPolling(intervalMs = 2500): () => void {
+	startStreaming(): () => void {
 		if (typeof window === 'undefined') return () => {};
 
-		this.pollRefCount++;
-		if (this.pollRefCount === 1) {
-			this.fetchRunningState();
-			this.activePollTimer = setInterval(() => this.fetchRunningState(), intervalMs);
+		this.streamRefCount++;
+		if (this.streamRefCount === 1) {
+			this.closeStream = modelsApi.subscribeRunningState(
+				(models) => {
+					this.updateState(models);
+				},
+				() => {
+					// Fallback to fetch on SSE errors or reconnect
+					this.fetchRunningState();
+				}
+			);
 		}
 
 		return () => {
-			this.pollRefCount = Math.max(0, this.pollRefCount - 1);
-			if (this.pollRefCount === 0 && this.activePollTimer) {
-				clearInterval(this.activePollTimer);
-				this.activePollTimer = null;
+			this.streamRefCount = Math.max(0, this.streamRefCount - 1);
+			if (this.streamRefCount === 0 && this.closeStream) {
+				this.closeStream();
+				this.closeStream = null;
 			}
 		};
+	}
+
+	/**
+	 * Maintained for backward compatibility. Connects to the real-time SSE stream.
+	 */
+	startPolling(_intervalMs = 2500): () => void {
+		return this.startStreaming();
 	}
 
 	async unloadModel(modelId: string) {

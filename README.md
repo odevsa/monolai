@@ -63,8 +63,8 @@ Monolai features dynamic theme support tailored for different AI model and UI pr
 
 ```bash
 cargo run --manifest-path desktop/Cargo.toml
-# Or with Make:
-make dev-desktop
+# Or with Just (or Make):
+just dev-desktop
 ```
 
 ### 2. Standalone Server (CLI / Web)
@@ -72,8 +72,8 @@ make dev-desktop
 ```bash
 # Starts backend server (web UI accessible at http://localhost:8080)
 cargo run --manifest-path backend/Cargo.toml -- --config ~/.config/monolai/config.yaml
-# Or with Make:
-make dev-backend
+# Or with Just (or Make):
+just dev-backend
 ```
 
 #### CLI Options
@@ -225,21 +225,29 @@ for chunk in response:
 Interactive Swagger documentation is available at **http://localhost:8080/api/swagger**.
 
 ## Development
+ 
+Tasks are managed using [`just`](https://github.com/casey/just) (a modern task runner written in Rust). A backward-compatible `Makefile` wrapper is also provided.
 
 | Command                | Description                                                  |
 | :--------------------- | :----------------------------------------------------------- |
-| `make install`         | Install frontend dependencies and verify Rust backend        |
-| `make dev`             | Start frontend and backend concurrently in dev mode          |
-| `make dev-host`        | Start frontend (`--host`) and backend concurrently           |
-| `make dev-desktop`     | Start native Rust desktop GUI app (`monolai-gui`)            |
-| `make dev-backend`     | Run backend server only                                      |
-| `make dev-frontend`    | Run frontend development server only                         |
-| `make build`           | Build release binaries for both server and desktop           |
-| `make build-server`    | Compile frontend and build release server binary (`monolai`) |
-| `make build-desktop`   | Build release desktop binary (`monolai-gui`)                 |
-| `make icons`           | Generate all multi-resolution icons (PNG, ICO, ICNS)         |
-| `make clean`           | Remove build artifacts                                       |
-| `make version [x.y.z]` | Synchronize project version across manifests                 |
+| `just install`         | Install frontend dependencies and verify Rust workspaces     |
+| `just dev`             | Start frontend and backend concurrently in dev mode          |
+| `just dev-host`        | Start frontend (`--host`) and backend concurrently           |
+| `just dev-desktop`     | Start native Rust desktop GUI app (`monolai-gui`)            |
+| `just dev-backend`     | Run backend server only                                      |
+| `just dev-frontend`    | Run frontend development server only                         |
+| `just check`           | Run type checks (SvelteKit) and compilation checks for Rust  |
+| `just test`            | Run backend unit and integration tests                       |
+| `just lint`            | Validate code formatting and style rules                     |
+| `just format`          | Auto-format code across the monorepo (Prettier and rustfmt)  |
+| `just build`           | Build release binaries for both server and desktop (Linux)   |
+| `just build-server`    | Compile frontend and build release server binary (`monolai`) |
+| `just build-desktop`   | Build release desktop binary (`monolai-gui`)                 |
+| `just build-windows`   | Cross-compile Windows release binaries into `dist/windows/`  |
+| `just build-macos`     | Build macOS release binaries and `.app` bundle               |
+| `just icons`           | Generate all multi-resolution icons (PNG, ICO, ICNS)         |
+| `just clean`           | Remove build artifacts and temporary files                   |
+| `just version [x.y.z]` | Synchronize project version across manifests                 |
 
 ## Tech Stack
 

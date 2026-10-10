@@ -88,21 +88,37 @@ The backend is structured into four primary layers:
 
 ## 5. Desktop Guidelines (`desktop/`)
 
-### 5.1 Architecture & Native Integration
-1. **Supervisor Isolation**:
-   - The desktop app manages and supervises the backend process.
-   - Process spawning, port resolution, health checking, and child process termination must be resilient and platform-safe.
-2. **Platform Specifics (`cfg`)**:
-   - Properly guard OS-specific logic:
-     - Windows: Job Objects (`windows-sys`), `.exe` extensions, hidden console flags (`CREATE_NO_WINDOW`).
-     - Linux: Wayland/X11 traits, process signals (`libc::kill`).
-     - macOS: Menu bar and application bundle structures.
-3. **Decoupled GUI & Background Work**:
-   - Do not block the `eframe::App::update` rendering loop with network requests or synchronous I/O.
-   - Delegate network queries (checking backend health, fetching metrics) and process supervision to background threads or async tasks communicating with the UI via thread-safe channels (`crossbeam-channel` or `std::sync::mpsc`).
-4. **Tray & Lifecycle**:
-   - Support running in the background via system tray (`tray-icon`).
-   - Clean shutdown: ensure both the GUI and the spawned backend child process terminate cleanly on exit.
+### 5.1 Strict Layered Desktop Architecture
+The desktop application (`monolai-gui`) is organized into decoupled layers communicating via thread-safe channels:
+1. **`core`**:
+   - Pure domain models (`ServerStatus`), configuration serialization (`GuiConfig`, `config.yaml` synchronization), and thread-safe communication message types (`UiCommand`, `SupervisorEvent`, `TrayAction`).
+   - Must NOT depend on GUI types (`egui`), HTTP network calls, or child process execution.
+2. **`platform`**:
+   - Cross-platform operating system integrations:
+     - `single_instance`: Named Mutex (Windows) and runtime `flock` (Unix) single-instance enforcement.
+     - `autostart`: System boot initialization via `auto-launch`.
+     - `process_ext`: Process isolation guards (Windows Job Objects with `KILL_ON_JOB_CLOSE`, Linux `PR_SET_PDEATHSIG`, Windows `CREATE_NO_WINDOW`).
+     - `window`: Cross-platform minimization and restoration across Wayland, X11, Windows, and macOS.
+3. **`supervisor`**:
+   - Asynchronous backend management.
+   - `binary_locator`: Locates installed and dev backend binaries.
+   - `health`: Port conflict verification, HTTP health check probes, and API notifications.
+   - `process`: Spawn, log redirection, and graceful termination (`SIGTERM` / `SIGKILL`).
+   - `worker`: Dedicated background worker thread processing `UiCommand`s and emitting `SupervisorEvent`s with `request_repaint()` triggers.
+4. **`tray`**:
+   - System tray management via `tray-icon`. Dispatches `TrayAction`s over channels to the UI loop without blocking or triggering uncoordinated process exits.
+5. **`ui`**:
+   - Pure visual presentation layer using `eframe`/`egui`.
+   - `components`: Atomic GPU vector-rendered components (`draw_status_dot`, `singleline_input`, texture loaders).
+   - `views`: Modular screens (`main_view`, `settings_view`) that send `UiCommand`s and render state without performing synchronous I/O.
+   - `app`: `DesktopApp` implementing `eframe::App`, consuming `SupervisorEvent`s via `poll_event()`.
+
+### 5.2 Concurrency & Thread Inviolability
+1. **Zero I/O on GUI Thread**:
+   - Never execute synchronous network requests (`ureq`), heavy process commands (`Command::output`), or file locks within the `eframe::App::update` rendering loop.
+   - All server management actions, maintenance routines (`--clean-storage`, `--factory-reset`), and HTTP notifications must be delegated to the `SupervisorWorker` via `UiCommand`.
+2. **Clean Lifecycle & Coordinated Shutdown**:
+   - `SupervisorHandle` coordinates process termination upon application exit (`UiCommand::Shutdown`). No competing shutdown handlers or orphan child processes.
 
 ---
 
