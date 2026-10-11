@@ -86,7 +86,7 @@ You can download pre-compiled release packages from the [Latest GitHub Releases]
 
 Follow these steps to set up Monolai and start running models in minutes:
 
-### 1. Launch Monolai & Complete Setup (`/setup`)
+### 1. Launch Monolai & Complete Setup
 
 Start Monolai using the desktop app or the standalone server:
 
@@ -95,56 +95,61 @@ Start Monolai using the desktop app or the standalone server:
 monolai
 ```
 
-Open your browser at **http://localhost:8080/setup** (or open the desktop app).
+Open your browser at **http://localhost:8080** (or open the desktop app).
 On first launch, the configuration wizard guides you through:
 
-- **Models Folder**: The local path where your model weights are saved (default: `~/models`).
-- **Runtimes Folder**: Where engine binaries will be installed (default: `~/.local/share/monolai/runtimes`).
+- **Models Folder**: The local path where your model weights are saved
+  - linux/macOS (default): `~/.local/share/monolai/models`
+  - windows (default): `%LOCALAPPDATA%\monolai\models`
+- **Runtimes Folder**: Where engine binaries will be installed
+  - linux/macOS (default): `~/.local/share/monolai/runtimes`
+  - windows (default): `%LOCALAPPDATA%\monolai\runtimes`
 - **Hardware Acceleration**: Select your acceleration target (`auto`, `cuda`, `rocm`, `vulkan`, or `cpu`).
 
 Once saved, Monolai automatically writes `config.yaml` and is ready to load inference engines.
 
-### 2. Install Inference Runtimes (`/runtimes`)
+### 2. Install Inference Runtimes
 
 Monolai uses modular inference engines that can be installed directly from the web UI:
 
-1. Navigate to the **Runtimes** page (`/runtimes`).
+1. Navigate to the **Runtimes** page (http://localhost:8080/runtimes).
 2. Install the runtimes matching your use cases:
    - **`llama.cpp`**: Required for text generation, chat completion, and reasoning LLMs (`.gguf`).
-   - **`stable-diffusion.cpp`**: Required for local text-to-image diffusion generation.
+   - **`stable-diffusion.cpp`**: Required for local text-to-image diffusion generation (`.safetensors`, `.bin`, etc).
 3. Select your preferred acceleration backend (e.g. CUDA, Vulkan, or CPU) and click **Install**. Download and installation progress is streamed in real time.
 
 ### 3. Download Models
 
-Download your favorite `.gguf` models and place them directly into your configured models folder (e.g. `~/models`).
+Download your favorite models (`.gguf`, `.safetensors`, `.bin`, etc) and place them directly into your configured models folder from [1. Launch Monolai & Complete Setup](#1-launch-monolai--complete-setup).
 
-#### Recommended Places to Download Models:
+#### Some Places to Find and Download Models:
 
-- **[Hugging Face](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending)** (filter by the `gguf` tag):
-  - **[bartowski](https://huggingface.co/bartowski)**: Fast, high-quality quantizations of trending models (Llama 3, Qwen 2.5, DeepSeek-R1, Mistral).
-  - **[TheBloke](https://huggingface.co/TheBloke)**: Extensive archive of classical LLM models in GGUF format.
-  - Search for models like `Qwen2.5-Coder-7B-Instruct-GGUF`, `Llama-3.2-3B-Instruct-GGUF`, or `DeepSeek-R1-Distill-Qwen-7B-GGUF`.
-- **[Civitai](https://civitai.com/)**: Source for diffusion checkpoints (`stable-diffusion.cpp` compatible models like SD 1.5, SDXL, and FLUX).
+- **[Hugging Face](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending)**: Popular place for downloading models
 
 > [!TIP]
-> **Quantization Recommendation**: For the best trade-off between memory and speed, look for **`Q4_K_M`** or **`Q5_K_M`** quantizations.
+> **Quantization**: For the best trade-off between memory and speed, look for **`Q4_K_M`** quantizations or test other quantizations to find what works best for your hardware.
 
-### 4. Register & Manage Models (`/models`)
+> [!TIP]
+> **Mixture of Experts (MoE)**: Model with massive knowledge capacity and fast response times and low computational costs.
 
-1. Go to the **Models** page (`/models`).
-2. Click **Scan Directory** to automatically discover `.gguf` files in your models folder, or click **Add Model** to configure a specific file manually.
+> [!TIP]
+> **Multi-Token Prediction (MTP)**: Drastically speed up text or code generation, as the model predicts multiple tokens simultaneously instead of one by one.
+
+### 4. Register & Manage Models
+
+1. Go to the **Models** page (http://localhost:8080/models).
+2. Click **Register Model** to create a model for inference.
 3. Set model parameters such as:
-   - **Model Alias / ID** (e.g., `qwen2.5-7b` or `deepseek-r1-7b`)
-   - **Context Size** (e.g., `4096`, `8192`, `32768`)
-   - **GPU Offload Layers** (e.g., offload all layers to VRAM for maximum speed)
-   - **Inference Runtime** (`llama-cpp` or `sd-cpp`)
+   - **Model ID** (e.g., `qwen2.5-7b` or `deepseek-r1-7b`)
+   - **Runtime Engine** (e.g., `Llama C++ Server`, `Stable Diffusion C++ Server`...)
+   - **Flags** (e.g., `--model`, `--ctx-size`, `--gpu-layers`...)
 
 ### 5. Start Using Monolai
 
-- **Chat Interface (`/chat`)**: Chat with your local models, featuring full markdown rendering and live streaming of thinking processes (`<think>` tags) for reasoning models.
-- **Image Generation (`/image`)**: Create images locally with prompt tuning, negative prompts, aspect ratio presets, seeds, and generation history.
-- **OpenAI-Compatible Tools**: Use Monolai as a drop-in local replacement for OpenAI in **Cursor**, **Continue**, **Open WebUI**, **LangChain**, or any standard OpenAI SDK client by setting the base URL to `http://localhost:8080/v1`.
-- **Telemetry & Diagnostics**: Check real-time GPU/VRAM, CPU, and RAM consumption under **System Info** (`/sysinfo`) and monitor live activity in **Logs** (`/logs`).
+- **Chat**: Chat with your local models, featuring full markdown rendering and live streaming.
+- **Image**: Create images locally with prompt tuning, negative prompts, aspect ratio presets, seeds, and generation history.
+- **OpenAI Compatibility**: Use Monolai as a local replacement for OpenAI in **Zed**, **OpenCode**, **Continue**, **Open WebUI**, or any standard OpenAI Compatible client by setting the base URL to `http://localhost:8080/v1`.
+- **Monitoring**: Check real-time GPU/VRAM, CPU, and RAM consumption under **System Info** and monitor live activity in **Logs**.
 
 ## CLI
 
