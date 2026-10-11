@@ -9,7 +9,11 @@
 export async function copyToClipboard(text: string): Promise<boolean> {
 	if (!text) return false;
 
-	if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+	if (
+		typeof navigator !== 'undefined' &&
+		navigator.clipboard &&
+		typeof navigator.clipboard.writeText === 'function'
+	) {
 		try {
 			await navigator.clipboard.writeText(text);
 			return true;

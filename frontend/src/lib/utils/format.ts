@@ -15,6 +15,23 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
+ * Splits a byte value or rate into an object with numeric string value and unit string.
+ * Automatically scales across B, KB, MB, GB, TB, PB.
+ * Example: splitBytesValue(1536) -> { value: '1.5', unit: 'KB' }
+ * Example: splitBytesValue(1536, true) -> { value: '1.5', unit: 'KB/s' }
+ */
+export function splitBytesValue(bytes: number, isRate = false): { value: string; unit: string } {
+	if (!bytes || bytes <= 0 || isNaN(bytes)) return { value: '0', unit: isRate ? 'B/s' : 'B' };
+	const k = 1024;
+	const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	const idx = Math.min(Math.max(0, i), sizes.length - 1);
+	const val = (bytes / Math.pow(k, idx)).toFixed(idx === 0 ? 0 : 1);
+	const unit = isRate ? `${sizes[idx]}/s` : sizes[idx];
+	return { value: val, unit };
+}
+
+/**
  * Formats seconds into human-readable uptime string (e.g. "2d 4h 12m 30s").
  */
 export function formatUptime(seconds: number): string {

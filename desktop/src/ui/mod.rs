@@ -1,3 +1,6 @@
+pub mod app;
 pub mod components;
-pub mod main_view;
-pub mod settings_view;
+pub mod theme;
+pub mod views;
+
+pub use app::DesktopApp;

@@ -1,22 +1,23 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	import {
-		Settings2,
-		HardDrive,
-		Cpu,
-		Zap,
-		Copy,
-		Check,
-		Edit2,
-		X,
-		Save,
-		RefreshCw,
-		AlertCircle,
-		FileCode,
-		ShieldCheck,
-		Network
-	} from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
+	import {
+		CircleAlert,
+		Check,
+		Copy,
+		Cpu,
+		FileCode,
+		HardDrive,
+		Network,
+		Pencil,
+		RefreshCw,
+		Save,
+		Settings,
+		ShieldCheck,
+		X,
+		Zap
+	} from '@lucide/svelte';
+	import { getContext, onMount } from 'svelte';
 
 	interface ConfigStatus {
 		is_valid: boolean;
@@ -262,12 +263,14 @@
 	<!-- Section Header -->
 	<div class="flex items-center justify-between gap-3 border-b border-[var(--border-color)] pb-3">
 		<div>
-			<h4 class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2 leading-none">
-				<Settings2 size={18} class="text-[var(--primary)] shrink-0" />
-				<span>Active Configuration & Storage</span>
+			<h4
+				class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2 leading-none"
+			>
+				<Settings size={18} class="text-[var(--primary)] shrink-0" />
+				<span>{t('settings.configStorageTitle')}</span>
 			</h4>
 			<p class="m-0 text-[0.725rem] text-[var(--text-muted)] mt-1.5 leading-relaxed">
-				Disk configuration file, model storage, runtimes, and chosen hardware target.
+				{t('settings.configStorageDesc')}
 			</p>
 		</div>
 
@@ -278,8 +281,8 @@
 					onclick={() => loadConfigData(true)}
 					disabled={isRefreshing || isLoading}
 					class="w-7 h-7 flex items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer"
-					title="Refresh configuration"
-					aria-label="Refresh configuration"
+					title={t('settings.refreshConfig')}
+					aria-label={t('settings.refreshConfig')}
 				>
 					<RefreshCw size={13} class={isRefreshing ? 'animate-spin text-[var(--primary)]' : ''} />
 				</button>
@@ -291,15 +294,15 @@
 						disabled={isLoading || !configStatus}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--primary)] text-xs text-[var(--text-primary)] font-medium transition cursor-pointer shadow-2xs"
 					>
-						<Edit2 size={13} class="text-[var(--primary)]" />
-						<span>Edit</span>
+						<Pencil size={13} class="text-[var(--primary)]" />
+						<span>{t('common.edit')}</span>
 					</button>
 				{:else}
 					<div
 						class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-400 text-xs font-semibold"
 						title="Storage paths, host, and port are managed by the Docker container"
 					>
-						<span>Docker Environment</span>
+						<span>{t('settings.dockerEnv')}</span>
 					</div>
 				{/if}
 			{:else}
@@ -310,7 +313,7 @@
 					class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer"
 				>
 					<X size={13} />
-					<span>Cancel</span>
+					<span>{t('common.cancel')}</span>
 				</button>
 			{/if}
 		</div>
@@ -321,7 +324,7 @@
 		<div
 			class="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 text-red-500 px-3.5 py-2.5 rounded-xl text-xs"
 		>
-			<AlertCircle size={15} class="shrink-0" />
+			<CircleAlert size={15} class="shrink-0" />
 			<span>{fetchError}</span>
 		</div>
 	{/if}
@@ -330,7 +333,7 @@
 		<div
 			class="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 text-red-500 px-3.5 py-2.5 rounded-xl text-xs"
 		>
-			<AlertCircle size={15} class="shrink-0" />
+			<CircleAlert size={15} class="shrink-0" />
 			<span>{saveError}</span>
 		</div>
 	{/if}
@@ -340,7 +343,7 @@
 			class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-3.5 py-2.5 rounded-xl text-xs font-semibold animate-in fade-in duration-200"
 		>
 			<ShieldCheck size={15} />
-			<span>Configuration updated and saved to disk successfully!</span>
+			<span>{t('settings.configSaved')}</span>
 		</div>
 	{/if}
 
@@ -543,7 +546,10 @@
 								<span class="font-medium text-[var(--text-primary)]">{hardwareMeta.title}</span>
 								{#if hardwareReport && hardwareReport.detected_gpus.length > 0}
 									<span class="text-[var(--text-muted)]">•</span>
-									<span class="text-emerald-500 font-medium truncate" title={hardwareReport.detected_gpus.join(', ')}>
+									<span
+										class="text-emerald-500 font-medium truncate"
+										title={hardwareReport.detected_gpus.join(', ')}
+									>
 										{hardwareReport.detected_gpus[0]}
 									</span>
 								{/if}
@@ -571,7 +577,9 @@
 			<div
 				class="p-4 bg-[var(--bg-primary)] border border-[var(--primary)]/40 rounded-xl flex flex-col gap-4 shadow-sm"
 			>
-				<div class="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2.5">
+				<div
+					class="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2.5"
+				>
 					<span class="text-xs font-bold text-[var(--text-primary)]">
 						Modify Configuration & Network
 					</span>
@@ -583,7 +591,10 @@
 				<!-- Host and Port Inputs -->
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<div class="flex flex-col gap-1.5">
-						<label for="cfg-host-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+						<label
+							for="cfg-host-input"
+							class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+						>
 							<Network size={14} class="text-emerald-500" />
 							<span>Host Address</span>
 						</label>
@@ -597,7 +608,10 @@
 					</div>
 
 					<div class="flex flex-col gap-1.5">
-						<label for="cfg-port-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+						<label
+							for="cfg-port-input"
+							class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+						>
 							<span class="text-emerald-500 text-xs font-mono font-bold">#</span>
 							<span>HTTP Port</span>
 						</label>
@@ -615,7 +629,10 @@
 
 				<!-- Models Input -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-models-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-models-input"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<HardDrive size={14} class="text-blue-500" />
 						<span>Models Directory</span>
 					</label>
@@ -630,7 +647,10 @@
 
 				<!-- Runtimes Input -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-runtimes-input" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-runtimes-input"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<Cpu size={14} class="text-purple-500" />
 						<span>Runtimes Directory</span>
 					</label>
@@ -645,7 +665,10 @@
 
 				<!-- Hardware Selector -->
 				<div class="flex flex-col gap-1.5">
-					<label for="cfg-hardware-select" class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+					<label
+						for="cfg-hardware-select"
+						class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5"
+					>
 						<Zap size={14} class="text-amber-500" />
 						<span>Hardware Acceleration</span>
 					</label>
@@ -661,7 +684,11 @@
 							>
 								<div class="flex items-center justify-between gap-1 w-full">
 									<span class="text-xs font-bold leading-tight">{hw.title}</span>
-									<span class="text-[0.6rem] font-mono px-1 py-0.2 rounded border uppercase {isSelected ? 'bg-[var(--primary)] text-white border-transparent' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)]'}">
+									<span
+										class="text-[0.6rem] font-mono px-1 py-0.2 rounded border uppercase {isSelected
+											? 'bg-[var(--primary)] text-white border-transparent'
+											: 'bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-muted)]'}"
+									>
 										{hw.badge}
 									</span>
 								</div>
@@ -674,7 +701,9 @@
 				</div>
 
 				<!-- Save Action Bar -->
-				<div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]/60">
+				<div
+					class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]/60"
+				>
 					<button
 						type="button"
 						onclick={cancelEdit}

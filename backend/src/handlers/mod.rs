@@ -2,9 +2,11 @@ pub mod chats;
 pub mod config;
 pub mod health;
 pub mod host;
+pub mod logs;
 pub mod models;
 pub mod openai_proxy;
-pub mod runtimes;
 pub mod runtime_manifests;
+pub mod runtimes;
 pub mod settings;
 pub mod static_assets;
+

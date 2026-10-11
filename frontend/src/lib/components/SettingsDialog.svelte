@@ -1,20 +1,12 @@
 <script lang="ts">
-	import {
-		X,
-		Sliders,
-		Info,
-		Settings,
-		Check,
-		Palette,
-		Sparkles,
-		ExternalLink,
-		ShieldCheck,
-		Globe
-	} from '@lucide/svelte';
-	import Logo from './Logo.svelte';
-	import GeneralSettingsTab from './GeneralSettingsTab.svelte';
+	import { configApi } from '$lib/api/config';
+	import { t } from '$lib/i18n';
 	import { THEMES, type ThemeId } from '$lib/themes';
+	import type { ConfigStatus } from '$lib/types/config';
 	import { APP_VERSION } from '$lib/version';
+	import { Check, ExternalLink, Info, Palette, Settings, SlidersVertical, X } from '@lucide/svelte';
+	import Logo from './ds/atoms/Logo.svelte';
+	import GeneralSettingsTab from './GeneralSettingsTab.svelte';
 
 	let {
 		open = $bindable(false),
@@ -27,20 +19,12 @@
 	} = $props();
 
 	let activeTab = $state<'general' | 'appearance' | 'about'>('general');
-	let configStatus = $state<{
-		loaded_path: string | null;
-		expected_path: string;
-		models_dir: string | null;
-		runtimes_dir: string | null;
-		hardware: string;
-		host?: string;
-		port?: number;
-	} | null>(null);
+	let configStatus = $state<ConfigStatus | null>(null);
 
 	$effect(() => {
 		if (open && activeTab === 'about') {
-			fetch('/api/config/status')
-				.then((r) => (r.ok ? r.json() : null))
+			configApi
+				.getStatus()
 				.then((data) => {
 					if (data) configStatus = data;
 				})
@@ -78,10 +62,10 @@
 				class="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-[var(--border-color)] shrink-0 bg-[var(--bg-sidebar)]/60 backdrop-blur-md"
 			>
 				<div class="flex items-center gap-2.5">
-					<Sliders size={20} class="text-[var(--primary)] shrink-0" />
+					<SlidersVertical size={20} class="text-[var(--primary)] shrink-0" />
 					<div>
 						<h3 class="m-0 text-base sm:text-lg font-bold text-[var(--text-primary)] leading-none">
-							Settings
+							{t('settings.title')}
 						</h3>
 					</div>
 				</div>
@@ -89,7 +73,7 @@
 					type="button"
 					class="w-9 h-9 flex items-center justify-center bg-transparent border border-transparent text-[var(--text-muted)] cursor-pointer rounded-xl transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)]"
 					onclick={close}
-					aria-label="Close settings"
+					aria-label={t('settings.closeSettings')}
 				>
 					<X size={18} />
 				</button>
@@ -110,7 +94,7 @@
 						onclick={() => selectTab('general')}
 					>
 						<Settings size={16} />
-						<span>General</span>
+						<span>{t('settings.generalTab')}</span>
 					</button>
 
 					<button
@@ -122,7 +106,7 @@
 						onclick={() => selectTab('appearance')}
 					>
 						<Palette size={16} />
-						<span>Appearance</span>
+						<span>{t('settings.appearanceTab')}</span>
 					</button>
 
 					<button
@@ -134,7 +118,7 @@
 						onclick={() => selectTab('about')}
 					>
 						<Info size={16} />
-						<span>About</span>
+						<span>{t('settings.aboutTab')}</span>
 					</button>
 				</div>
 
@@ -149,10 +133,10 @@
 									class="m-0 text-sm sm:text-base font-bold text-[var(--text-primary)] flex items-center gap-2"
 								>
 									<Palette size={18} class="text-[var(--primary)]" />
-									Interface Themes
+									{t('settings.themesTitle')}
 								</h4>
 								<p class="m-0 text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
-									Customize the look and feel of your Monolai workspace with curated themes.
+									{t('settings.themesSubtitle')}
 								</p>
 							</div>
 
@@ -200,7 +184,7 @@
 											class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border-color)]/60 w-full text-[0.7rem] text-[var(--text-muted)]"
 										>
 											<span class="font-medium text-[0.675rem] uppercase tracking-wider opacity-75"
-												>Palette</span
+												>{t('settings.palette')}</span
 											>
 											<div class="flex items-center gap-1.5">
 												<span
@@ -234,11 +218,11 @@
 								</div>
 								<div>
 									<h4 class="m-0 text-xl font-extrabold text-[var(--text-primary)]">
-										Monolai AI Suite
+										{t('settings.aboutAppName')}
 									</h4>
 								</div>
 								<p class="m-0 text-xs text-[var(--text-muted)] leading-relaxed">
-									Lightweight local AI model manager and inference server runner.
+									{t('settings.aboutDescription')}
 								</p>
 							</div>
 
@@ -289,7 +273,9 @@
 									<span class="text-[var(--text-primary)] font-semibold">Rust</span>
 								</div>
 								<div
-									class="flex items-center justify-between text-xs py-1.5 {configStatus ? 'border-b border-[var(--border-color)]/60' : ''}"
+									class="flex items-center justify-between text-xs py-1.5 {configStatus
+										? 'border-b border-[var(--border-color)]/60'
+										: ''}"
 								>
 									<span class="text-[var(--text-muted)]">Frontend</span>
 									<span class="text-[var(--text-primary)] font-semibold">Svelte + Tailwind</span>

@@ -1,38 +1,45 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { APP_VERSION } from '$lib/version';
-	import Logo from '$lib/components/Logo.svelte';
+	import { page } from '$app/state';
+	import { chatsApi } from '$lib/api/chats';
+	import { FeatureGate, Logo, ModelBadge } from '$lib/components/ds';
+	import { askConfirm } from '$lib/confirmStore';
+	import { checkFeature, featuresStore } from '$lib/featuresStore';
+	import { chatTabs, runtimesRefreshFn, syncRecentChats } from '$lib/headerStore';
+	import { t } from '$lib/i18n';
 	import {
-		MessageSquare,
+		getStatusType,
+		runningModelsState,
+		startRunningStatePolling,
+		unloadAllModels,
+		unloadModel
+	} from '$lib/runningModelsStore';
+	import { chatsState, hostState, imageGalleryState } from '$lib/state';
+	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
+	import { formatBytes } from '$lib/utils/format';
+	import { APP_VERSION } from '$lib/version';
+	import {
 		Activity,
-		Settings,
-		Boxes,
 		Box,
+		Boxes,
+		Cpu,
+		Gpu,
+		HardDrive,
+		Image as ImageIcon,
+		Layers,
+		MemoryStick,
+		MessageSquare,
 		PanelLeftClose,
 		PanelLeftOpen,
-		Search,
-		Cpu,
-		HardDrive,
-		X,
-		Power,
 		Plus,
-		Trash2,
-		Image as ImageIcon
+		Power,
+		ScrollText,
+		Search,
+		Settings,
+		Trash,
+		X
 	} from '@lucide/svelte';
-	import { chatTabs, syncRecentChats, runtimesRefreshFn } from '$lib/headerStore';
-	import { askConfirm } from '$lib/confirmStore';
-	import ModelBadge from '$lib/components/ModelBadge.svelte';
-	import FeatureGate from '$lib/components/FeatureGate.svelte';
-	import { featuresStore, checkFeature } from '$lib/featuresStore';
-	import {
-		runningModels,
-		unloadingModelIds,
-		getStatusType,
-		startRunningStatePolling,
-		unloadModel,
-		unloadAllModels
-	} from '$lib/runningModelsStore';
+	import { onMount } from 'svelte';
 
 	let {
 		effectiveTheme = 'dark',
@@ -51,46 +58,31 @@
 	let searchQuery = $state('');
 	let isLogoHovered = $state(false);
 
-	let loadedModels = $derived($runningModels);
-	let unloadingIds = $derived($unloadingModelIds);
+	let loadedModels = $derived(runningModelsState.runningModels);
+	let unloadingIds = $derived(runningModelsState.unloadingModelIds);
 	let isChatAvailable = $derived(
 		$featuresStore.isInitialized && checkFeature($featuresStore, 'chat').isSatisfied
 	);
 
-	let conversations = $state<{ id: string; title: string }[]>([]);
-
-	async function fetchChats() {
-		try {
-			const res = await fetch('/api/chats');
-			if (res.ok) {
-				const data = await res.json();
-				conversations = data;
-				syncRecentChats(data);
-			}
-		} catch {
-			// ignore polling errors
-		}
-	}
+	let conversations = $derived(chatsState.conversations);
 
 	async function deleteChat(id: string, e: MouseEvent) {
 		e.stopPropagation();
 		e.preventDefault();
 		const confirmed = await askConfirm(
-			'Are you sure you want to delete this conversation?',
-			'Delete Conversation',
+			t('chat.deleteChatConfirmMsg'),
+			t('chat.deleteChatConfirmTitle'),
 			'danger',
-			'Delete',
-			'Cancel'
+			t('common.delete'),
+			t('common.cancel')
 		);
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/chats/${encodeURIComponent(id)}`, { method: 'DELETE' });
-			chatTabs.update((tabs) => tabs.filter((t) => t.id !== id));
+			await chatsState.deleteChat(id);
 			if (currentPath === `/chat/${id}`) {
 				goto('/chat');
 			}
-			await fetchChats();
 		} catch (err) {
 			console.error('Error deleting chat:', err);
 		}
@@ -101,18 +93,9 @@
 		goto('/chat');
 	}
 
-	$effect(() => {
-		const stopPolling = startRunningStatePolling(3000);
-		if (isChatPage && isChatAvailable) {
-			fetchChats();
-			const interval = setInterval(() => {
-				fetchChats();
-			}, 3000);
-			return () => {
-				stopPolling();
-				clearInterval(interval);
-			};
-		}
+	onMount(() => {
+		chatsState.ensureLoaded();
+		const stopPolling = startRunningStatePolling(2500);
 		return () => {
 			stopPolling();
 		};
@@ -135,18 +118,142 @@
 		closeMobile();
 	}
 
+	let imageSearchQuery = $state('');
+
+	let filteredImages = $derived.by(() => {
+		const q = imageSearchQuery.trim().toLowerCase();
+		if (!q) return imageGalleryState.history;
+		return imageGalleryState.history.filter(
+			(img) =>
+				img.prompt.toLowerCase().includes(q) || (img.model && img.model.toLowerCase().includes(q))
+		);
+	});
+
+	function handleImageSelect(item: GeneratedImageItem) {
+		imageGalleryState.selectImage(item);
+		closeMobile();
+	}
+
+	async function deleteSingleImage(id: string, e: MouseEvent) {
+		e.stopPropagation();
+		e.preventDefault();
+		const confirmed = await askConfirm(
+			t('image.deleteImage') + '?',
+			t('image.deleteImage'),
+			'danger',
+			t('common.delete'),
+			t('common.cancel')
+		);
+		if (confirmed) {
+			imageGalleryState.deleteImage(id);
+		}
+	}
+
+	async function clearImageHistory() {
+		const confirmed = await askConfirm(
+			t('image.clearHistoryConfirmMsg'),
+			t('image.clearHistoryConfirmTitle'),
+			'danger',
+			t('common.delete'),
+			t('common.cancel')
+		);
+		if (confirmed) {
+			imageGalleryState.clearHistory();
+		}
+	}
+
 	let currentPath = $derived(page.url.pathname);
 	let isChatPage = $derived(
 		currentPath === '/chat' || currentPath === '/' || currentPath.startsWith('/chat')
 	);
 	let isImagePage = $derived(currentPath.startsWith('/image'));
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
+	let isLogsPage = $derived(currentPath === '/logs');
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
 	let isModelsPage = $derived(currentPath.startsWith('/models'));
 	let currentActiveChatId = $derived(
 		currentPath.startsWith('/chat/') ? currentPath.replace('/chat/', '') : ''
 	);
 	let isExpanded = $derived(!collapsed || mobileOpen);
+
+	$effect(() => {
+		if (isSysInfoPage) {
+			const unsub = hostState.subscribe();
+			return unsub;
+		}
+	});
+
+	let sysinfo = $derived(hostState.sysinfo);
+	let latestTick = $derived(hostState.latestTick);
+
+	let cpuUsage = $derived(latestTick?.cpu_usage ?? sysinfo?.cpu.usage ?? 0);
+	let cpuBrand = $derived(sysinfo?.cpu.brand || 'Host Processor');
+	let cpuCores = $derived(sysinfo?.cpu.cores ? `${sysinfo.cpu.cores} Cores` : '');
+	let cpuTemp = $derived(latestTick?.cpu_temp_c ?? sysinfo?.cpu.temperature_c ?? null);
+	let cpuFreq = $derived(
+		latestTick?.cpu_frequency_mhz
+			? `${(latestTick.cpu_frequency_mhz / 1000).toFixed(2)} GHz`
+			: sysinfo?.cpu.frequency_mhz
+				? `${(sysinfo.cpu.frequency_mhz / 1000).toFixed(2)} GHz`
+				: ''
+	);
+
+	let ramPercentage = $derived(latestTick?.ram_percentage ?? sysinfo?.ram.percentage ?? 0);
+	let ramUsed = $derived(latestTick?.ram_used_bytes ?? sysinfo?.ram.used_bytes ?? 0);
+	let ramTotal = $derived(latestTick?.ram_total_bytes ?? sysinfo?.ram.total_bytes ?? 0);
+
+	let gpusList = $derived.by(() => {
+		if (latestTick?.gpus && latestTick.gpus.length > 0) return latestTick.gpus;
+		if (sysinfo?.gpus && sysinfo.gpus.length > 0) return sysinfo.gpus;
+		if (sysinfo?.gpu) {
+			return [
+				{
+					index: 0,
+					name: sysinfo.gpu.name,
+					vendor: sysinfo.gpu.vendor,
+					memory_total_bytes: sysinfo.gpu.memory_total_bytes,
+					memory_used_bytes: latestTick?.vram_used_bytes ?? sysinfo.vram?.used_bytes ?? null,
+					memory_free_bytes: sysinfo.vram?.free_bytes ?? null,
+					driver_version: sysinfo.gpu.driver_version,
+					is_dedicated: sysinfo.gpu.is_dedicated,
+					usage: latestTick?.gpu_usage ?? null,
+					temperature_c: null,
+					clock_mhz: null
+				}
+			];
+		}
+		return [];
+	});
+
+	let totalVramBytes = $derived.by(() => {
+		if (latestTick?.vram_total_bytes && latestTick.vram_total_bytes > 0)
+			return latestTick.vram_total_bytes;
+		if (sysinfo?.vram?.total_bytes && sysinfo.vram.total_bytes > 0) return sysinfo.vram.total_bytes;
+		let sum = 0;
+		for (const g of gpusList) {
+			if (g.memory_total_bytes) sum += g.memory_total_bytes;
+		}
+		return sum;
+	});
+
+	let usedVramBytes = $derived.by(() => {
+		if (latestTick?.vram_used_bytes !== null && latestTick?.vram_used_bytes !== undefined)
+			return latestTick.vram_used_bytes;
+		if (sysinfo?.vram?.used_bytes) return sysinfo.vram.used_bytes;
+		let sum = 0;
+		for (const g of gpusList) {
+			if (g.memory_used_bytes) sum += g.memory_used_bytes;
+		}
+		return sum;
+	});
+
+	let vramPercentage = $derived(totalVramBytes > 0 ? (usedVramBytes / totalVramBytes) * 100 : 0);
+
+	let storageUsed = $derived(latestTick?.storage_used_bytes ?? sysinfo?.storage.used_bytes ?? 0);
+	let storageTotal = $derived(latestTick?.storage_total_bytes ?? sysinfo?.storage.total_bytes ?? 0);
+	let storagePercentage = $derived(
+		latestTick?.storage_percentage ?? sysinfo?.storage.percentage ?? 0
+	);
 </script>
 
 <!-- Mobile Overlay Backdrop -->
@@ -183,7 +290,7 @@
 		{:else}
 			<button
 				type="button"
-				class="hidden md:flex items-center justify-center w-10 h-10 mx-auto bg-transparent border-0 rounded-xl text-[var(--text-secondary)] cursor-pointer transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+				class="hidden md:flex items-center justify-center w-10 h-10 mx-auto bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-xl text-[var(--text-secondary)] cursor-pointer transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shadow-xs"
 				onclick={toggleCollapse}
 				onmouseenter={() => (isLogoHovered = true)}
 				onmouseleave={() => (isLogoHovered = false)}
@@ -191,7 +298,7 @@
 				title="Open Sidebar"
 			>
 				{#if isLogoHovered}
-					<PanelLeftOpen size={20} class="text-[var(--text-primary)]" />
+					<PanelLeftOpen size={21} class="text-[var(--text-primary)]" />
 				{:else}
 					<Logo size={24} />
 				{/if}
@@ -220,11 +327,11 @@
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
 			onclick={closeMobile}
-			title="Chat"
+			title={t('navigation.chat')}
 		>
 			<MessageSquare size={20} class="shrink-0 {isChatPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
-				<span>Chat</span>
+				<span>{t('navigation.chat')}</span>
 			{/if}
 		</a>
 
@@ -237,11 +344,11 @@
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
 			onclick={closeMobile}
-			title="Image"
+			title={t('navigation.image')}
 		>
 			<ImageIcon size={20} class="shrink-0 {isImagePage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
-				<span>Image</span>
+				<span>{t('navigation.image')}</span>
 			{/if}
 		</a>
 
@@ -254,11 +361,28 @@
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
 				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
 			onclick={closeMobile}
-			title="System Info"
+			title={t('navigation.sysinfo')}
 		>
 			<Activity size={20} class="shrink-0 {isSysInfoPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
-				<span>System Info</span>
+				<span>{t('navigation.sysinfo')}</span>
+			{/if}
+		</a>
+
+		<!-- Logs Action (below System Info) -->
+		<a
+			href="/logs"
+			class="flex items-center rounded-xl transition-all duration-150 box-border no-underline border-0 cursor-pointer {!isExpanded
+				? 'w-10 h-10 mx-auto justify-center'
+				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isLogsPage
+				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
+				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
+			onclick={closeMobile}
+			title={t('navigation.logs')}
+		>
+			<ScrollText size={20} class="shrink-0 {isLogsPage ? 'text-[var(--primary)]' : ''}" />
+			{#if isExpanded}
+				<span>{t('navigation.logs')}</span>
 			{/if}
 		</a>
 	</div>
@@ -279,11 +403,11 @@
 				}
 				$runtimesRefreshFn?.();
 			}}
-			title="Runtimes"
+			title={t('navigation.runtimes')}
 		>
 			<Boxes size={20} class="shrink-0 {isRuntimesPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
-				<span>Runtimes</span>
+				<span>{t('navigation.runtimes')}</span>
 			{/if}
 		</a>
 
@@ -301,11 +425,11 @@
 					window.dispatchEvent(new CustomEvent('monolai:nav-models'));
 				}
 			}}
-			title="Models"
+			title={t('navigation.models')}
 		>
 			<Box size={20} class="shrink-0 {isModelsPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
-				<span>Models</span>
+				<span>{t('navigation.models')}</span>
 			{/if}
 		</a>
 
@@ -319,11 +443,11 @@
 				onOpenSettings();
 				closeMobile();
 			}}
-			title="Settings"
+			title={t('navigation.settings')}
 		>
 			<Settings size={20} class="shrink-0" />
 			{#if isExpanded}
-				<span>Settings</span>
+				<span>{t('navigation.settings')}</span>
 			{/if}
 		</button>
 	</div>
@@ -333,16 +457,16 @@
 		<div class="px-3.5 py-3 border-t border-[var(--border-color)] flex flex-col gap-2">
 			<div class="flex items-center justify-between">
 				<span class="text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-					Loaded Models
+					{t('navigation.runningModels')}
 				</span>
 				{#if loadedModels.length > 0}
 					<button
 						type="button"
 						class="bg-transparent border-0 text-[var(--text-muted)] text-[0.7rem] cursor-pointer px-1 py-0.5 rounded transition-colors hover:text-red-500"
 						onclick={unloadAllModels}
-						title="Unload all models"
+						title={t('navigation.unloadAll')}
 					>
-						Unload All
+						{t('navigation.unloadAll')}
 					</button>
 				{/if}
 			</div>
@@ -352,7 +476,7 @@
 					class="bg-[var(--bg-surface)] border border-dashed border-[var(--border-color)] rounded-xl p-2.5"
 				>
 					<p class="text-[0.75rem] text-[var(--text-muted)] leading-snug m-0">
-						No models loaded. Models will be loaded on demand when using a feature.
+						{t('navigation.noRunningModels')}
 					</p>
 				</div>
 			{:else}
@@ -379,7 +503,7 @@
 								></span>
 								<ModelBadge
 									model={model.model_id}
-									variant="inline"
+									variant="clean"
 									showIcon={false}
 									class="truncate text-xs font-medium"
 								/>
@@ -419,74 +543,170 @@
 			{#if isChatPage}
 				<FeatureGate features={['chat']} showCard={false}>
 					<div class="flex flex-col gap-3">
-					<div class="flex items-center justify-between px-1">
-						<span
-							class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider"
-						>
-							Recent conversations
-						</span>
-						<button
-							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
-							onclick={createNewChat}
-							title="New Chat"
-							aria-label="New Chat"
-						>
-							<Plus size={15} />
-						</button>
-					</div>
+						<div class="flex items-center justify-between px-1">
+							<span
+								class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider"
+							>
+								Recent conversations
+							</span>
+							<button
+								type="button"
+								class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+								onclick={createNewChat}
+								title="New Chat"
+								aria-label="New Chat"
+							>
+								<Plus size={15} />
+							</button>
+						</div>
 
-					<div
-						class="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5"
-					>
-						<Search size={14} class="text-[var(--text-muted)] shrink-0" />
-						<input
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search conversations..."
-							class="w-full bg-transparent border-0 outline-none text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)]"
-						/>
-					</div>
+						<div
+							class="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5"
+						>
+							<Search size={14} class="text-[var(--text-muted)] shrink-0" />
+							<input
+								type="text"
+								bind:value={searchQuery}
+								placeholder="Search conversations..."
+								class="w-full bg-transparent border-0 outline-none text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)]"
+							/>
+						</div>
 
-					<div class="flex flex-col gap-1">
-						{#if filteredConversations.length === 0}
-							<div class="text-[0.775rem] text-[var(--text-muted)] p-2 text-center">
-								No conversations found
-							</div>
-						{:else}
-							{#each filteredConversations as chat (chat.id)}
-								<div
-									class="group flex items-center relative rounded-lg transition-all duration-150 hover:bg-[var(--bg-hover)] {currentActiveChatId ===
-									chat.id
-										? 'bg-[var(--bg-surface-hover)]'
-										: ''}"
-								>
-									<a
-										href="/chat/{chat.id}"
-										class="flex items-center px-3 py-2 text-xs text-[var(--text-secondary)] no-underline rounded-lg transition-colors flex-1 min-w-0 {currentActiveChatId ===
-										chat.id
-											? 'text-[var(--text-primary)] font-medium'
-											: ''}"
-										onclick={() => handleChatSelect(chat.id)}
-									>
-										<span class="truncate block w-full">{chat.title}</span>
-									</a>
-									<button
-										type="button"
-										class="bg-transparent border-0 text-[var(--text-muted)] p-1 mr-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
-										onclick={(e) => deleteChat(chat.id, e)}
-										title="Delete chat"
-										aria-label="Delete chat"
-									>
-										<Trash2 size={13} />
-									</button>
+						<div class="flex flex-col gap-1">
+							{#if filteredConversations.length === 0}
+								<div class="text-[0.775rem] text-[var(--text-muted)] p-2 text-center">
+									No conversations found
 								</div>
-							{/each}
-						{/if}
+							{:else}
+								{#each filteredConversations as chat (chat.id)}
+									<div
+										class="group flex items-center relative rounded-lg transition-all duration-150 hover:bg-[var(--bg-hover)] {currentActiveChatId ===
+										chat.id
+											? 'bg-[var(--bg-surface-hover)]'
+											: ''}"
+									>
+										<a
+											href="/chat/{chat.id}"
+											class="flex items-center px-3 py-2 text-xs text-[var(--text-secondary)] no-underline rounded-lg transition-colors flex-1 min-w-0 {currentActiveChatId ===
+											chat.id
+												? 'text-[var(--text-primary)] font-medium'
+												: ''}"
+											onclick={() => handleChatSelect(chat.id)}
+										>
+											<span class="truncate block w-full">{chat.title}</span>
+										</a>
+										<button
+											type="button"
+											class="bg-transparent border-0 text-[var(--text-muted)] p-1 mr-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
+											onclick={(e) => deleteChat(chat.id, e)}
+											title="Delete chat"
+											aria-label="Delete chat"
+										>
+											<Trash size={13} />
+										</button>
+									</div>
+								{/each}
+							{/if}
+						</div>
 					</div>
-				</div>
-			</FeatureGate>
-		{:else if isSysInfoPage}
+				</FeatureGate>
+			{:else if isImagePage}
+				<FeatureGate features={['image-generation']} showCard={false}>
+					<div class="flex flex-col gap-3">
+						<div class="flex items-center justify-between px-1">
+							<span
+								class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider"
+							>
+								{t('image.sessionHistory')}
+							</span>
+							{#if imageGalleryState.history.length > 0}
+								<button
+									type="button"
+									class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-red-500 hover:bg-[var(--bg-hover)]"
+									onclick={clearImageHistory}
+									title={t('image.clearHistory')}
+									aria-label={t('image.clearHistory')}
+								>
+									<Trash size={13} />
+								</button>
+							{/if}
+						</div>
+
+						<div
+							class="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5"
+						>
+							<Search size={14} class="text-[var(--text-muted)] shrink-0" />
+							<input
+								type="text"
+								bind:value={imageSearchQuery}
+								placeholder={t('image.searchPrompts')}
+								class="w-full bg-transparent border-0 outline-none text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)]"
+							/>
+						</div>
+
+						<div class="flex flex-col gap-1">
+							{#if filteredImages.length === 0}
+								<div class="text-[0.775rem] text-[var(--text-muted)] p-2 text-center">
+									{imageGalleryState.history.length === 0
+										? t('image.noImagesFound')
+										: 'No images found'}
+								</div>
+							{:else}
+								{#each filteredImages as item (item.id)}
+									<div
+										class="group flex items-center gap-2 p-1.5 rounded-xl transition-all duration-150 relative hover:bg-[var(--bg-hover)] {imageGalleryState
+											.selectedImage?.id === item.id
+											? 'bg-[var(--bg-surface-hover)]'
+											: ''}"
+									>
+										<button
+											type="button"
+											class="flex items-center gap-2.5 flex-1 min-w-0 bg-transparent border-0 p-0 text-left cursor-pointer"
+											onclick={() => handleImageSelect(item)}
+											title={item.prompt}
+										>
+											<div
+												class="w-10 h-10 rounded-lg overflow-hidden bg-[var(--bg-primary)] border border-[var(--border-color)] shrink-0"
+											>
+												<img
+													src={item.src}
+													alt={item.prompt}
+													class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+												/>
+											</div>
+
+											<div class="flex-1 min-w-0">
+												<span class="text-xs font-medium text-[var(--text-primary)] truncate block">
+													{item.prompt}
+												</span>
+												<div
+													class="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] mt-0.5"
+												>
+													<span>{item.size}</span>
+													{#if item.model}
+														<span>•</span>
+														<span class="truncate max-w-[80px]">{item.model}</span>
+													{/if}
+												</div>
+											</div>
+										</button>
+
+										<button
+											type="button"
+											class="bg-transparent border-0 text-[var(--text-muted)] p-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 shrink-0"
+											onclick={(e) => deleteSingleImage(item.id, e)}
+											title={t('image.deleteImage')}
+											aria-label={t('image.deleteImage')}
+										>
+											<Trash size={13} />
+										</button>
+									</div>
+								{/each}
+							{/if}
+						</div>
+					</div>
+				</FeatureGate>
+			{:else if isSysInfoPage}
 				<div class="flex flex-col gap-3">
 					<div
 						class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider px-1"
@@ -495,21 +715,167 @@
 					</div>
 
 					<div
-						class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-3"
+						class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-3.5"
 					>
-						<div class="flex items-center gap-2.5">
-							<Cpu size={15} class="text-[var(--text-muted)] shrink-0" />
-							<div class="flex flex-col">
-								<span class="text-[0.7rem] text-[var(--text-muted)]">CPU Cores</span>
-								<span class="text-xs font-semibold text-[var(--text-primary)]">8 Cores Active</span>
+						<!-- CPU Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<Cpu size={14} style="color: #9845e7" class="shrink-0" />
+									<span class="font-medium">CPU</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{cpuCores || 'CPU'}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #9845e7; width: {Math.min(
+											100,
+											Math.max(0, cpuUsage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{cpuUsage.toFixed(0)}%
+								</span>
 							</div>
 						</div>
 
-						<div class="flex items-center gap-2.5">
-							<HardDrive size={15} class="text-[var(--text-muted)] shrink-0" />
-							<div class="flex flex-col">
-								<span class="text-[0.7rem] text-[var(--text-muted)]">RAM Memory</span>
-								<span class="text-xs font-semibold text-[var(--text-primary)]">16.0 GB Total</span>
+						<!-- RAM Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<MemoryStick size={14} style="color: #c875ff" class="shrink-0" />
+									<span class="font-medium">RAM</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{formatBytes(ramTotal)}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #c875ff; width: {Math.min(
+											100,
+											Math.max(0, ramPercentage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{ramPercentage.toFixed(0)}%
+								</span>
+							</div>
+						</div>
+
+						<!-- GPUs Status -->
+						{#if gpusList.length > 0}
+							{#each gpusList as gpu (gpu.index)}
+								{@const gpuColor = gpu.is_dedicated ? '#00a971' : '#10b981'}
+								<div class="flex flex-col gap-1.5">
+									<div class="flex items-center justify-between text-xs">
+										<div class="flex items-center gap-2 text-[var(--text-secondary)] min-w-0">
+											<Gpu size={14} style="color: {gpuColor}" class="shrink-0" />
+											<span class="font-medium truncate">
+												{gpusList.length > 1 ? `GPU ${gpu.index}` : 'GPU'}
+											</span>
+										</div>
+										<span class="text-[var(--text-muted)] shrink-0">
+											{gpu.memory_total_bytes
+												? formatBytes(gpu.memory_total_bytes)
+												: gpu.clock_mhz
+													? `${gpu.clock_mhz} MHz`
+													: gpu.is_dedicated
+														? 'Dedicated'
+														: 'Integrated'}
+										</span>
+									</div>
+									<div class="flex items-center gap-2">
+										<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+											<div
+												class="h-full rounded-full transition-all duration-500"
+												style="background-color: {gpuColor}; width: {Math.min(
+													100,
+													Math.max(0, gpu.usage ?? 0)
+												).toFixed(0)}%"
+											></div>
+										</div>
+										<span
+											class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+										>
+											{gpu.usage !== null && gpu.usage !== undefined
+												? `${gpu.usage.toFixed(0)}%`
+												: '0%'}
+										</span>
+									</div>
+								</div>
+							{/each}
+						{/if}
+
+						<!-- VRAM Status -->
+						{#if totalVramBytes > 0}
+							<div class="flex flex-col gap-1.5">
+								<div class="flex items-center justify-between text-xs">
+									<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+										<Layers size={14} style="color: #30d9a1" class="shrink-0" />
+										<span class="font-medium">VRAM</span>
+									</div>
+									<span class="text-[var(--text-muted)]">
+										{formatBytes(totalVramBytes)}
+									</span>
+								</div>
+								<div class="flex items-center gap-2">
+									<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+										<div
+											class="h-full rounded-full transition-all duration-500"
+											style="background-color: #30d9a1; width: {Math.min(
+												100,
+												Math.max(0, vramPercentage)
+											).toFixed(0)}%"
+										></div>
+									</div>
+									<span
+										class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+									>
+										{vramPercentage.toFixed(0)}%
+									</span>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Storage (Disk) Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<HardDrive size={14} style="color: #3b82f6" class="shrink-0" />
+									<span class="font-medium">Disk</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{formatBytes(storageTotal)}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #3b82f6; width: {Math.min(
+											100,
+											Math.max(0, storagePercentage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{storagePercentage.toFixed(0)}%
+								</span>
 							</div>
 						</div>
 					</div>

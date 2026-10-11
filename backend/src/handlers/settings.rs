@@ -1,4 +1,4 @@
-use crate::db::settings::{delete_setting, get_all_settings, get_setting, set_setting};
+use crate::core::error::AppResult;
 use crate::state::AppState;
 use axum::{
     extract::{Path, State},
@@ -19,11 +19,9 @@ use std::collections::HashMap;
 )]
 pub async fn get_all_settings_handler(
     State(state): State<AppState>,
-) -> Result<Json<HashMap<String, String>>, (StatusCode, String)> {
-    get_all_settings(&state.db)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<HashMap<String, String>>> {
+    let settings = state.setting_repo.get_all().await?;
+    Ok(Json(settings))
 }
 
 /// Get a specific setting by key
@@ -42,11 +40,9 @@ pub async fn get_all_settings_handler(
 pub async fn get_setting_handler(
     State(state): State<AppState>,
     Path(key): Path<String>,
-) -> Result<Json<Option<String>>, (StatusCode, String)> {
-    get_setting(&state.db, &key)
-        .await
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<Json<Option<String>>> {
+    let setting = state.setting_repo.get(&key).await?;
+    Ok(Json(setting))
 }
 
 /// Upsert multiple key-value application settings
@@ -63,11 +59,9 @@ pub async fn get_setting_handler(
 pub async fn update_settings_handler(
     State(state): State<AppState>,
     Json(payload): Json<HashMap<String, String>>,
-) -> Result<Json<HashMap<String, String>>, (StatusCode, String)> {
+) -> AppResult<Json<HashMap<String, String>>> {
     for (key, value) in &payload {
-        set_setting(&state.db, key, value)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        state.setting_repo.set(key, value).await?;
     }
     Ok(Json(payload))
 }
@@ -88,9 +82,7 @@ pub async fn update_settings_handler(
 pub async fn delete_setting_handler(
     State(state): State<AppState>,
     Path(key): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    delete_setting(&state.db, &key)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+) -> AppResult<StatusCode> {
+    state.setting_repo.delete(&key).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

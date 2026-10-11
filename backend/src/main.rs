@@ -1,23 +1,34 @@
-mod config;
-mod db;
+mod core;
 mod docs;
+mod domain;
 mod handlers;
+mod infrastructure;
 mod routes;
-mod runtimes;
+mod services;
 mod state;
 
 use clap::Parser;
-use config::load_config;
-use runtimes::process_manager::{
+use core::config::{
+    expand_tilde, get_default_config_path, get_default_db_path, load_config, PathResolver,
+};
+use infrastructure::db::{init_db, ChatRepository, ModelRepository, SettingRepository};
+use infrastructure::downloader::RuntimeInstallerManager;
+use infrastructure::hardware::GpuTracker;
+use infrastructure::process::manager::{
     adopt_or_clean_orphans, start_idle_auto_unload_loop, ProcessManager,
+};
+use services::{
+    ChatService, HostService, LogService, ModelService, ProxyService, RuntimeService,
 };
 use state::AppState;
 use std::{
     env,
     net::SocketAddr,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
+use tokio::sync::RwLock;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
@@ -60,6 +71,47 @@ struct Cli {
     factory_reset: bool,
 }
 
+struct TracingLogChannelLayer {
+    sender: tokio::sync::mpsc::UnboundedSender<(String, String, String)>,
+}
+
+impl<S> tracing_subscriber::Layer<S> for TracingLogChannelLayer
+where
+    S: tracing::Subscriber,
+{
+    fn on_event(
+        &self,
+        event: &tracing::Event<'_>,
+        _ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        let meta = event.metadata();
+        if meta.target() == "upstream_log" {
+            return;
+        }
+
+        struct MsgVisitor(String);
+        impl tracing::field::Visit for MsgVisitor {
+            fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+                if field.name() == "message" {
+                    self.0 = format!("{:?}", value);
+                }
+            }
+            fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+                if field.name() == "message" {
+                    self.0 = value.to_string();
+                }
+            }
+        }
+
+        let mut visitor = MsgVisitor(String::new());
+        event.record(&mut visitor);
+        if !visitor.0.is_empty() {
+            let level = meta.level().to_string();
+            let _ = self.sender.send(("monolai".to_string(), level, visitor.0));
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
@@ -72,15 +124,20 @@ async fn main() {
         std::process::exit(0);
     }
 
+    let (log_tx, mut log_rx) = tokio::sync::mpsc::unbounded_channel::<(String, String, String)>();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "monolai=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
+        .with(TracingLogChannelLayer {
+            sender: log_tx.clone(),
+        })
         .init();
 
-    // Load config.yaml from CLI path or OS fallback path
+    // 1. Load config.yaml from CLI path or OS fallback path
     let (app_config, config_status) = load_config(cli.config.as_deref());
 
     if config_status.is_valid {
@@ -95,6 +152,15 @@ async fn main() {
             config_status.error_message.as_deref().unwrap_or("none")
         );
     }
+
+    // 2. Initialize PathResolver
+    let path_resolver = PathResolver::new(
+        &app_config,
+        cli.config.as_deref(),
+        Some(&cli.models_folder),
+        cli.runtimes_folder.as_deref(),
+        cli.db.as_deref(),
+    );
 
     let listen_addr_str = if let Some(l) = cli.listen {
         l
@@ -123,56 +189,112 @@ async fn main() {
     );
     sys.refresh_all();
 
-    let db_path = if let Some(ref d) = cli.db {
-        config::expand_tilde(d).to_string_lossy().to_string()
-    } else {
-        config::get_default_db_path().to_string_lossy().to_string()
-    };
+    let db_path_str = path_resolver.db_path.to_string_lossy().to_string();
 
-    let db_pool = match db::init_db(&db_path).await {
+    // 3. Initialize SQLite DB pool
+    let db_pool = match init_db(&db_path_str).await {
         Ok(pool) => {
-            tracing::info!("SQLite database initialized successfully at: {}", db_path);
+            tracing::info!(
+                "SQLite database initialized successfully at: {}",
+                db_path_str
+            );
             pool
         }
         Err(err) => {
-            tracing::error!("Failed to initialize SQLite database at {}: {}", db_path, err);
+            tracing::error!(
+                "Failed to initialize SQLite database at {}: {}",
+                db_path_str,
+                err
+            );
             panic!("Database initialization failed: {}", err);
         }
     };
 
-    let db_dir = std::path::Path::new(&db_path)
+    let db_dir = path_resolver
+        .db_path
         .parent()
-        .unwrap_or_else(|| std::path::Path::new("."))
+        .unwrap_or_else(|| Path::new("."))
         .to_path_buf();
 
-    let process_manager = ProcessManager::new(db_dir);
+    // 4. Initialize Repositories
+    let model_repo = ModelRepository::new(db_pool.clone());
+    let chat_repo = ChatRepository::new(db_pool.clone());
+    let setting_repo = SettingRepository::new(db_pool.clone()).await;
 
-    // Adopt active processes from previous boot or clean up dead records
-    adopt_or_clean_orphans(&process_manager).await;
+    // 5. Initialize Logging Service
+    let logs_dir = db_dir.join("logs");
+    let log_service = Arc::new(LogService::new(logs_dir, setting_repo.clone()));
 
-    // Start background auto-unload monitoring loop for inactive models
-    start_idle_auto_unload_loop(process_manager.clone(), db_pool.clone());
+    let log_service_worker = log_service.clone();
+    tokio::spawn(async move {
+        while let Some((service, level, msg)) = log_rx.recv().await {
+            log_service_worker.record(&service, &level, &msg).await;
+        }
+    });
 
-
-
-    let installer_manager = Arc::new(crate::runtimes::installer::RuntimeInstallerManager::new());
-    let gpu_tracker = Arc::new(crate::runtimes::hardware::GpuTracker::new());
+    // 6. Initialize Infrastructure Components
+    let process_manager = ProcessManager::new(db_dir, Some(log_tx));
+    let installer_manager = Arc::new(RuntimeInstallerManager::new());
+    let gpu_tracker = Arc::new(GpuTracker::new());
 
     if let Some(ref gpu) = gpu_tracker.primary_gpu() {
-        tracing::info!("Detected primary GPU: {} (vendor: {}, dedicated: {})", gpu.name, gpu.vendor, gpu.is_dedicated);
+        tracing::info!(
+            "Detected primary GPU: {} (vendor: {}, dedicated: {})",
+            gpu.name,
+            gpu.vendor,
+            gpu.is_dedicated
+        );
     } else {
         tracing::info!("No dedicated GPU detected on host system.");
     }
 
-    let state = AppState {
-        sys: Arc::new(Mutex::new(sys)),
-        config: Arc::new(Mutex::new(app_config)),
-        config_status: Arc::new(Mutex::new(config_status)),
-        cli_config_path: cli.config.clone(),
-        db: db_pool,
-        process_manager,
+    // 7. Background tasks
+    adopt_or_clean_orphans(&process_manager).await;
+    start_idle_auto_unload_loop(process_manager.clone(), setting_repo.clone());
+
+    // 8. Initialize Application Services
+    let config_lock = Arc::new(RwLock::new(app_config));
+    let config_status_lock = Arc::new(RwLock::new(config_status));
+
+    let model_service = Arc::new(ModelService::new(
+        model_repo.clone(),
+        setting_repo.clone(),
+        process_manager.clone(),
+        config_lock.clone(),
+    ));
+
+    let chat_service = Arc::new(ChatService::new(chat_repo.clone()));
+
+    let extra_manifests_path = cli.runtimes_folder.as_ref().map(PathBuf::from);
+    let runtime_service = Arc::new(RuntimeService::new(
         installer_manager,
-        gpu_tracker,
+        config_lock.clone(),
+        extra_manifests_path,
+    ));
+
+    let host_service = Arc::new(HostService::new(Arc::new(Mutex::new(sys)), gpu_tracker));
+
+    let proxy_service = Arc::new(ProxyService::new(
+        model_repo,
+        setting_repo.clone(),
+        process_manager,
+        config_lock.clone(),
+    ));
+
+    // 9. Build AppState
+    let state = AppState {
+        db: db_pool,
+        config: config_lock,
+        config_status: config_status_lock,
+        path_resolver: Arc::new(path_resolver),
+        cli_config_path: cli.config.clone(),
+        model_service,
+        chat_service,
+        runtime_service,
+        host_service,
+        proxy_service,
+        log_service,
+        setting_repo,
     };
 
     let app = routes::create_router(state);
@@ -190,12 +312,25 @@ async fn main() {
         Ok(l) => l,
         Err(e) => {
             tracing::error!("Failed to bind to {}: {}", addr, e);
-            eprintln!("\nFatal error: Failed to bind to port {} ({}).", addr.port(), e);
-            eprintln!("Tip: Check if another process or Docker container is already using port {}.\n", addr.port());
+            eprintln!(
+                "\nFatal error: Failed to bind to port {} ({}).",
+                addr.port(),
+                e
+            );
+            eprintln!(
+                "Tip: Check if another process or Docker container is already using port {}.\n",
+                addr.port()
+            );
             std::process::exit(1);
         }
     };
-    if let Err(e) = axum::serve(listener, app).await {
+
+    if let Err(e) = axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    {
         tracing::error!("Server error: {}", e);
         eprintln!("Server error: {}", e);
         std::process::exit(1);
@@ -210,17 +345,17 @@ fn get_local_network_ip() -> Option<std::net::IpAddr> {
 
 fn handle_clean_storage(db_arg: Option<&str>) {
     let db_path_str = if let Some(d) = db_arg {
-        config::expand_tilde(d).to_string_lossy().to_string()
+        expand_tilde(d).to_string_lossy().to_string()
     } else {
-        config::get_default_db_path().to_string_lossy().to_string()
+        get_default_db_path().to_string_lossy().to_string()
     };
-    let db_path = std::path::Path::new(&db_path_str);
+    let db_path = Path::new(&db_path_str);
     let mut removed_count = 0;
 
     let files_to_remove = [
         db_path.to_path_buf(),
-        std::path::PathBuf::from(format!("{}-wal", db_path_str)),
-        std::path::PathBuf::from(format!("{}-shm", db_path_str)),
+        PathBuf::from(format!("{}-wal", db_path_str)),
+        PathBuf::from(format!("{}-shm", db_path_str)),
     ];
 
     for file in &files_to_remove {
@@ -235,7 +370,7 @@ fn handle_clean_storage(db_arg: Option<&str>) {
         }
     }
 
-    let db_dir = db_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let db_dir = db_path.parent().unwrap_or_else(|| Path::new("."));
     let proc_json = db_dir.join("processes.json");
     if proc_json.exists() {
         match std::fs::remove_file(&proc_json) {
@@ -254,22 +389,20 @@ fn handle_clean_storage(db_arg: Option<&str>) {
 }
 
 fn handle_factory_reset(db_arg: Option<&str>, config_arg: Option<&str>) {
-    // 1. Clean storage first
     handle_clean_storage(db_arg);
 
-    // 2. Remove configuration files
     let mut removed_config_count = 0;
     let mut config_paths = Vec::new();
 
     if let Some(c) = config_arg {
-        config_paths.push(config::expand_tilde(c));
+        config_paths.push(expand_tilde(c));
     }
-    config_paths.push(config::get_default_config_path());
-    config_paths.push(std::path::PathBuf::from("config.yaml"));
+    config_paths.push(get_default_config_path());
+    config_paths.push(PathBuf::from("config.yaml"));
 
-    let (_, status) = config::load_config(config_arg);
+    let (_, status) = load_config(config_arg);
     if let Some(ref p) = status.loaded_path {
-        config_paths.push(std::path::PathBuf::from(p));
+        config_paths.push(PathBuf::from(p));
     }
 
     config_paths.sort();

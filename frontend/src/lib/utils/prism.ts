@@ -1,4 +1,4 @@
-import Prism from 'prismjs';
+import Prism from './prism-init';
 
 // Import essential Prism language grammars
 import 'prismjs/components/prism-markup.js';

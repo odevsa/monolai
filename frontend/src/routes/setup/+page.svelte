@@ -1,51 +1,25 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { configApi, hostApi } from '$lib/api';
+	import { CodeBlock } from '$lib/components/ds';
+	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
+	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import {
-		Wand2,
+		Check,
+		CircleAlert,
+		CircleCheck,
+		Copy,
 		FileCode,
 		Folder,
-		Cpu,
-		Zap,
-		Copy,
-		Check,
-		RefreshCw,
-		CheckCircle2,
-		AlertCircle,
 		HardDrive,
-		Terminal,
+		Network,
+		RefreshCw,
 		Sparkles,
-		Network
+		Terminal,
+		Wand,
+		Zap
 	} from '@lucide/svelte';
-	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
-	import CodeBlock from '$lib/components/CodeBlock.svelte';
-
-	interface ConfigStatus {
-		is_valid: boolean;
-		has_models: boolean;
-		has_runtimes: boolean;
-		has_hardware: boolean;
-		created_auto_file: boolean;
-		is_docker?: boolean;
-		loaded_path: string | null;
-		expected_path: string;
-		models_dir: string | null;
-		runtimes_dir: string | null;
-		hardware: string;
-		host: string;
-		port: number;
-		error_message: string | null;
-		example_yaml: string;
-		cli_command_example: string;
-	}
-
-	interface HardwareReport {
-		os: string;
-		arch: string;
-		available_accelerations: string[];
-		recommended_acceleration: string;
-		detected_gpus: string[];
-	}
+	import { getContext, onMount } from 'svelte';
 
 	let activeTab = $state<'wizard' | 'manual'>('wizard');
 	let configStatus = $state<ConfigStatus | null>(null);
@@ -75,13 +49,12 @@
 	async function fetchConfigData() {
 		try {
 			rechecking = true;
-			const [statusRes, hwRes] = await Promise.all([
-				fetch('/api/config/status'),
-				fetch('/api/hardware/detect')
+			const [status, hw] = await Promise.all([
+				configApi.getStatus().catch(() => null),
+				hostApi.detectHardware().catch(() => null)
 			]);
 
-			if (statusRes.ok) {
-				const status: ConfigStatus = await statusRes.json();
+			if (status) {
 				configStatus = status;
 
 				if (status.is_valid) {
@@ -106,8 +79,7 @@
 				}
 			}
 
-			if (hwRes.ok) {
-				const hw: HardwareReport = await hwRes.json();
+			if (hw) {
 				hardwareReport = hw;
 			}
 		} catch (err) {
@@ -149,22 +121,13 @@
 			saving = true;
 			saveError = null;
 
-			const res = await fetch('/api/config/setup', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					models: targetModels,
-					runtimes: targetRuntimes,
-					hardware: selectedHardware,
-					host: targetHost,
-					port: parsedPort
-				})
+			await configApi.setup({
+				models_dir: targetModels,
+				runtimes_dir: targetRuntimes,
+				hardware: selectedHardware,
+				host: targetHost,
+				port: parsedPort
 			});
-
-			if (!res.ok) {
-				const msg = await res.text();
-				throw new Error(msg || 'Failed to save configuration');
-			}
 
 			if (checkConfigFromLayout) {
 				await checkConfigFromLayout();
@@ -307,7 +270,7 @@
 								? 'bg-[var(--primary)] text-white shadow-sm'
 								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
 						>
-							<Wand2 size={14} />
+							<Wand size={14} />
 							<span>Interactive Setup</span>
 						</button>
 						<button
@@ -330,7 +293,7 @@
 					<div
 						class="flex items-center gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs"
 					>
-						<AlertCircle size={16} class="shrink-0" />
+						<CircleAlert size={16} class="shrink-0" />
 						<span>{saveError}</span>
 					</div>
 				{/if}
@@ -413,7 +376,7 @@
 								<div
 									class="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0"
 								>
-									<CheckCircle2 size={16} />
+									<CircleCheck size={16} />
 								</div>
 								<div class="flex flex-col gap-0.5 min-w-0">
 									<div class="flex items-center gap-2">
@@ -469,7 +432,7 @@
 										<div
 											class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0"
 										>
-											<CheckCircle2 size={16} />
+											<CircleCheck size={16} />
 										</div>
 										<div class="flex flex-col min-w-0">
 											<div class="flex items-center gap-2 flex-wrap">
@@ -707,7 +670,7 @@
 									>{configStatus.cli_command_example}</span
 								>
 								<button
-									onclick={() => copyToClipboard(configStatus!.cli_command_example, 'cli')}
+									onclick={() => copyToClipboard(configStatus?.cli_command_example || '', 'cli')}
 									class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-[var(--text-primary)] flex items-center gap-1.5 transition cursor-pointer shrink-0 ml-2 text-xs"
 								>
 									{#if copiedCli}

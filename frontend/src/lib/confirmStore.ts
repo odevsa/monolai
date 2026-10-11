@@ -1,55 +1,30 @@
-import { writable } from 'svelte/store';
+import {
+	confirmState,
+	askConfirm,
+	showAlert,
+	type ConfirmOptions
+} from '$lib/state/confirm.svelte';
 
-export interface ConfirmOptions {
-	title?: string;
-	message: string;
-	confirmText?: string;
-	cancelText?: string;
-	variant?: 'danger' | 'warning' | 'primary' | 'info';
-	isAlert?: boolean;
-}
+export { askConfirm, showAlert, type ConfirmOptions };
 
-export interface ConfirmStateItem extends ConfirmOptions {
-	resolve: (result: boolean) => void;
-}
+const subscribers = new Set<(val: any) => void>();
 
-export const confirmStore = writable<ConfirmStateItem | null>(null);
-
-export function askConfirm(
-	message: string,
-	title: string = 'Confirmation',
-	variant: 'danger' | 'warning' | 'primary' | 'info' = 'danger',
-	confirmText: string = 'Confirm',
-	cancelText: string = 'Cancel'
-): Promise<boolean> {
-	return new Promise((resolve) => {
-		confirmStore.set({
-			message,
-			title,
-			variant,
-			confirmText,
-			cancelText,
-			isAlert: false,
-			resolve
-		});
-	});
-}
-
-export function showAlert(
-	message: string,
-	title: string = 'Notice',
-	variant: 'primary' | 'info' | 'danger' | 'warning' = 'info',
-	confirmText: string = 'OK'
-): Promise<boolean> {
-	return new Promise((resolve) => {
-		confirmStore.set({
-			message,
-			title,
-			variant,
-			confirmText,
-			cancelText: '',
-			isAlert: true,
-			resolve
-		});
-	});
-}
+export const confirmStore = {
+	subscribe(fn: (val: any) => void) {
+		subscribers.add(fn);
+		fn(confirmState.current);
+		return () => {
+			subscribers.delete(fn);
+		};
+	},
+	set(val: any) {
+		if (!val && confirmState.current) {
+			confirmState.close(false);
+		} else {
+			confirmState.current = val;
+		}
+		for (const fn of subscribers) {
+			fn(val);
+		}
+	}
+};

@@ -1,4 +1,6 @@
+use crate::domain::SysInfoResponse;
 use crate::state::AppState;
+use async_stream::stream;
 use axum::{
     extract::State,
     response::{
@@ -7,73 +9,7 @@ use axum::{
     },
 };
 use futures_util::stream::Stream;
-use serde::Serialize;
-use std::{
-    convert::Infallible,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
-use sysinfo::System;
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct CpuInfo {
-    pub usage: f32,
-    pub cores: usize,
-    pub brand: String,
-    pub frequency_mhz: u64,
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct RamInfo {
-    pub total_bytes: u64,
-    pub used_bytes: u64,
-    pub free_bytes: u64,
-    pub percentage: f32,
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct OsInfo {
-    pub name: String,
-    pub kernel_version: String,
-    pub os_version: String,
-    pub hostname: String,
-    pub uptime_seconds: u64,
-}
-
-use crate::runtimes::hardware::GpuInfo;
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct VramInfo {
-    pub total_bytes: u64,
-    pub used_bytes: u64,
-    pub free_bytes: u64,
-    pub percentage: f32,
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct SysInfoResponse {
-    pub cpu: CpuInfo,
-    pub ram: RamInfo,
-    pub os: OsInfo,
-    #[schema(value_type = Option<Object>)]
-    pub gpu: Option<GpuInfo>,
-    pub vram: Option<VramInfo>,
-    pub timestamp: u64,
-}
-
-#[derive(Serialize, Clone, utoipa::ToSchema)]
-pub struct HostMetricsTick {
-    pub cpu_usage: f32,
-    pub ram_used_bytes: u64,
-    pub ram_total_bytes: u64,
-    pub ram_free_bytes: u64,
-    pub ram_percentage: f32,
-    pub gpu_usage: Option<f32>,
-    pub vram_used_bytes: Option<u64>,
-    pub vram_total_bytes: Option<u64>,
-    pub vram_free_bytes: Option<u64>,
-    pub vram_percentage: Option<f32>,
-    pub timestamp: u64,
-}
+use std::{convert::Infallible, time::Duration};
 
 /// Get snapshot of system host information (CPU, RAM, OS, GPU)
 #[utoipa::path(
@@ -85,152 +21,33 @@ pub struct HostMetricsTick {
     )
 )]
 pub async fn sysinfo_handler(State(state): State<AppState>) -> Json<SysInfoResponse> {
-    let mut sys = state.sys.lock().unwrap();
-    sys.refresh_cpu();
-    sys.refresh_memory();
-
-    let cpus = sys.cpus();
-    let global_cpu_usage = sys.global_cpu_info().cpu_usage();
-    let cpu_brand = cpus
-        .first()
-        .map(|c| c.brand().to_string())
-        .unwrap_or_else(|| "Unknown".to_string());
-    let cpu_freq = cpus.first().map(|c| c.frequency()).unwrap_or(0);
-
-    let total_ram = sys.total_memory();
-    let used_ram = sys.used_memory();
-    let free_ram = sys.free_memory();
-    let ram_pct = if total_ram > 0 {
-        (used_ram as f32 / total_ram as f32) * 100.0
-    } else {
-        0.0
-    };
-
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-
-    let sys_name = System::name().unwrap_or_else(|| "Linux".to_string());
-    let kernel_ver = System::kernel_version().unwrap_or_else(|| "Unknown".to_string());
-    let os_ver = System::os_version().unwrap_or_else(|| "Unknown".to_string());
-    let host_name = System::host_name().unwrap_or_else(|| "localhost".to_string());
-    let uptime = System::uptime();
-
-    let gpu = state.gpu_tracker.primary_gpu();
-    let gpu_stats = state.gpu_tracker.current_stats();
-    let vram = match (gpu_stats.vram_total_bytes, gpu_stats.vram_used_bytes) {
-        (Some(total), Some(used)) if total > 0 => {
-            let free = gpu_stats.vram_free_bytes.unwrap_or_else(|| total.saturating_sub(used));
-            let pct = gpu_stats.vram_percentage.unwrap_or_else(|| (used as f32 / total as f32) * 100.0);
-            Some(VramInfo {
-                total_bytes: total,
-                used_bytes: used,
-                free_bytes: free,
-                percentage: pct,
-            })
-        }
-        (Some(total), None) if total > 0 => {
-            Some(VramInfo {
-                total_bytes: total,
-                used_bytes: 0,
-                free_bytes: total,
-                percentage: 0.0,
-            })
-        }
-        _ => gpu.as_ref().and_then(|g| g.memory_total_bytes).map(|total| VramInfo {
-            total_bytes: total,
-            used_bytes: 0,
-            free_bytes: total,
-            percentage: 0.0,
-        }),
-    };
-
-    Json(SysInfoResponse {
-        cpu: CpuInfo {
-            usage: global_cpu_usage,
-            cores: cpus.len(),
-            brand: cpu_brand,
-            frequency_mhz: cpu_freq,
-        },
-        ram: RamInfo {
-            total_bytes: total_ram,
-            used_bytes: used_ram,
-            free_bytes: free_ram,
-            percentage: ram_pct,
-        },
-        os: OsInfo {
-            name: sys_name,
-            kernel_version: kernel_ver,
-            os_version: os_ver,
-            hostname: host_name,
-            uptime_seconds: uptime,
-        },
-        gpu,
-        vram,
-        timestamp: ts,
-    })
+    Json(state.host_service.get_sysinfo())
 }
 
-/// Real-time Server-Sent Events (SSE) stream of system resource usage
+/// Real-time SSE stream of system host performance metrics
 #[utoipa::path(
     get,
     path = "/api/host/usage",
     tag = "Host",
     responses(
-        (status = 200, description = "SSE metrics stream (CPU, RAM, GPU) emitted every 500ms", content_type = "text/event-stream")
+        (status = 200, description = "SSE metrics stream tick every 2 seconds", content_type = "text/event-stream")
     )
 )]
 pub async fn sysinfo_stream_handler(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = async_stream::stream! {
-        let mut interval = tokio::time::interval(Duration::from_millis(1000));
+    let host_service = state.host_service.clone();
 
+    let stream = stream! {
+        let mut interval = tokio::time::interval(Duration::from_secs(1));
         loop {
             interval.tick().await;
-
-            let tick = {
-                let mut sys = state.sys.lock().unwrap();
-                sys.refresh_cpu();
-                sys.refresh_memory();
-
-                let global_cpu_usage = sys.global_cpu_info().cpu_usage();
-                let total_ram = sys.total_memory();
-                let used_ram = sys.used_memory();
-                let free_ram = sys.free_memory();
-                let ram_pct = if total_ram > 0 {
-                    (used_ram as f32 / total_ram as f32) * 100.0
-                } else {
-                    0.0
-                };
-                let ts = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                let gpu_stats = state.gpu_tracker.current_stats();
-
-                HostMetricsTick {
-                    cpu_usage: global_cpu_usage,
-                    ram_used_bytes: used_ram,
-                    ram_total_bytes: total_ram,
-                    ram_free_bytes: free_ram,
-                    ram_percentage: ram_pct,
-                    gpu_usage: gpu_stats.gpu_usage,
-                    vram_used_bytes: gpu_stats.vram_used_bytes,
-                    vram_total_bytes: gpu_stats.vram_total_bytes,
-                    vram_free_bytes: gpu_stats.vram_free_bytes,
-                    vram_percentage: gpu_stats.vram_percentage,
-                    timestamp: ts,
-                }
-            };
-
-            if let Ok(json) = serde_json::to_string(&tick) {
-                yield Ok(Event::default().data(json));
+            let tick = host_service.get_metrics_tick();
+            if let Ok(json_str) = serde_json::to_string(&tick) {
+                yield Ok(Event::default().data(json_str));
             }
         }
     };
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
 }
