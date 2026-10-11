@@ -252,15 +252,19 @@ impl DesktopApp {
                     window::restore_window(ctx);
                 }
                 TrayAction::Quit => {
-                    self.minimize_after = None;
-                    self.is_quitting = true;
-                    self.supervisor.shutdown();
-                    self.tray = None;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    std::process::exit(0);
+                    self.quit_app(ctx);
                 }
             }
         }
+    }
+
+    fn quit_app(&mut self, ctx: &egui::Context) {
+        self.minimize_after = None;
+        self.is_quitting = true;
+        self.supervisor.shutdown();
+        self.tray = None;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        std::process::exit(0);
     }
 }
 
@@ -302,6 +306,16 @@ impl eframe::App for DesktopApp {
         self.handle_supervisor_events(ctx);
         self.handle_tray_actions(ctx);
 
+        // Sync window visibility with OS state:
+        // If window was minimized to taskbar and restored, reset window_visible back to true.
+        let is_minimized = ctx.input(|i| i.viewport().minimized.unwrap_or(false));
+        let is_focused = ctx.input(|i| i.viewport().focused);
+        let has_pointer = ctx.input(|i| i.pointer.hover_pos().is_some() || i.pointer.is_moving());
+
+        if !is_minimized && (is_focused == Some(true) || has_pointer) {
+            self.window_visible = true;
+        }
+
         // Delayed minimize to tray after start visual feedback
         if let Some(target) = self.minimize_after {
             if Instant::now() >= target {
@@ -313,11 +327,21 @@ impl eframe::App for DesktopApp {
             }
         }
 
-        // Intercept close button ("X") to minimize to tray instead of quitting
+        // Handle window close request:
+        // - Close button ("X") on the active window: ALWAYS minimizes to system tray/taskbar.
+        // - Taskbar context menu (Right Click -> Close) or external quit: closes the application immediately on first click.
         if ctx.input(|i| i.viewport().close_requested()) && !self.is_quitting {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.window_visible = false;
-            window::minimize_window(ctx);
+            let is_external_taskbar_close = !self.window_visible
+                || is_minimized
+                || is_focused == Some(false);
+
+            if is_external_taskbar_close {
+                self.quit_app(ctx);
+            } else {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.window_visible = false;
+                window::minimize_window(ctx);
+            }
         }
 
         let panel_margin = match self.current_screen {

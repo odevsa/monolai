@@ -127,9 +127,17 @@ pub fn show_main_screen(
                 .color(theme.text_secondary)
                 .size(12.0),
         );
+
+        ui.add_space(2.0);
+
+        ui.label(
+            RichText::new(format!("v{}", env!("CARGO_PKG_VERSION")))
+                .color(theme.text_muted)
+                .size(11.0),
+        );
     });
 
-    ui.add_space(14.0);
+    ui.add_space(12.0);
 
     // 1. Hero Status Card
     egui::Frame::none()

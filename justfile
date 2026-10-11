@@ -32,12 +32,12 @@ dev-frontend:
     npm --prefix frontend run dev
 
 # Start backend cargo server only (Rust Axum)
-dev-backend:
-    mkdir -p frontend/build
+dev-backend: build-frontend
     cargo run --manifest-path backend/Cargo.toml
 
 # Start native desktop GUI application in development (egui)
 dev-desktop:
+    cargo build --manifest-path backend/Cargo.toml
     cargo run --manifest-path desktop/Cargo.toml
 
 # ==============================================================================
@@ -73,19 +73,19 @@ build-frontend:
     npm --prefix frontend run build
 
 # Build frontend and release server binary into dist/linux/
-build-server: build-frontend
+build-backend: build-frontend
     cargo build --manifest-path backend/Cargo.toml --release
     @mkdir -p dist/linux
     @cp -f backend/target/release/monolai dist/linux/
 
-# Build native desktop GUI release binary into dist/linux/
-build-desktop:
+# Build native desktop GUI release binary into dist/linux/ (requires backend)
+build-desktop: build-backend
     cargo build --manifest-path desktop/Cargo.toml --release
     @mkdir -p dist/linux
     @cp -f desktop/target/release/monolai-gui dist/linux/
 
 # Build complete Linux release bundle (server + desktop GUI)
-build-linux: build-server build-desktop
+build-linux: build-backend build-desktop
     @echo "=========================================="
     @echo "Linux build complete! Output in dist/linux/"
     @echo " - dist/linux/monolai"

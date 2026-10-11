@@ -35,8 +35,9 @@ fn main() -> eframe::Result<()> {
         .with_app_id("monolai")
         .with_inner_size([500.0, 560.0])
         .with_min_inner_size([440.0, 480.0])
-        .with_resizable(true)
-        .with_minimize_button(true)
+        .with_resizable(false)
+        .with_minimize_button(false)
+        .with_maximize_button(false)
         .with_close_button(true);
 
     if start_minimized {
