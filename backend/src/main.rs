@@ -17,7 +17,9 @@ use infrastructure::hardware::GpuTracker;
 use infrastructure::process::manager::{
     adopt_or_clean_orphans, start_idle_auto_unload_loop, ProcessManager,
 };
-use services::{ChatService, HostService, ModelService, ProxyService, RuntimeService};
+use services::{
+    ChatService, HostService, LogService, ModelService, ProxyService, RuntimeService,
+};
 use state::AppState;
 use std::{
     env,
@@ -69,6 +71,47 @@ struct Cli {
     factory_reset: bool,
 }
 
+struct TracingLogChannelLayer {
+    sender: tokio::sync::mpsc::UnboundedSender<(String, String, String)>,
+}
+
+impl<S> tracing_subscriber::Layer<S> for TracingLogChannelLayer
+where
+    S: tracing::Subscriber,
+{
+    fn on_event(
+        &self,
+        event: &tracing::Event<'_>,
+        _ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        let meta = event.metadata();
+        if meta.target() == "upstream_log" {
+            return;
+        }
+
+        struct MsgVisitor(String);
+        impl tracing::field::Visit for MsgVisitor {
+            fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+                if field.name() == "message" {
+                    self.0 = format!("{:?}", value);
+                }
+            }
+            fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+                if field.name() == "message" {
+                    self.0 = value.to_string();
+                }
+            }
+        }
+
+        let mut visitor = MsgVisitor(String::new());
+        event.record(&mut visitor);
+        if !visitor.0.is_empty() {
+            let level = meta.level().to_string();
+            let _ = self.sender.send(("monolai".to_string(), level, visitor.0));
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
@@ -81,12 +124,17 @@ async fn main() {
         std::process::exit(0);
     }
 
+    let (log_tx, mut log_rx) = tokio::sync::mpsc::unbounded_channel::<(String, String, String)>();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "monolai=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
+        .with(TracingLogChannelLayer {
+            sender: log_tx.clone(),
+        })
         .init();
 
     // 1. Load config.yaml from CLI path or OS fallback path
@@ -173,8 +221,19 @@ async fn main() {
     let chat_repo = ChatRepository::new(db_pool.clone());
     let setting_repo = SettingRepository::new(db_pool.clone()).await;
 
-    // 5. Initialize Infrastructure Components
-    let process_manager = ProcessManager::new(db_dir);
+    // 5. Initialize Logging Service
+    let logs_dir = db_dir.join("logs");
+    let log_service = Arc::new(LogService::new(logs_dir, setting_repo.clone()));
+
+    let log_service_worker = log_service.clone();
+    tokio::spawn(async move {
+        while let Some((service, level, msg)) = log_rx.recv().await {
+            log_service_worker.record(&service, &level, &msg).await;
+        }
+    });
+
+    // 6. Initialize Infrastructure Components
+    let process_manager = ProcessManager::new(db_dir, Some(log_tx));
     let installer_manager = Arc::new(RuntimeInstallerManager::new());
     let gpu_tracker = Arc::new(GpuTracker::new());
 
@@ -189,11 +248,11 @@ async fn main() {
         tracing::info!("No dedicated GPU detected on host system.");
     }
 
-    // 6. Background tasks
+    // 7. Background tasks
     adopt_or_clean_orphans(&process_manager).await;
     start_idle_auto_unload_loop(process_manager.clone(), setting_repo.clone());
 
-    // 7. Initialize Application Services
+    // 8. Initialize Application Services
     let config_lock = Arc::new(RwLock::new(app_config));
     let config_status_lock = Arc::new(RwLock::new(config_status));
 
@@ -222,7 +281,7 @@ async fn main() {
         config_lock.clone(),
     ));
 
-    // 8. Build AppState
+    // 9. Build AppState
     let state = AppState {
         db: db_pool,
         config: config_lock,
@@ -234,6 +293,7 @@ async fn main() {
         runtime_service,
         host_service,
         proxy_service,
+        log_service,
         setting_repo,
     };
 
@@ -265,7 +325,12 @@ async fn main() {
         }
     };
 
-    if let Err(e) = axum::serve(listener, app).await {
+    if let Err(e) = axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    {
         tracing::error!("Server error: {}", e);
         eprintln!("Server error: {}", e);
         std::process::exit(1);

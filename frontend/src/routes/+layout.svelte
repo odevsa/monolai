@@ -40,6 +40,7 @@
 			: null
 	);
 	let isSysinfoPage = $derived(currentPath.startsWith('/sysinfo'));
+	let isLogsPage = $derived(currentPath.startsWith('/logs'));
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
 	let isImagePage = $derived(currentPath.startsWith('/image'));
 
@@ -260,6 +261,29 @@
 											? 'text-amber-400'
 											: 'text-emerald-400'} cursor-pointer rounded"
 										onclick={() => headerState.sysinfoReconnectFn?.()}
+										title={t('sysinfo.reconnectStream')}
+									>
+										<RefreshCw size={13} class="animate-spin" />
+									</button>
+								{/if}
+							</Badge>
+						{/if}
+						{#if isLogsPage}
+							<Badge
+								variant={!headerState.logsConnected && headerState.logsReconnectFn
+									? 'warning'
+									: 'success'}
+								pulse
+								blur
+							>
+								<span class="truncate">
+									{headerState.logsConnected ? t('sysinfo.streamActive') : t('sysinfo.connecting')}
+								</span>
+								{#if !headerState.logsConnected && headerState.logsReconnectFn}
+									<button
+										type="button"
+										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-amber-400 cursor-pointer rounded"
+										onclick={() => headerState.logsReconnectFn?.()}
 										title={t('sysinfo.reconnectStream')}
 									>
 										<RefreshCw size={13} class="animate-spin" />

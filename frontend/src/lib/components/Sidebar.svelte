@@ -33,6 +33,7 @@
 		PanelLeftOpen,
 		Plus,
 		Power,
+		ScrollText,
 		Search,
 		Settings,
 		Trash,
@@ -167,6 +168,7 @@
 	);
 	let isImagePage = $derived(currentPath.startsWith('/image'));
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
+	let isLogsPage = $derived(currentPath === '/logs');
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
 	let isModelsPage = $derived(currentPath.startsWith('/models'));
 	let currentActiveChatId = $derived(
@@ -364,6 +366,23 @@
 			<Activity size={20} class="shrink-0 {isSysInfoPage ? 'text-[var(--primary)]' : ''}" />
 			{#if isExpanded}
 				<span>{t('navigation.sysinfo')}</span>
+			{/if}
+		</a>
+
+		<!-- Logs Action (below System Info) -->
+		<a
+			href="/logs"
+			class="flex items-center rounded-xl transition-all duration-150 box-border no-underline border-0 cursor-pointer {!isExpanded
+				? 'w-10 h-10 mx-auto justify-center'
+				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'} {isLogsPage
+				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'
+				: 'text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}"
+			onclick={closeMobile}
+			title={t('navigation.logs')}
+		>
+			<ScrollText size={20} class="shrink-0 {isLogsPage ? 'text-[var(--primary)]' : ''}" />
+			{#if isExpanded}
+				<span>{t('navigation.logs')}</span>
 			{/if}
 		</a>
 	</div>

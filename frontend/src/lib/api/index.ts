@@ -6,3 +6,4 @@ export * from './chats';
 export * from './host';
 export * from './config';
 export * from './settings';
+export * from './logs';

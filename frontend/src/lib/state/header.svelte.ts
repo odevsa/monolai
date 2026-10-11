@@ -10,6 +10,8 @@ class HeaderStateManager {
 	chatTabs = $state<ChatTab[]>([]);
 	sysinfoConnected = $state<boolean>(false);
 	sysinfoReconnectFn = $state<(() => void) | null>(null);
+	logsConnected = $state<boolean>(false);
+	logsReconnectFn = $state<(() => void) | null>(null);
 	runtimesRefreshing = $state<boolean>(false);
 	runtimesRefreshFn = $state<(() => void) | null>(null);
 	modelsRefreshing = $state<boolean>(false);
@@ -70,6 +72,13 @@ class HeaderStateManager {
 		this.sysinfoConnected = connected;
 		if (reconnectFn) {
 			this.sysinfoReconnectFn = reconnectFn;
+		}
+	}
+
+	setLogsStatus(connected: boolean, reconnectFn?: () => void) {
+		this.logsConnected = connected;
+		if (reconnectFn) {
+			this.logsReconnectFn = reconnectFn;
 		}
 	}
 

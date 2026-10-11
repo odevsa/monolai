@@ -83,15 +83,20 @@ pub struct ProcessManager {
     pub running: Arc<Mutex<HashMap<String, RunningModel>>>,
     pub db_dir: PathBuf,
     pub state_broadcast: tokio::sync::broadcast::Sender<Vec<RunningModelStatus>>,
+    pub log_tx: Option<tokio::sync::mpsc::UnboundedSender<(String, String, String)>>,
 }
 
 impl ProcessManager {
-    pub fn new(db_dir: PathBuf) -> Self {
+    pub fn new(
+        db_dir: PathBuf,
+        log_tx: Option<tokio::sync::mpsc::UnboundedSender<(String, String, String)>>,
+    ) -> Self {
         let (state_broadcast, _) = tokio::sync::broadcast::channel(64);
         Self {
             running: Arc::new(Mutex::new(HashMap::new())),
             db_dir,
             state_broadcast,
+            log_tx,
         }
     }
 
@@ -346,11 +351,28 @@ pub async fn load_model_process(
     let last_logs_out = last_logs.clone();
     let last_logs_err = last_logs.clone();
 
+    let service_name = format!("{}: {}", runtime_id, model_id);
+    let log_tx_out = pm.log_tx.clone();
+    let service_name_out = service_name.clone();
+
     tokio::spawn(async move {
         if let Some(out) = stdout {
             let mut reader = BufReader::new(out).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stdout: {}", pid, line);
+                let lower = line.to_lowercase();
+                let level = if lower.contains("error") {
+                    "ERROR"
+                } else if lower.contains("warn") {
+                    "WARN"
+                } else {
+                    "INFO"
+                };
+
+                if let Some(ref tx) = log_tx_out {
+                    let _ = tx.send((service_name_out.clone(), level.to_string(), line.clone()));
+                }
+
                 {
                     let mut logs = last_logs_out.lock().unwrap();
                     if logs.len() >= 10 {
@@ -358,7 +380,7 @@ pub async fn load_model_process(
                     }
                     logs.push(line.clone());
                 }
-                let lower = line.to_lowercase();
+
                 if lower.contains("all slots are idle and ready to serve requests")
                     || lower.contains("main: model loaded")
                     || lower.contains("server is listening")
@@ -372,11 +394,27 @@ pub async fn load_model_process(
     });
 
     let log_ready_signal_clone2 = log_ready_signal.clone();
+    let log_tx_err = pm.log_tx.clone();
+    let service_name_err = service_name.clone();
+
     tokio::spawn(async move {
         if let Some(err) = stderr {
             let mut reader = BufReader::new(err).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 tracing::debug!(target: "upstream_log", "[{}] stderr: {}", pid, line);
+                let lower = line.to_lowercase();
+                let level = if lower.contains("error") {
+                    "ERROR"
+                } else if lower.contains("warn") {
+                    "WARN"
+                } else {
+                    "INFO"
+                };
+
+                if let Some(ref tx) = log_tx_err {
+                    let _ = tx.send((service_name_err.clone(), level.to_string(), line.clone()));
+                }
+
                 {
                     let mut logs = last_logs_err.lock().unwrap();
                     if logs.len() >= 10 {
@@ -384,7 +422,7 @@ pub async fn load_model_process(
                     }
                     logs.push(line.clone());
                 }
-                let lower = line.to_lowercase();
+
                 if lower.contains("all slots are idle and ready to serve requests")
                     || lower.contains("main: model loaded")
                     || lower.contains("server is listening")

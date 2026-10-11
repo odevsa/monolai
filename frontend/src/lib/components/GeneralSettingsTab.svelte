@@ -11,6 +11,7 @@
 		MessageSquare,
 		RefreshCw,
 		Save,
+		ScrollText,
 		ShieldCheck
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
@@ -23,6 +24,7 @@
 	let idleTimeoutSeconds = $state<number>(300);
 	let readinessTimeout = $state<number>(120);
 	let unloadTimeout = $state<number>(10);
+	let maxLogSizeMb = $state<number>(10);
 	let systemPrompt = $state<string>(DEFAULT_SYSTEM_PROMPT);
 
 	let isLoading = $state(false);
@@ -64,6 +66,12 @@
 						unloadTimeout = parsed;
 					}
 				}
+				if (settings.max_log_size_mb !== undefined) {
+					const parsed = parseInt(settings.max_log_size_mb, 10);
+					if (!isNaN(parsed) && parsed > 0) {
+						maxLogSizeMb = parsed;
+					}
+				}
 				if (settings.system_prompt !== undefined && settings.system_prompt.trim()) {
 					systemPrompt = settings.system_prompt;
 				}
@@ -86,6 +94,7 @@
 				idle_timeout_seconds: String(Math.max(0, idleTimeoutSeconds)),
 				readiness_timeout: String(Math.max(1, readinessTimeout)),
 				unload_timeout: String(Math.max(1, unloadTimeout)),
+				max_log_size_mb: String(Math.max(1, maxLogSizeMb)),
 				system_prompt: systemPrompt.trim()
 			};
 
@@ -255,6 +264,68 @@
 										{seconds < 60 ? `${seconds}s` : `${seconds / 60} min`}{seconds === 300
 											? ' (default)'
 											: ''}
+									</button>
+								{/each}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Max Log File Size Section -->
+				<div
+					class="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl overflow-hidden transition-all duration-200 shadow-2xs"
+				>
+					<div
+						class="flex items-center gap-2 px-4 py-3 bg-[var(--bg-sidebar)]/60 border-b border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)]"
+					>
+						<ScrollText size={16} class="text-[var(--primary)]" />
+						<span
+							>{t('settings.maxLogSize')} (<code
+								class="bg-[var(--bg-surface)] px-1.5 py-0.5 rounded text-[0.725rem] text-[var(--primary)] font-mono"
+								>max_log_size_mb</code
+							>)</span
+						>
+					</div>
+
+					<div class="p-4 flex flex-col gap-4">
+						<div class="flex flex-col gap-2">
+							<span class="text-xs text-[var(--text-muted)] font-medium">
+								{t('settings.maxLogSizeDesc')}
+							</span>
+							<div class="flex flex-wrap items-center gap-2.5">
+								<input
+									id="max-log-size-input"
+									type="number"
+									min="1"
+									max="1024"
+									step="1"
+									bind:value={maxLogSizeMb}
+									class="w-32 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+								/>
+								<span
+									class="text-xs text-[var(--primary)] bg-[var(--primary-light)] px-3 py-2 rounded-lg border border-[var(--primary)]/20 font-semibold"
+								>
+									{maxLogSizeMb} MB
+								</span>
+							</div>
+						</div>
+
+						<!-- Presets for log size -->
+						<div class="flex flex-col gap-2 pt-2 border-t border-[var(--border-color)]/50">
+							<span class="text-[0.725rem] text-[var(--text-muted)] font-medium"
+								>{t('settings.quickPresets')}</span
+							>
+							<div class="flex flex-wrap gap-2">
+								{#each [5, 10, 25, 50, 100] as size}
+									{@const isActive = maxLogSizeMb === size}
+									<button
+										type="button"
+										class="px-3 py-1.5 bg-[var(--bg-surface)] border text-[var(--text-muted)] rounded-lg text-xs font-medium cursor-pointer transition-all hover:border-[var(--primary)] hover:text-[var(--text-primary)] {isActive
+											? '!bg-[var(--primary)] !text-white !border-[var(--primary)] font-semibold shadow-xs'
+											: 'border-[var(--border-color)]'}"
+										onclick={() => (maxLogSizeMb = size)}
+									>
+										{size} MB{size === 10 ? ' (default)' : ''}
 									</button>
 								{/each}
 							</div>

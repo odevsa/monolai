@@ -95,6 +95,13 @@ impl ModelService {
         let (exists, _) = check_model_file_exists(&models_dir, &model.flags);
         model.file_exists = exists;
 
+        tracing::info!(
+            target: "monolai",
+            "Model '{}' registered successfully with runtime '{}'",
+            model.id,
+            model.runtime
+        );
+
         Ok(model)
     }
 
@@ -121,43 +128,99 @@ impl ModelService {
         let (exists, _) = check_model_file_exists(&models_dir, &model.flags);
         model.file_exists = exists;
 
+        tracing::info!(
+            target: "monolai",
+            "Model '{}' configuration updated successfully",
+            id
+        );
+
         Ok(model)
     }
 
     pub async fn delete_model(&self, id: &str) -> AppResult<()> {
-        self.repo.delete(id).await
+        self.repo.delete(id).await?;
+        tracing::info!(
+            target: "monolai",
+            "Model '{}' deleted from registry",
+            id
+        );
+        Ok(())
     }
 
     pub async fn load_model(&self, id: &str) -> AppResult<RunningModelStatus> {
+        tracing::info!(
+            target: "monolai",
+            "Loading model '{}' into memory...",
+            id
+        );
         let cfg = self.config.read().await.clone();
-        load_model_process(
+        let status = load_model_process(
             &self.process_manager,
             &self.repo,
             &self.setting_repo,
             &cfg,
             id,
         )
-        .await
+        .await?;
+        tracing::info!(
+            target: "monolai",
+            "Model '{}' loaded successfully and ready (port: {})",
+            id,
+            status.port
+        );
+        Ok(status)
     }
 
     pub async fn swap_model(&self, id: &str) -> AppResult<RunningModelStatus> {
+        tracing::info!(
+            target: "monolai",
+            "Swapping active model to '{}'...",
+            id
+        );
         let cfg = self.config.read().await.clone();
-        swap_model_process(
+        let status = swap_model_process(
             &self.process_manager,
             &self.repo,
             &self.setting_repo,
             &cfg,
             id,
         )
-        .await
+        .await?;
+        tracing::info!(
+            target: "monolai",
+            "Model swapped successfully to '{}' (port: {})",
+            id,
+            status.port
+        );
+        Ok(status)
     }
 
     pub async fn unload_model(&self, id: &str) -> AppResult<()> {
-        unload_model_process(&self.process_manager, &self.setting_repo, id).await
+        tracing::info!(
+            target: "monolai",
+            "Unloading model '{}'...",
+            id
+        );
+        unload_model_process(&self.process_manager, &self.setting_repo, id).await?;
+        tracing::info!(
+            target: "monolai",
+            "Model '{}' unloaded successfully",
+            id
+        );
+        Ok(())
     }
 
     pub async fn unload_all_models(&self) -> AppResult<()> {
-        unload_all_model_processes(&self.process_manager, &self.setting_repo).await
+        tracing::info!(
+            target: "monolai",
+            "Unloading all active models from memory..."
+        );
+        unload_all_model_processes(&self.process_manager, &self.setting_repo).await?;
+        tracing::info!(
+            target: "monolai",
+            "All active models unloaded successfully"
+        );
+        Ok(())
     }
 
     pub async fn get_running_models(&self) -> Vec<RunningModelStatus> {

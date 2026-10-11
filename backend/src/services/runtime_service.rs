@@ -156,9 +156,19 @@ impl RuntimeService {
         let installer_mgr = self.installer_manager.clone();
         let rid = runtime_id.to_string();
 
+        tracing::info!(
+            target: "monolai",
+            "Initiated installation for runtime '{}' (hardware: {:?})",
+            rid,
+            hw
+        );
+
         tokio::spawn(async move {
+            tracing::info!(target: "monolai", "Started download and installation for runtime '{}'", rid);
             if let Err(err) = install_runtime(installer_mgr, runtimes_dir, &manifest, hw).await {
-                tracing::error!("Failed to install runtime '{}': {}", rid, err);
+                tracing::error!(target: "monolai", "Failed to install runtime '{}': {}", rid, err);
+            } else {
+                tracing::info!(target: "monolai", "Successfully installed runtime '{}'", rid);
             }
         });
 
@@ -185,7 +195,12 @@ impl RuntimeService {
             crate::core::config::expand_tilde(dir)
         };
 
-        uninstall_runtime(&runtimes_dir, runtime_id).map_err(AppError::internal)?;
+        tracing::info!(target: "monolai", "Uninstalling runtime '{}'...", runtime_id);
+        uninstall_runtime(&runtimes_dir, runtime_id).map_err(|e| {
+            tracing::error!(target: "monolai", "Failed to uninstall runtime '{}': {}", runtime_id, e);
+            AppError::internal(e)
+        })?;
+        tracing::info!(target: "monolai", "Successfully uninstalled runtime '{}'", runtime_id);
 
         self.installer_manager.update_progress(InstallProgress {
             runtime_id: runtime_id.to_string(),

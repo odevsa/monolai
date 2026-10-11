@@ -39,6 +39,11 @@ use utoipa::OpenApi;
         crate::handlers::settings::get_setting_handler,
         crate::handlers::settings::update_settings_handler,
         crate::handlers::settings::delete_setting_handler,
+        crate::handlers::logs::get_logs_handler,
+        crate::handlers::logs::get_log_services_handler,
+        crate::handlers::logs::logs_stream_handler,
+        crate::handlers::logs::clear_logs_handler,
+        crate::handlers::logs::download_logs_handler,
         crate::handlers::openai_proxy::v1_models_handler,
         crate::handlers::openai_proxy::v1_model_by_id_handler,
         crate::handlers::openai_proxy::v1_chat_completions_doc,
@@ -76,6 +81,8 @@ use utoipa::OpenApi;
             crate::domain::UpdateChatPayload,
             crate::domain::CreateChatMessagePayload,
             crate::domain::UpdateChatMessagePayload,
+            crate::domain::LogEntry,
+            crate::handlers::logs::LogOperationResponse,
             crate::domain::OpenAiModelItem,
             crate::domain::OpenAiModelList,
             crate::domain::OpenAiChatCompletionRequest,
@@ -94,6 +101,7 @@ use utoipa::OpenApi;
         (name = "Runtimes", description = "LLM execution runtime discovery, installation & management"),
         (name = "Models", description = "Model registry, scanning, and process lifecycle (load, swap, unload)"),
         (name = "Chats", description = "Local chat session and message management"),
+        (name = "Logs", description = "Real-time process logs, service filtering, streaming and log management"),
         (name = "Settings", description = "Key-value persistent application settings")
     ),
     info(
