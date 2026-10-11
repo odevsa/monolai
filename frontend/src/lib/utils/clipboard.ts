@@ -42,3 +42,22 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
 	return false;
 }
+
+/**
+ * Copies an image data URL or blob to the user's clipboard.
+ */
+export async function copyImageDataUrlToClipboard(imageSrc: string): Promise<boolean> {
+	if (!imageSrc || typeof navigator === 'undefined' || !navigator.clipboard?.write) {
+		return false;
+	}
+
+	try {
+		const res = await fetch(imageSrc);
+		const blob = await res.blob();
+		await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+		return true;
+	} catch (err) {
+		console.error('Failed to copy image to clipboard:', err);
+		return false;
+	}
+}

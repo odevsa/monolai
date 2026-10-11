@@ -1,61 +1,21 @@
 <script lang="ts">
 	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
 	import { generateImages } from '$lib/api/openai';
-	import {
-		Alert,
-		Badge,
-		Card,
-		FeatureGate,
-		ModelBadge,
-		ModelSelect,
-		PageHeader,
-		Select
-	} from '$lib/components/ui';
+	import { ImageLightboxModal, ImagePreviewCard, ImagePromptStudio } from '$lib/components/image';
+	import { FeatureGate, PageHeader } from '$lib/components/ui';
 	import { t, tArray } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
 	import { imageGalleryState } from '$lib/state';
 	import { featuresState, onFeaturesChange } from '$lib/state/features.svelte';
 	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
-	import { formatElapsedTime } from '$lib/utils/format';
-	import {
-		Check,
-		ChevronDown,
-		ChevronUp,
-		Copy,
-		Dices,
-		Download,
-		Image,
-		Image as ImageIcon,
-		Maximize,
-		RefreshCw,
-		SlidersVertical,
-		Sparkles,
-		X
-	} from '@lucide/svelte';
+	import { copyImageDataUrlToClipboard } from '$lib/utils/clipboard';
+	import { Image as ImageIcon } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
-	const SIZE_OPTIONS = [
-		{ value: '256x256', label: '256 × 256 (Square - Draft)' },
-		{ value: '512x512', label: '512 × 512 (Square - Fast)' },
-		{ value: '768x768', label: '768 × 768 (Square - Standard)' },
-		{ value: '1024x1024', label: '1024 × 1024 (Square - SDXL / FLUX)' },
-		{ value: '768x512', label: '768 × 512 (Landscape 3:2)' },
-		{ value: '512x768', label: '512 × 768 (Portrait 2:3)' },
-		{ value: '1024x768', label: '1024 × 768 (Landscape 4:3)' },
-		{ value: '768x1024', label: '768 × 1024 (Portrait 3:4)' }
-	];
-
-	const COUNT_OPTIONS = [
-		{ value: '1', label: '1 Image' },
-		{ value: '2', label: '2 Images' },
-		{ value: '4', label: '4 Images' }
-	];
-
-	// Component State
+	// Component & Generation State
 	let selectedModel = $state<string>('');
 	let randomPrompts = $derived(tArray('image.randomPrompts'));
 
-	// Generation Form State
 	let prompt = $state('');
 	let negativePrompt = $state('');
 	let selectedSize = $state('512x512');
@@ -63,7 +23,6 @@
 	let steps = $state(20);
 	let cfgScale = $state(7.5);
 	let seed = $state<number | string>('');
-	let showAdvanced = $state(false);
 
 	// Execution & Output State
 	let isGenerating = $state(false);
@@ -73,34 +32,9 @@
 	let generationAbortController: AbortController | null = null;
 	let currentResult = $state<GeneratedImage[]>([]);
 	let selectedResultImage = $state<GeneratedImage | null>(null);
-	let history = $derived(imageGalleryState.history);
-
-	$effect(() => {
-		if (imageGalleryState.selectionVersion > 0 && imageGalleryState.selectedImage) {
-			selectedResultImage = imageGalleryState.selectedImage;
-			currentResult = [imageGalleryState.selectedImage];
-		}
-	});
-
-	function handleModelUnloadInterruption(targetModelId?: string) {
-		if (!isGenerating) return;
-		if (!targetModelId || targetModelId === '*' || targetModelId === selectedModel) {
-			if (generationAbortController) {
-				generationAbortController.abort();
-				generationAbortController = null;
-			}
-			if (generationTimer) {
-				clearInterval(generationTimer);
-				generationTimer = null;
-			}
-			isGenerating = false;
-			generationError = t('image.interrupted');
-		}
-	}
 
 	// UI feedback states
 	let lightboxOpen = $state(false);
-	let copiedPrompt = $state(false);
 	let copiedImage = $state(false);
 
 	let activeRunningModels = $derived(runningModelsState.runningModels);
@@ -125,8 +59,6 @@
 		}
 	});
 
-	let currentModelRecord = $derived(registeredImageModels.find((m) => m.id === selectedModel));
-
 	$effect(() => {
 		if (registeredImageModels.length > 0) {
 			const saved =
@@ -147,8 +79,27 @@
 		}
 	});
 
-	function clearHistory() {
-		imageGalleryState.clearHistory();
+	$effect(() => {
+		if (imageGalleryState.selectionVersion > 0 && imageGalleryState.selectedImage) {
+			selectedResultImage = imageGalleryState.selectedImage;
+			currentResult = [imageGalleryState.selectedImage];
+		}
+	});
+
+	function handleModelUnloadInterruption(targetModelId?: string) {
+		if (!isGenerating) return;
+		if (!targetModelId || targetModelId === '*' || targetModelId === selectedModel) {
+			if (generationAbortController) {
+				generationAbortController.abort();
+				generationAbortController = null;
+			}
+			if (generationTimer) {
+				clearInterval(generationTimer);
+				generationTimer = null;
+			}
+			isGenerating = false;
+			generationError = t('image.interrupted');
+		}
 	}
 
 	async function handleGenerate() {
@@ -184,7 +135,6 @@
 			? rawPrompt
 			: `${rawPrompt} <sd_cpp_extra_args>${JSON.stringify(extraArgs)}</sd_cpp_extra_args>`;
 
-		// Standard OpenAI Images Generations Request body
 		const requestBody: Record<string, any> = {
 			model: selectedModel,
 			prompt: promptWithExtraArgs,
@@ -240,7 +190,7 @@
 			currentResult = generatedList;
 			selectedResultImage = generatedList[0] || null;
 
-			// Add to history
+			// Add to global gallery store
 			imageGalleryState.addImage(generatedList);
 		} catch (err: any) {
 			if (err.name === 'AbortError') {
@@ -255,13 +205,6 @@
 			}
 			generationAbortController = null;
 			isGenerating = false;
-		}
-	}
-
-	function handleKeyDown(e: KeyboardEvent) {
-		if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-			e.preventDefault();
-			handleGenerate();
 		}
 	}
 
@@ -297,7 +240,6 @@
 		}
 		if (item.seed !== undefined) {
 			seed = item.seed;
-			showAdvanced = true;
 		}
 		if (registeredImageModels.some((m) => m.id === item.model)) {
 			selectedModel = item.model;
@@ -315,16 +257,10 @@
 	}
 
 	async function copyImageToClipboard(item: GeneratedImage) {
-		try {
-			if (item.src.startsWith('data:image')) {
-				const res = await fetch(item.src);
-				const blob = await res.blob();
-				await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-				copiedImage = true;
-				setTimeout(() => (copiedImage = false), 2000);
-			}
-		} catch (err) {
-			console.error('Failed to copy image to clipboard:', err);
+		const success = await copyImageDataUrlToClipboard(item.src);
+		if (success) {
+			copiedImage = true;
+			setTimeout(() => (copiedImage = false), 2000);
 		}
 	}
 
@@ -366,13 +302,13 @@
 </script>
 
 <svelte:head>
-	<title>Monolai - Image</title>
+	<title>{t('app.title')} - {t('navigation.image')}</title>
 </svelte:head>
 
 <FeatureGate features={['image-generation']} showCard={true}>
 	<div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
 		<div class="flex flex-col gap-5 sm:gap-6">
-			<!-- Page Header matching Monolai design standards -->
+			<!-- Page Header -->
 			<PageHeader
 				title={t('image.pageTitle')}
 				subtitle={t('image.pageSubtitle')}
@@ -381,454 +317,51 @@
 
 			<!-- Main Generation Studio Grid -->
 			<div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-				<!-- Left Column: Controls & Prompt Studio (5 cols on lg) -->
+				<!-- Left Column: Controls & Prompt Studio -->
 				<div class="lg:col-span-5 flex flex-col gap-4">
-					<Card>
-						<div class="flex flex-col gap-4">
-							<div class="app-card-header pb-1">
-								<div class="flex items-center gap-2">
-									<Sparkles size={16} class="text-[var(--primary)]" />
-									<h3 class="app-card-title text-sm">Prompt Studio</h3>
-								</div>
-								{#if isModelRunning}
-									<Badge variant="success" pulse>Active</Badge>
-								{/if}
-							</div>
-
-							<!-- Model Selector -->
-							<div class="flex flex-col gap-1.5">
-								<div class="flex items-center justify-between">
-									<label
-										for="image-model-select"
-										class="text-xs font-semibold text-[var(--text-secondary)]"
-									>
-										{t('image.modelLabel')}
-									</label>
-								</div>
-
-								<ModelSelect
-									id="image-model-select"
-									bind:value={selectedModel}
-									models={registeredImageModels}
-									onopen={loadImageModels}
-									placeholder={t('image.selectModelPlaceholder')}
-									label={t('image.selectActiveModel')}
-									emptyText={t('image.noModelsRegistered')}
-								/>
-							</div>
-
-							<!-- Prompt Input -->
-							<div class="flex flex-col gap-1">
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-2">
-										<label
-											for="image-prompt"
-											class="text-xs font-semibold text-[var(--text-secondary)]"
-										>
-											Prompt
-										</label>
-										<span class="text-[11px] text-[var(--text-muted)]"> (Ctrl+Enter) </span>
-									</div>
-									<button
-										type="button"
-										class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
-										onclick={insertRandomPrompt}
-										title="Generate random prompt from the list"
-									>
-										<Dices size={13} class="text-[var(--primary)]" />
-										<span>Random</span>
-									</button>
-								</div>
-								<textarea
-									id="image-prompt"
-									bind:value={prompt}
-									onkeydown={handleKeyDown}
-									rows={4}
-									placeholder="Describe what you want to see in detail..."
-									class="w-full p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
-									disabled={isGenerating}></textarea>
-							</div>
-
-							<!-- Negative Prompt Toggle -->
-							<div class="flex flex-col gap-1">
-								<label
-									for="image-negative-prompt"
-									class="text-xs font-semibold text-[var(--text-secondary)]"
-								>
-									Negative Prompt
-								</label>
-								<textarea
-									bind:value={negativePrompt}
-									rows={2}
-									placeholder="Items or styles to avoid (e.g. blurry, deformed, low quality, artifacts)..."
-									class="w-full p-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)]"
-									disabled={isGenerating}></textarea>
-							</div>
-
-							<!-- Dimensions & Quantity Row -->
-							<div class="grid grid-cols-2 gap-3 pt-1">
-								<div class="flex flex-col gap-1.5">
-									<label
-										for="image-size-select"
-										class="text-xs font-semibold text-[var(--text-secondary)]"
-									>
-										Dimensions
-									</label>
-									<Select
-										bind:value={selectedSize}
-										options={SIZE_OPTIONS}
-										placeholder="Select size..."
-									/>
-								</div>
-
-								<div class="flex flex-col gap-1">
-									<label
-										for="image-count-select"
-										class="text-xs font-semibold text-[var(--text-secondary)]"
-									>
-										Quantity (n)
-									</label>
-									<Select
-										bind:value={selectedCount}
-										options={COUNT_OPTIONS}
-										placeholder="Select count..."
-									/>
-								</div>
-							</div>
-
-							<!-- Advanced Parameters Accordion -->
-							<div class="border-t border-[var(--border-color)] pt-3 flex flex-col gap-3">
-								<button
-									type="button"
-									class="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)] bg-transparent border-0 p-0 cursor-pointer hover:text-[var(--text-primary)]"
-									onclick={() => (showAdvanced = !showAdvanced)}
-								>
-									<div class="flex items-center gap-1.5">
-										<SlidersVertical size={13} />
-										<span>Advanced Parameters</span>
-									</div>
-									{#if showAdvanced}
-										<ChevronUp size={14} />
-									{:else}
-										<ChevronDown size={14} />
-									{/if}
-								</button>
-
-								{#if showAdvanced}
-									<div class="grid grid-cols-2 gap-3 pt-1">
-										<div class="flex flex-col gap-1">
-											<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
-												<span>Steps</span>
-												<span class="font-mono text-[var(--text-primary)]">{steps}</span>
-											</div>
-											<input
-												type="range"
-												min="5"
-												max="50"
-												step="1"
-												bind:value={steps}
-												class="w-full accent-[var(--primary)] cursor-pointer"
-											/>
-										</div>
-
-										<div class="flex flex-col gap-1">
-											<div class="flex justify-between text-[11px] text-[var(--text-muted)]">
-												<span>CFG Scale</span>
-												<span class="font-mono text-[var(--text-primary)]">{cfgScale}</span>
-											</div>
-											<input
-												type="range"
-												min="1"
-												max="20"
-												step="0.5"
-												bind:value={cfgScale}
-												class="w-full accent-[var(--primary)] cursor-pointer"
-											/>
-										</div>
-
-										<div class="col-span-2 flex flex-col gap-1">
-											<div class="flex items-center justify-between">
-												<label for="image-seed-input" class="text-[11px] text-[var(--text-muted)]">
-													{t('image.seedLabel')}
-												</label>
-												<div class="flex items-center gap-2">
-													<button
-														type="button"
-														class="text-[10px] text-[var(--primary)] hover:underline flex items-center gap-1 cursor-pointer"
-														onclick={() => {
-															seed = Math.floor(Math.random() * 2147483647);
-														}}
-														title={t('image.randomizeSeed')}
-													>
-														<Dices size={12} />
-														<span>{t('image.randomizeSeed')}</span>
-													</button>
-													{#if seed !== ''}
-														<button
-															type="button"
-															class="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-															onclick={() => {
-																seed = '';
-															}}
-															title={t('image.clearSeed')}
-														>
-															{t('image.clearSeed')}
-														</button>
-													{/if}
-												</div>
-											</div>
-											<input
-												id="image-seed-input"
-												type="number"
-												bind:value={seed}
-												placeholder={t('image.seedPlaceholder')}
-												class="w-full px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-											/>
-										</div>
-									</div>
-								{/if}
-							</div>
-
-							<!-- Generate Action Button -->
-							<div class="pt-2">
-								<button
-									type="button"
-									class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all"
-									disabled={isGenerating || !prompt.trim() || !selectedModel}
-									onclick={handleGenerate}
-								>
-									{#if isGenerating}
-										<RefreshCw size={16} class="animate-spin" />
-										<span>Generating... ({formatElapsedTime(generationElapsed)})</span>
-									{:else}
-										<Sparkles size={16} />
-										<span>Generate Image</span>
-									{/if}
-								</button>
-							</div>
-
-							{#if generationError}
-								<div class="pt-2">
-									<Alert variant="error" title="Generation Error:" message={generationError} />
-								</div>
-							{/if}
-						</div>
-					</Card>
+					<ImagePromptStudio
+						bind:selectedModel
+						bind:prompt
+						bind:negativePrompt
+						bind:selectedSize
+						bind:selectedCount
+						bind:steps
+						bind:cfgScale
+						bind:seed
+						{isGenerating}
+						{isModelRunning}
+						{generationElapsed}
+						{generationError}
+						models={registeredImageModels}
+						onGenerate={handleGenerate}
+						onLoadModels={loadImageModels}
+						onInsertRandomPrompt={insertRandomPrompt}
+					/>
 				</div>
 
-				<!-- Right Column: Showcase & Gallery (7 cols on lg) -->
+				<!-- Right Column: Showcase & Preview Card -->
 				<div class="lg:col-span-7 flex flex-col gap-5">
-					<!-- Active / Latest Image Card -->
-					<Card class="overflow-hidden">
-						<div class="app-card-header pb-1">
-							<div class="flex items-center gap-2">
-								<ImageIcon size={16} class="text-[var(--primary)]" />
-								<h3 class="app-card-title text-sm">Preview</h3>
-							</div>
-
-							{#if selectedResultImage}
-								<div class="flex items-center ml-auto gap-1.5">
-									<button
-										type="button"
-										class="app-btn app-btn-secondary app-btn-sm"
-										onclick={() => downloadImage(selectedResultImage!)}
-										title="Download image"
-									>
-										<Download size={13} />
-									</button>
-
-									<button
-										type="button"
-										class="app-btn app-btn-secondary app-btn-sm"
-										onclick={() => reuseParameters(selectedResultImage!)}
-										title="Reuse prompt"
-									>
-										<Copy size={13} />
-									</button>
-
-									<button
-										type="button"
-										class="app-btn app-btn-secondary app-btn-sm"
-										onclick={() => copyImageToClipboard(selectedResultImage!)}
-										title="Copy image"
-									>
-										<Image size={13} />
-									</button>
-
-									<button
-										type="button"
-										class="app-btn app-btn-secondary app-btn-sm"
-										onclick={() => (lightboxOpen = true)}
-										title="Fullscreen preview"
-									>
-										<Maximize size={13} />
-									</button>
-								</div>
-							{/if}
-						</div>
-
-						<!-- Main Image Display Container -->
-						<div
-							class="w-full min-h-[380px] max-h-[580px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-center relative overflow-hidden group select-none"
-						>
-							{#if isGenerating}
-								<!-- Loading State -->
-								<div class="flex flex-col items-center justify-center gap-3 p-8 text-center">
-									<div class="relative w-16 h-16 flex items-center justify-center">
-										<div
-											class="absolute inset-0 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
-										></div>
-										<Sparkles size={24} class="text-[var(--primary)] animate-pulse" />
-									</div>
-								</div>
-							{:else if selectedResultImage}
-								<!-- Display Image -->
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-								<img
-									src={selectedResultImage.src}
-									alt={selectedResultImage.prompt}
-									class="w-full h-full object-contain max-h-[560px] cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
-									onclick={() => (lightboxOpen = true)}
-								/>
-
-								<!-- Hover Overlay Pill with Meta -->
-								<div
-									class="absolute bottom-3 left-3 right-3 p-3 rounded-lg bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)]/80 flex items-center justify-between gap-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-auto"
-								>
-									<span class="truncate text-[var(--text-primary)] font-medium">
-										"{selectedResultImage.prompt}"
-									</span>
-									<div class="flex items-center gap-2 shrink-0">
-										<Badge variant="muted" rounded="rounded-md">{selectedResultImage.size}</Badge>
-										{#if selectedResultImage.generationTimeSecs}
-											<Badge variant="muted" rounded="rounded-md">
-												{formatElapsedTime(selectedResultImage.generationTimeSecs)}
-											</Badge>
-										{/if}
-									</div>
-								</div>
-							{:else}
-								<!-- Empty State -->
-								<div
-									class="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm"
-								>
-									<div
-										class="w-12 h-12 rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] flex items-center justify-center border border-[var(--border-color)]"
-									>
-										<ImageIcon size={24} />
-									</div>
-									<div class="flex flex-col gap-1">
-										<span class="text-sm font-semibold text-[var(--text-primary)]">
-											No Image Generated Yet
-										</span>
-										<span class="text-xs text-[var(--text-muted)] leading-relaxed">
-											Enter a prompt and click "Generate Image" to render images with your local
-											diffusion model.
-										</span>
-									</div>
-								</div>
-							{/if}
-						</div>
-
-						<!-- Multiple Outputs Carousel/Strip if n > 1 -->
-						{#if currentResult.length > 1}
-							<div class="flex flex-col gap-2 pt-2">
-								<span class="text-xs font-semibold text-[var(--text-muted)]">
-									Generated Variations ({currentResult.length})
-								</span>
-								<div class="flex gap-2.5 overflow-x-auto pb-1">
-									{#each currentResult as item (item.id)}
-										<button
-											type="button"
-											class="w-18 h-18 rounded-lg overflow-hidden shrink-0 border-2 cursor-pointer transition-all bg-[var(--bg-primary)] p-0 {selectedResultImage?.id ===
-											item.id
-												? 'border-[var(--primary)] shadow-sm'
-												: 'border-transparent opacity-70 hover:opacity-100'}"
-											onclick={() => (selectedResultImage = item)}
-										>
-											<img src={item.src} alt="Variation" class="w-full h-full object-cover" />
-										</button>
-									{/each}
-								</div>
-							</div>
-						{/if}
-					</Card>
+					<ImagePreviewCard
+						selectedImage={selectedResultImage}
+						variations={currentResult}
+						{isGenerating}
+						{copiedImage}
+						onDownload={() => selectedResultImage && downloadImage(selectedResultImage)}
+						onReuse={() => selectedResultImage && reuseParameters(selectedResultImage)}
+						onCopy={() => selectedResultImage && copyImageToClipboard(selectedResultImage)}
+						onOpenLightbox={() => (lightboxOpen = true)}
+						onSelectVariation={(item) => (selectedResultImage = item)}
+					/>
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Lightbox Modal Preview -->
-	{#if lightboxOpen && selectedResultImage}
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-4"
-			onclick={() => (lightboxOpen = false)}
-		>
-			<div
-				class="relative max-w-5xl max-h-[90vh] flex flex-col items-center bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-2xl p-4 gap-3 pointer-events-auto"
-				onclick={(e) => e.stopPropagation()}
-			>
-				<!-- Top Bar inside Modal -->
-				<div
-					class="w-full flex items-center justify-between pb-2 border-b border-[var(--border-color)]"
-				>
-					<div class="flex items-center gap-2 min-w-0">
-						<ModelBadge model={selectedResultImage.model} variant="inline" class="text-xs" />
-						<Badge variant="muted" rounded="rounded-md">{selectedResultImage.size}</Badge>
-						{#if selectedResultImage.generationTimeSecs}
-							<Badge variant="muted" rounded="rounded-md"
-								>{formatElapsedTime(selectedResultImage.generationTimeSecs)}</Badge
-							>
-						{/if}
-					</div>
-
-					<div class="flex items-center gap-2">
-						<button
-							type="button"
-							class="app-btn app-btn-secondary app-btn-sm"
-							onclick={() => downloadImage(selectedResultImage!)}
-							title="Download image"
-						>
-							<Download size={13} />
-							<span>Download</span>
-						</button>
-						<button
-							type="button"
-							class="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-hover)] text-[var(--text-muted)] border-0 cursor-pointer hover:text-[var(--text-primary)]"
-							onclick={() => (lightboxOpen = false)}
-							title="Close modal"
-						>
-							<X size={16} />
-						</button>
-					</div>
-				</div>
-
-				<!-- Image in Modal -->
-				<div class="flex-1 min-h-0 flex items-center justify-center max-h-[70vh]">
-					<img
-						src={selectedResultImage.src}
-						alt={selectedResultImage.prompt}
-						class="max-w-full max-h-[70vh] object-contain rounded-lg"
-					/>
-				</div>
-
-				<!-- Prompt details at bottom -->
-				<div
-					class="w-full p-2 rounded-lg bg-[var(--bg-surface-hover)] text-xs text-[var(--text-secondary)]"
-				>
-					<span class="font-semibold text-[var(--text-primary)]">Prompt:</span>
-					{selectedResultImage.prompt}
-					{#if selectedResultImage.negativePrompt}
-						<div class="mt-1">
-							<span class="font-semibold text-[var(--text-primary)]">Negative Prompt:</span>
-							{selectedResultImage.negativePrompt}
-						</div>
-					{/if}
-				</div>
-			</div>
-		</div>
-	{/if}
+	<!-- Fullscreen Lightbox Modal -->
+	<ImageLightboxModal
+		image={selectedResultImage}
+		isOpen={lightboxOpen}
+		onClose={() => (lightboxOpen = false)}
+		onDownload={downloadImage}
+	/>
 </FeatureGate>

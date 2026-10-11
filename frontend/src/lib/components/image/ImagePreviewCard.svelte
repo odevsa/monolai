@@ -1,0 +1,104 @@
+<script lang="ts">
+	import { Card } from '$lib/components/ui';
+	import { t } from '$lib/i18n';
+	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
+	import { Check, Copy, Download, Image as ImageIcon, Maximize } from '@lucide/svelte';
+	import ImagePreviewDisplay from './ImagePreviewDisplay.svelte';
+	import ImageVariationStrip from './ImageVariationStrip.svelte';
+
+	interface ImagePreviewCardProps {
+		selectedImage: GeneratedImage | null;
+		variations: GeneratedImage[];
+		isGenerating: boolean;
+		copiedImage?: boolean;
+		onDownload: () => void;
+		onReuse: () => void;
+		onCopy: () => void;
+		onOpenLightbox: () => void;
+		onSelectVariation: (item: GeneratedImage) => void;
+	}
+
+	let {
+		selectedImage = null,
+		variations = [],
+		isGenerating = false,
+		copiedImage = false,
+		onDownload,
+		onReuse,
+		onCopy,
+		onOpenLightbox,
+		onSelectVariation
+	}: ImagePreviewCardProps = $props();
+</script>
+
+<Card class="overflow-hidden">
+	<div class="flex flex-col gap-4">
+		<!-- Header with Action Toolbar -->
+		<div class="flex items-center justify-between pb-1 border-b border-[var(--border-color)]">
+			<div class="flex items-center gap-2">
+				<ImageIcon size={16} class="text-[var(--primary)]" />
+				<h3 class="m-0 text-sm font-bold text-[var(--text-primary)]">
+					{t('image.preview')}
+				</h3>
+			</div>
+
+			{#if selectedImage}
+				<div class="flex items-center gap-1.5 ml-auto">
+					<button
+						type="button"
+						class="app-btn app-btn-secondary app-btn-sm"
+						onclick={onDownload}
+						title={t('image.downloadImage')}
+						aria-label={t('image.downloadImage')}
+					>
+						<Download size={13} />
+					</button>
+
+					<button
+						type="button"
+						class="app-btn app-btn-secondary app-btn-sm"
+						onclick={onReuse}
+						title={t('image.reusePrompt')}
+						aria-label={t('image.reusePrompt')}
+					>
+						<Copy size={13} />
+					</button>
+
+					<button
+						type="button"
+						class="app-btn app-btn-secondary app-btn-sm"
+						onclick={onCopy}
+						title={t('image.copyImage')}
+						aria-label={t('image.copyImage')}
+					>
+						{#if copiedImage}
+							<Check size={13} class="text-[var(--success-text)]" />
+						{:else}
+							<ImageIcon size={13} />
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						class="app-btn app-btn-secondary app-btn-sm"
+						onclick={onOpenLightbox}
+						title={t('image.fullscreenPreview')}
+						aria-label={t('image.fullscreenPreview')}
+					>
+						<Maximize size={13} />
+					</button>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Main Image Display Canvas -->
+		<ImagePreviewDisplay {selectedImage} {isGenerating} {onOpenLightbox} />
+
+		<!-- Multiple Variations Strip -->
+		<ImageVariationStrip
+			items={variations}
+			selectedId={selectedImage?.id}
+			onSelect={onSelectVariation}
+		/>
+	</div>
+</Card>
