@@ -23,10 +23,10 @@
 	let dismissed = $state(false);
 
 	const variantStyles = {
-		error: 'bg-red-500/10 border-red-500/25 text-red-400',
-		success: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400',
-		warning: 'bg-amber-500/10 border-amber-500/25 text-amber-400',
-		info: 'bg-[var(--primary-light)] border-[var(--primary-focus)] text-[var(--primary)]'
+		error: 'bg-[var(--danger-light)] border-[var(--danger-border)] text-[var(--danger-text)]',
+		success: 'bg-[var(--success-light)] border-[var(--success-border)] text-[var(--success-text)]',
+		warning: 'bg-[var(--warning-light)] border-[var(--warning-border)] text-[var(--warning-text)]',
+		info: 'bg-[var(--info-light)] border-[var(--info-border)] text-[var(--info-text)]'
 	};
 
 	function handleDismiss() {

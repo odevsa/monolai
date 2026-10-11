@@ -79,10 +79,14 @@ The backend is structured into four primary layers:
    - All OpenAI-compatible chat completions (`/v1/chat/completions`) and image generation (`/v1/images/generations`) must be dispatched through the official `openai` JS/TS client configured in `src/lib/api/openai.ts`.
 5. **Internationalization (i18n)**:
    - Mandatory use of `t('key.path')` via `src/lib/i18n`. Hardcoded UI strings in components are forbidden. All user-facing strings are stored in `src/lib/i18n/locales/en.json`.
-6. **Styling & Layout Inviolability**:
-   - Use Tailwind CSS v4 design tokens and CSS variables (`var(--bg-primary)`, `var(--text-primary)`, `var(--primary)`, etc.).
-   - Do not use inline hardcoded HEX color values or blanket `text-white` on text elements; maintain theme consistency across all color schemes.
-   - The layout shell (sidebar, floating header tabs/actions, floating glassmorphic chat input) is structurally fixed and must not be broken or stripped during feature development.
+6. **Styling, Theme Tokens & Zero Hardcoded Colors Policy**:
+   - **Centralized Theme Tokens**: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/app.css` under `@theme` and `[data-theme='...']`. Components must NEVER define disconnected theme blocks, local theme overrides, or arbitrary color values.
+   - **Mandatory Semantic CSS Variables**: Always use semantic theme tokens:
+     - Core surfaces & text: `var(--bg-primary)`, `var(--bg-surface)`, `var(--bg-surface-hover)`, `var(--border-color)`, `var(--border-hover)`, `var(--text-primary)`, `var(--text-secondary)`, `var(--text-muted)`.
+     - Brand accent: `var(--primary)`, `var(--primary-hover)`, `var(--primary-light)`, `var(--primary-focus)`.
+     - Status & feedback: `var(--success)`, `var(--warning)`, `var(--danger)`, `var(--info)` along with their semantic sub-variants (`-light`, `-border`, `-text`, `-hover`, `-focus`).
+   - **Zero Hardcoded Colors**: Absolutely NO inline hardcoded HEX values (`#...`), raw `rgb()`/`rgba()`, or arbitrary Tailwind utility colors (e.g., `text-red-500`, `bg-emerald-500`, `text-amber-400`, `text-white`, `bg-black`). Use the corresponding theme token (`text-[var(--danger-text)]`, `bg-[var(--success-light)]`, etc.) to guarantee seamless compatibility across all 11 themes.
+   - **Layout Shell Inviolability**: The layout shell (sidebar, floating header tabs/actions, floating glassmorphic chat input) is structurally fixed and must not be broken or stripped during feature development.
 7. **Componentization & Subcomponentization (DRY Principle)**:
    - Avoid monolithic components that lump together views, event listeners, and business logic for multiple unrelated features or routes into a single file.
    - Extract route-specific or contextual content (e.g., chat history, image galleries, system metrics in sidebars) into isolated components that only instantiate and run effects when their corresponding view is active.

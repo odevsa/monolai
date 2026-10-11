@@ -119,7 +119,7 @@
 						</a>
 						<button
 							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] p-1 mr-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
+							class="bg-transparent border-0 text-[var(--text-muted)] p-1 mr-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--danger-text)]"
 							onclick={(e) => deleteChat(chat.id, e)}
 							title="Delete chat"
 							aria-label="Delete chat"

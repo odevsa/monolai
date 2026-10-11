@@ -56,9 +56,9 @@
 				<div
 					class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {current.variant ===
 					'danger'
-						? 'bg-red-500/15 text-red-400'
+						? 'bg-[var(--danger-light)] text-[var(--danger-text)]'
 						: current.variant === 'warning'
-							? 'bg-amber-500/15 text-amber-400'
+							? 'bg-[var(--warning-light)] text-[var(--warning-text)]'
 							: 'bg-[var(--primary-light)] text-[var(--primary)]'}"
 				>
 					{#if current.variant === 'danger'}

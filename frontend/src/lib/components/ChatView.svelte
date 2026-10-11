@@ -1626,7 +1626,7 @@
 					{#if isGenerating}
 						<button
 							type="button"
-							class="send-btn stop-btn"
+							class="send-btn"
 							onclick={handleStopGeneration}
 							aria-label="Stop Generation"
 							title="Stop Generation"
@@ -2075,10 +2075,6 @@
 	.send-btn:disabled {
 		opacity: 0.35;
 		cursor: not-allowed;
-	}
-
-	.send-btn.stop-btn {
-		background-color: #ef4444;
 	}
 
 	.mobile-backdrop {

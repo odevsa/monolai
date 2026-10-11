@@ -37,7 +37,7 @@
 			{#if loadedModels.length > 0}
 				<button
 					type="button"
-					class="bg-transparent border-0 text-[var(--text-muted)] text-[0.7rem] cursor-pointer px-1 py-0.5 rounded transition-colors hover:text-red-500"
+					class="bg-transparent border-0 text-[var(--text-muted)] text-[0.7rem] cursor-pointer px-1 py-0.5 rounded transition-colors hover:text-[var(--danger-text)]"
 					onclick={unloadAllModels}
 					title={t('navigation.unloadAll')}
 				>
@@ -66,10 +66,10 @@
 						<div class="flex items-center gap-2 min-w-0">
 							<span
 								class="w-2 h-2 rounded-full shrink-0 {statusType === 'ready'
-									? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] animate-pulse'
+									? 'bg-[var(--success)] shadow-[0_0_6px_var(--success)] animate-pulse'
 									: statusType === 'loading'
-										? 'bg-amber-500 animate-pulse'
-										: 'bg-red-500'}"
+										? 'bg-[var(--warning)] animate-pulse'
+										: 'bg-[var(--danger)]'}"
 								title={statusType === 'ready'
 									? 'Active'
 									: statusType === 'loading'
@@ -86,7 +86,7 @@
 
 						<button
 							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-1 rounded-md flex items-center justify-center transition-colors shrink-0 hover:bg-red-500/15 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+							class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-1 rounded-md flex items-center justify-center transition-colors shrink-0 hover:bg-[var(--danger-light)] hover:text-[var(--danger-text)] disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={isUnloading}
 							onclick={() => unloadModel(model.model_id)}
 							title="Unload model"
@@ -106,7 +106,7 @@
 			title="{loadedModels.length} model(s) loaded"
 		>
 			<span
-				class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] animate-pulse"
+				class="w-2.5 h-2.5 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success)] animate-pulse"
 			></span>
 		</div>
 	{/if}

@@ -66,7 +66,7 @@
 			{#if imageGalleryState.history.length > 0}
 				<button
 					type="button"
-					class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-red-500 hover:bg-[var(--bg-hover)]"
+					class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-[var(--danger-text)] hover:bg-[var(--bg-hover)]"
 					onclick={clearImageHistory}
 					title={t('image.clearHistory')}
 					aria-label={t('image.clearHistory')}
@@ -133,7 +133,7 @@
 
 						<button
 							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] p-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 shrink-0"
+							class="bg-transparent border-0 text-[var(--text-muted)] p-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--danger-text)] shrink-0"
 							onclick={(e) => deleteSingleImage(item.id, e)}
 							title={t('image.deleteImage')}
 							aria-label={t('image.deleteImage')}

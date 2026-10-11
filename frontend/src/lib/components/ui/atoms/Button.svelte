@@ -32,7 +32,7 @@
 		secondary:
 			'bg-[var(--btn-bg)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--btn-hover)] hover:border-[var(--border-hover)]',
 		danger:
-			'bg-red-500/12 text-red-400 border border-red-500/25 hover:bg-red-500/22 hover:border-red-500/35',
+			'bg-[var(--danger-light)] text-[var(--danger-text)] border border-[var(--danger-border)] hover:bg-[var(--danger-focus)] hover:border-[var(--danger)]',
 		ghost:
 			'bg-transparent text-[var(--text-secondary)] border border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
 		glass:

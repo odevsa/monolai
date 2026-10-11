@@ -18,18 +18,18 @@
 	} = $props();
 
 	const variantClasses = {
-		success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-		warning: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-		danger: 'bg-red-500/15 text-red-400 border-red-500/30',
+		success: 'bg-[var(--success-light)] text-[var(--success-text)] border-[var(--success-border)]',
+		warning: 'bg-[var(--warning-light)] text-[var(--warning-text)] border-[var(--warning-border)]',
+		danger: 'bg-[var(--danger-light)] text-[var(--danger-text)] border-[var(--danger-border)]',
 		primary: 'bg-[var(--primary-light)] text-[var(--primary)] border-[var(--primary-focus)]',
 		muted: 'bg-white/5 text-[var(--text-muted)] border-[var(--border-color)]'
 	};
 
 	const dotClasses = {
-		success: 'bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.5)]',
-		warning: 'bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]',
-		danger: 'bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]',
-		primary: 'bg-[var(--primary)] shadow-[0_0_6px_rgba(99,102,241,0.5)]',
+		success: 'bg-[var(--success)] shadow-[0_0_6px_var(--success)]',
+		warning: 'bg-[var(--warning)] shadow-[0_0_6px_var(--warning)]',
+		danger: 'bg-[var(--danger)] shadow-[0_0_6px_var(--danger)]',
+		primary: 'bg-[var(--primary)] shadow-[0_0_6px_var(--primary-focus)]',
 		muted: 'bg-[var(--text-muted)]'
 	};
 </script>
