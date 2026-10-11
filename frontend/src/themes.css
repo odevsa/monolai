@@ -1,0 +1,1014 @@
+@theme {
+	/* Brand Primary */
+	--color-primary: var(--primary);
+	--color-primary-hover: var(--primary-hover);
+	--color-primary-light: var(--primary-light);
+	--color-primary-focus: var(--primary-focus);
+
+	/* Surfaces & Backgrounds */
+	--color-bg-primary: var(--bg-primary);
+	--color-bg-surface: var(--bg-surface);
+	--color-bg-surface-hover: var(--bg-surface-hover);
+	--color-bg-sidebar: var(--bg-sidebar);
+	--color-bg-hover: var(--bg-hover);
+
+	/* Borders */
+	--color-border: var(--border-color);
+	--color-border-hover: var(--border-hover);
+
+	/* Typography */
+	--color-text-primary: var(--text-primary);
+	--color-text-secondary: var(--text-secondary);
+	--color-text-muted: var(--text-muted);
+
+	/* Button Controls */
+	--color-btn-bg: var(--btn-bg);
+	--color-btn-hover: var(--btn-hover);
+	--color-btn-text: var(--btn-text);
+
+	/* Semantic Status: Success */
+	--color-success: var(--success);
+	--color-success-hover: var(--success-hover);
+	--color-success-light: var(--success-light);
+	--color-success-border: var(--success-border);
+	--color-success-text: var(--success-text);
+
+	/* Semantic Status: Warning */
+	--color-warning: var(--warning);
+	--color-warning-hover: var(--warning-hover);
+	--color-warning-light: var(--warning-light);
+	--color-warning-border: var(--warning-border);
+	--color-warning-text: var(--warning-text);
+
+	/* Semantic Status: Danger / Error */
+	--color-danger: var(--danger);
+	--color-danger-hover: var(--danger-hover);
+	--color-danger-light: var(--danger-light);
+	--color-danger-border: var(--danger-border);
+	--color-danger-text: var(--danger-text);
+
+	--color-error: var(--danger);
+	--color-error-hover: var(--danger-hover);
+	--color-error-light: var(--danger-light);
+	--color-error-border: var(--danger-border);
+	--color-error-text: var(--danger-text);
+
+	/* Semantic Status: Info */
+	--color-info: var(--info);
+	--color-info-hover: var(--info-hover);
+	--color-info-light: var(--info-light);
+	--color-info-border: var(--info-border);
+	--color-info-text: var(--info-text);
+
+	/* Backwards-compatibility aliases */
+	--color-primary-main: var(--primary);
+	--color-bg-app: var(--bg-primary);
+	--color-border-main: var(--border-color);
+	--color-border-color: var(--border-color);
+	--color-txt-primary: var(--text-primary);
+	--color-txt-secondary: var(--text-secondary);
+	--color-txt-muted: var(--text-muted);
+	--color-btn-txt: var(--btn-text);
+}
+
+@layer base {
+	/* ==============================================================================
+	   1. Classic Dark Theme (Default)
+	   ============================================================================== */
+	:root,
+	[data-theme='dark'] {
+		--primary: #6366f1;
+		--primary-hover: #818cf8;
+		--primary-light: rgba(99, 102, 241, 0.12);
+		--primary-focus: rgba(99, 102, 241, 0.25);
+
+		--bg-primary: #0a0a0c;
+		--bg-surface: #17171a;
+		--bg-surface-hover: #212126;
+		--bg-sidebar: #141416;
+		--bg-hover: #1f1f23;
+
+		--border-color: #232328;
+		--border-hover: #35353d;
+
+		--text-primary: #f4f4f5;
+		--text-secondary: #a1a1aa;
+		--text-muted: #71717a;
+
+		--progress-bg: #27272a;
+		--progress-fill: #6366f1;
+
+		--badge-bg: #1f1f23;
+		--badge-border: #35353d;
+		--badge-text: #a1a1aa;
+
+		--btn-bg: #1e1e22;
+		--btn-hover: #2a2a30;
+		--btn-text: #f4f4f5;
+
+		--logo-slash: #ffffff;
+
+		/* Semantic Status: Success */
+		--success: #10b981;
+		--success-hover: #059669;
+		--success-light: rgba(16, 185, 129, 0.12);
+		--success-border: rgba(16, 185, 129, 0.3);
+		--success-text: #34d399;
+		--success-focus: rgba(16, 185, 129, 0.22);
+
+		/* Semantic Status: Warning */
+		--warning: #f59e0b;
+		--warning-hover: #d97706;
+		--warning-light: rgba(245, 158, 11, 0.12);
+		--warning-border: rgba(245, 158, 11, 0.3);
+		--warning-text: #fbbf24;
+		--warning-focus: rgba(245, 158, 11, 0.22);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #ef4444;
+		--danger-hover: #dc2626;
+		--danger-light: rgba(239, 68, 68, 0.12);
+		--danger-border: rgba(239, 68, 68, 0.3);
+		--danger-text: #f87171;
+		--danger-focus: rgba(239, 68, 68, 0.22);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #3b82f6;
+		--info-hover: #2563eb;
+		--info-light: rgba(59, 130, 246, 0.12);
+		--info-border: rgba(59, 130, 246, 0.3);
+		--info-text: #60a5fa;
+		--info-focus: rgba(59, 130, 246, 0.22);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #71717a;
+		--syntax-punctuation: #a1a1aa;
+		--syntax-tag: #f43f5e;
+		--syntax-string: #10b981;
+		--syntax-operator: #38bdf8;
+		--syntax-keyword: #818cf8;
+		--syntax-function: #fbbf24;
+		--syntax-variable: #f97316;
+	}
+
+	/* ==============================================================================
+	   2. Classic Light Theme
+	   ============================================================================== */
+	[data-theme='light'] {
+		--primary: #6366f1;
+		--primary-hover: #4f46e5;
+		--primary-light: rgba(99, 102, 241, 0.1);
+		--primary-focus: rgba(99, 102, 241, 0.2);
+
+		--bg-primary: #f4f4f6;
+		--bg-surface: #ffffff;
+		--bg-surface-hover: #f1f3f5;
+		--bg-sidebar: #eaebee;
+		--bg-hover: #e2e4e9;
+
+		--border-color: #e3e6ed;
+		--border-hover: #ced4da;
+
+		--text-primary: #111827;
+		--text-secondary: #4b5563;
+		--text-muted: #6b7280;
+
+		--progress-bg: #e5e7eb;
+		--progress-fill: #6366f1;
+
+		--badge-bg: #f3f4f6;
+		--badge-border: #e5e7eb;
+		--badge-text: #4b5563;
+
+		--btn-bg: #ffffff;
+		--btn-hover: #f3f4f6;
+		--btn-text: #111827;
+
+		--logo-slash: #111827;
+
+		/* Semantic Status: Success */
+		--success: #059669;
+		--success-hover: #047857;
+		--success-light: rgba(5, 150, 105, 0.1);
+		--success-border: rgba(5, 150, 105, 0.25);
+		--success-text: #047857;
+		--success-focus: rgba(5, 150, 105, 0.2);
+
+		/* Semantic Status: Warning */
+		--warning: #d97706;
+		--warning-hover: #b45309;
+		--warning-light: rgba(217, 119, 6, 0.1);
+		--warning-border: rgba(217, 119, 6, 0.25);
+		--warning-text: #b45309;
+		--warning-focus: rgba(217, 119, 6, 0.2);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #dc2626;
+		--danger-hover: #b91c1c;
+		--danger-light: rgba(220, 38, 38, 0.1);
+		--danger-border: rgba(220, 38, 38, 0.25);
+		--danger-text: #b91c1c;
+		--danger-focus: rgba(220, 38, 38, 0.2);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #0284c7;
+		--info-hover: #0369a1;
+		--info-light: rgba(2, 132, 199, 0.1);
+		--info-border: rgba(2, 132, 199, 0.25);
+		--info-text: #0369a1;
+		--info-focus: rgba(2, 132, 199, 0.2);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #6b7280;
+		--syntax-punctuation: #4b5563;
+		--syntax-tag: #dc2626;
+		--syntax-string: #059669;
+		--syntax-operator: #0284c7;
+		--syntax-keyword: #4f46e5;
+		--syntax-function: #b45309;
+		--syntax-variable: #c2410c;
+	}
+
+	/* ==============================================================================
+	   3. Catppuccin Mocha Theme
+	   ============================================================================== */
+	[data-theme='catppuccin'] {
+		--primary: #cba6f7;
+		--primary-hover: #b4befe;
+		--primary-light: rgba(203, 166, 247, 0.15);
+		--primary-focus: rgba(203, 166, 247, 0.3);
+
+		--bg-primary: #181825;
+		--bg-surface: #1e1e2e;
+		--bg-surface-hover: #313244;
+		--bg-sidebar: #11111b;
+		--bg-hover: #45475a;
+
+		--border-color: #313244;
+		--border-hover: #45475a;
+
+		--text-primary: #cdd6f4;
+		--text-secondary: #b4befe;
+		--text-muted: #a6adc8;
+
+		--progress-bg: #313244;
+		--progress-fill: #cba6f7;
+
+		--badge-bg: #313244;
+		--badge-border: #45475a;
+		--badge-text: #f5c2e7;
+
+		--btn-bg: #1e1e2e;
+		--btn-hover: #313244;
+		--btn-text: #cdd6f4;
+
+		/* Semantic Status: Success */
+		--success: #a6e3a1;
+		--success-hover: #94e2d5;
+		--success-light: rgba(166, 227, 161, 0.15);
+		--success-border: rgba(166, 227, 161, 0.3);
+		--success-text: #a6e3a1;
+		--success-focus: rgba(166, 227, 161, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #f9e2af;
+		--warning-hover: #fab387;
+		--warning-light: rgba(249, 226, 175, 0.15);
+		--warning-border: rgba(249, 226, 175, 0.3);
+		--warning-text: #f9e2af;
+		--warning-focus: rgba(249, 226, 175, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #f38ba8;
+		--danger-hover: #eba0ac;
+		--danger-light: rgba(243, 139, 168, 0.15);
+		--danger-border: rgba(243, 139, 168, 0.3);
+		--danger-text: #f38ba8;
+		--danger-focus: rgba(243, 139, 168, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #89dceb;
+		--info-hover: #74c7ec;
+		--info-light: rgba(137, 220, 235, 0.15);
+		--info-border: rgba(137, 220, 235, 0.3);
+		--info-text: #89dceb;
+		--info-focus: rgba(137, 220, 235, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #6c7086;
+		--syntax-punctuation: #bac2de;
+		--syntax-tag: #f38ba8;
+		--syntax-string: #a6e3a1;
+		--syntax-operator: #89dceb;
+		--syntax-keyword: #cba6f7;
+		--syntax-function: #89b4fa;
+		--syntax-variable: #fab387;
+	}
+
+	/* ==============================================================================
+	   4. VS Code Dark+ Theme
+	   ============================================================================== */
+	[data-theme='code'] {
+		--primary: #007acc;
+		--primary-hover: #0098ff;
+		--primary-light: rgba(0, 122, 204, 0.15);
+		--primary-focus: rgba(0, 122, 204, 0.3);
+
+		--bg-primary: #1e1e1e;
+		--bg-surface: #252526;
+		--bg-surface-hover: #2d2d2d;
+		--bg-sidebar: #181818;
+		--bg-hover: #37373d;
+
+		--border-color: #3c3c3c;
+		--border-hover: #505050;
+
+		--text-primary: #cccccc;
+		--text-secondary: #9cdcfe;
+		--text-muted: #858585;
+
+		--progress-bg: #3c3c3c;
+		--progress-fill: #007acc;
+
+		--badge-bg: #2d2d2d;
+		--badge-border: #3c3c3c;
+		--badge-text: #4ec9b0;
+
+		--btn-bg: #252526;
+		--btn-hover: #37373d;
+		--btn-text: #ffffff;
+
+		/* Semantic Status: Success */
+		--success: #4ec9b0;
+		--success-hover: #3dc9a0;
+		--success-light: rgba(78, 201, 176, 0.15);
+		--success-border: rgba(78, 201, 176, 0.3);
+		--success-text: #4ec9b0;
+		--success-focus: rgba(78, 201, 176, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #dcdcaa;
+		--warning-hover: #ce9178;
+		--warning-light: rgba(220, 220, 170, 0.15);
+		--warning-border: rgba(220, 220, 170, 0.3);
+		--warning-text: #dcdcaa;
+		--warning-focus: rgba(220, 220, 170, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #f48771;
+		--danger-hover: #ea614a;
+		--danger-light: rgba(244, 135, 113, 0.15);
+		--danger-border: rgba(244, 135, 113, 0.3);
+		--danger-text: #f48771;
+		--danger-focus: rgba(244, 135, 113, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #75beff;
+		--info-hover: #007acc;
+		--info-light: rgba(117, 190, 255, 0.15);
+		--info-border: rgba(117, 190, 255, 0.3);
+		--info-text: #75beff;
+		--info-focus: rgba(117, 190, 255, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #6a9955;
+		--syntax-punctuation: #d4d4d4;
+		--syntax-tag: #569cd6;
+		--syntax-string: #ce9178;
+		--syntax-operator: #d4d4d4;
+		--syntax-keyword: #569cd6;
+		--syntax-function: #dcdcaa;
+		--syntax-variable: #9cdcfe;
+	}
+
+	/* ==============================================================================
+	   5. Dracula Theme
+	   ============================================================================== */
+	[data-theme='dracula'] {
+		--primary: #bd93f9;
+		--primary-hover: #a876f5;
+		--primary-light: rgba(189, 147, 249, 0.15);
+		--primary-focus: rgba(189, 147, 249, 0.3);
+
+		--bg-primary: #1e1f29;
+		--bg-surface: #282a36;
+		--bg-surface-hover: #343746;
+		--bg-sidebar: #21222c;
+		--bg-hover: #383a4c;
+
+		--border-color: #44475a;
+		--border-hover: #6272a4;
+
+		--text-primary: #f8f8f2;
+		--text-secondary: #f1fa8c;
+		--text-muted: #6272a4;
+
+		--progress-bg: #44475a;
+		--progress-fill: #bd93f9;
+
+		--badge-bg: #343746;
+		--badge-border: #44475a;
+		--badge-text: #ff79c6;
+
+		--btn-bg: #282a36;
+		--btn-hover: #44475a;
+		--btn-text: #f8f8f2;
+
+		/* Semantic Status: Success */
+		--success: #50fa7b;
+		--success-hover: #38ef67;
+		--success-light: rgba(80, 250, 123, 0.15);
+		--success-border: rgba(80, 250, 123, 0.3);
+		--success-text: #50fa7b;
+		--success-focus: rgba(80, 250, 123, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #f1fa8c;
+		--warning-hover: #ffb86c;
+		--warning-light: rgba(241, 250, 140, 0.15);
+		--warning-border: rgba(241, 250, 140, 0.3);
+		--warning-text: #f1fa8c;
+		--warning-focus: rgba(241, 250, 140, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #ff5555;
+		--danger-hover: #ff3333;
+		--danger-light: rgba(255, 85, 85, 0.15);
+		--danger-border: rgba(255, 85, 85, 0.3);
+		--danger-text: #ff5555;
+		--danger-focus: rgba(255, 85, 85, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #8be9fd;
+		--info-hover: #63ddf8;
+		--info-light: rgba(139, 233, 253, 0.15);
+		--info-border: rgba(139, 233, 253, 0.3);
+		--info-text: #8be9fd;
+		--info-focus: rgba(139, 233, 253, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #6272a4;
+		--syntax-punctuation: #f8f8f2;
+		--syntax-tag: #ff79c6;
+		--syntax-string: #f1fa8c;
+		--syntax-operator: #ff79c6;
+		--syntax-keyword: #ff79c6;
+		--syntax-function: #50fa7b;
+		--syntax-variable: #bd93f9;
+	}
+
+	/* ==============================================================================
+	   6. Nord Theme
+	   ============================================================================== */
+	[data-theme='nord'] {
+		--primary: #88c0d0;
+		--primary-hover: #81a1c1;
+		--primary-light: rgba(136, 192, 208, 0.15);
+		--primary-focus: rgba(136, 192, 208, 0.3);
+
+		--bg-primary: #242933;
+		--bg-surface: #2e3440;
+		--bg-surface-hover: #3b4252;
+		--bg-sidebar: #272c36;
+		--bg-hover: #434c5e;
+
+		--border-color: #3b4252;
+		--border-hover: #4c566a;
+
+		--text-primary: #eceff4;
+		--text-secondary: #e5e9f0;
+		--text-muted: #d8dee9;
+
+		--progress-bg: #3b4252;
+		--progress-fill: #88c0d0;
+
+		--badge-bg: #3b4252;
+		--badge-border: #4c566a;
+		--badge-text: #8fbcbb;
+
+		--btn-bg: #2e3440;
+		--btn-hover: #3b4252;
+		--btn-text: #eceff4;
+
+		/* Semantic Status: Success */
+		--success: #a3be8c;
+		--success-hover: #8fbcbb;
+		--success-light: rgba(163, 190, 140, 0.15);
+		--success-border: rgba(163, 190, 140, 0.3);
+		--success-text: #a3be8c;
+		--success-focus: rgba(163, 190, 140, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #ebcb8b;
+		--warning-hover: #d08770;
+		--warning-light: rgba(235, 203, 139, 0.15);
+		--warning-border: rgba(235, 203, 139, 0.3);
+		--warning-text: #ebcb8b;
+		--warning-focus: rgba(235, 203, 139, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #bf616a;
+		--danger-hover: #ab4a53;
+		--danger-light: rgba(191, 97, 106, 0.15);
+		--danger-border: rgba(191, 97, 106, 0.3);
+		--danger-text: #bf616a;
+		--danger-focus: rgba(191, 97, 106, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #88c0d0;
+		--info-hover: #81a1c1;
+		--info-light: rgba(136, 192, 208, 0.15);
+		--info-border: rgba(136, 192, 208, 0.3);
+		--info-text: #88c0d0;
+		--info-focus: rgba(136, 192, 208, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #616e88;
+		--syntax-punctuation: #d8dee9;
+		--syntax-tag: #81a1c1;
+		--syntax-string: #a3be8c;
+		--syntax-operator: #81a1c1;
+		--syntax-keyword: #81a1c1;
+		--syntax-function: #88c0d0;
+		--syntax-variable: #b48ead;
+	}
+
+	/* ==============================================================================
+	   7. Tokyo Night Theme
+	   ============================================================================== */
+	[data-theme='tokyonight'] {
+		--primary: #7aa2f7;
+		--primary-hover: #2ac3de;
+		--primary-light: rgba(122, 162, 247, 0.15);
+		--primary-focus: rgba(122, 162, 247, 0.3);
+
+		--bg-primary: #1a1b26;
+		--bg-surface: #24283b;
+		--bg-surface-hover: #2f354e;
+		--bg-sidebar: #16161e;
+		--bg-hover: #3b4261;
+
+		--border-color: #292e42;
+		--border-hover: #414868;
+
+		--text-primary: #c0caf5;
+		--text-secondary: #bb9af7;
+		--text-muted: #787c99;
+
+		--progress-bg: #292e42;
+		--progress-fill: #7aa2f7;
+
+		--badge-bg: #2f354e;
+		--badge-border: #414868;
+		--badge-text: #7dcfff;
+
+		--btn-bg: #24283b;
+		--btn-hover: #2f354e;
+		--btn-text: #c0caf5;
+
+		/* Semantic Status: Success */
+		--success: #9ece6a;
+		--success-hover: #73daca;
+		--success-light: rgba(158, 206, 106, 0.15);
+		--success-border: rgba(158, 206, 106, 0.3);
+		--success-text: #9ece6a;
+		--success-focus: rgba(158, 206, 106, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #e0af68;
+		--warning-hover: #ff9e64;
+		--warning-light: rgba(224, 175, 104, 0.15);
+		--warning-border: rgba(224, 175, 104, 0.3);
+		--warning-text: #e0af68;
+		--warning-focus: rgba(224, 175, 104, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #f7768e;
+		--danger-hover: #db4b4b;
+		--danger-light: rgba(247, 118, 142, 0.15);
+		--danger-border: rgba(247, 118, 142, 0.3);
+		--danger-text: #f7768e;
+		--danger-focus: rgba(247, 118, 142, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #7dcfff;
+		--info-hover: #2ac3de;
+		--info-light: rgba(125, 207, 255, 0.15);
+		--info-border: rgba(125, 207, 255, 0.3);
+		--info-text: #7dcfff;
+		--info-focus: rgba(125, 207, 255, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #565f89;
+		--syntax-punctuation: #c0caf5;
+		--syntax-tag: #f7768e;
+		--syntax-string: #9ece6a;
+		--syntax-operator: #89ddff;
+		--syntax-keyword: #bb9af7;
+		--syntax-function: #7aa2f7;
+		--syntax-variable: #e0af68;
+	}
+
+	/* ==============================================================================
+	   8. Monokai Pro Theme
+	   ============================================================================== */
+	[data-theme='monokai'] {
+		--primary: #ffd866;
+		--primary-hover: #ff6188;
+		--primary-light: rgba(255, 216, 102, 0.15);
+		--primary-focus: rgba(255, 216, 102, 0.3);
+
+		--bg-primary: #2d2a2e;
+		--bg-surface: #3a373b;
+		--bg-surface-hover: #49454a;
+		--bg-sidebar: #221f22;
+		--bg-hover: #5b575c;
+
+		--border-color: #49454a;
+		--border-hover: #726e74;
+
+		--text-primary: #fcfcfa;
+		--text-secondary: #a9dc76;
+		--text-muted: #939293;
+
+		--progress-bg: #49454a;
+		--progress-fill: #ffd866;
+
+		--badge-bg: #49454a;
+		--badge-border: #726e74;
+		--badge-text: #ab9df2;
+
+		--btn-bg: #3a373b;
+		--btn-hover: #49454a;
+		--btn-text: #fcfcfa;
+
+		/* Semantic Status: Success */
+		--success: #a9dc76;
+		--success-hover: #78dce8;
+		--success-light: rgba(169, 220, 118, 0.15);
+		--success-border: rgba(169, 220, 118, 0.3);
+		--success-text: #a9dc76;
+		--success-focus: rgba(169, 220, 118, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #ffd866;
+		--warning-hover: #fc9867;
+		--warning-light: rgba(255, 216, 102, 0.15);
+		--warning-border: rgba(255, 216, 102, 0.3);
+		--warning-text: #ffd866;
+		--warning-focus: rgba(255, 216, 102, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #ff6188;
+		--danger-hover: #ff4d79;
+		--danger-light: rgba(255, 97, 136, 0.15);
+		--danger-border: rgba(255, 97, 136, 0.3);
+		--danger-text: #ff6188;
+		--danger-focus: rgba(255, 97, 136, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #78dce8;
+		--info-hover: #ab9df2;
+		--info-light: rgba(120, 220, 232, 0.15);
+		--info-border: rgba(120, 220, 232, 0.3);
+		--info-text: #78dce8;
+		--info-focus: rgba(120, 220, 232, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #727072;
+		--syntax-punctuation: #fcfcfa;
+		--syntax-tag: #ff6188;
+		--syntax-string: #ffd866;
+		--syntax-operator: #ff6188;
+		--syntax-keyword: #ff6188;
+		--syntax-function: #a9dc76;
+		--syntax-variable: #78dce8;
+	}
+
+	/* ==============================================================================
+	   9. Cyberpunk Theme
+	   ============================================================================== */
+	[data-theme='cyberpunk'] {
+		--primary: #facc15;
+		--primary-hover: #eab308;
+		--primary-light: rgba(250, 204, 21, 0.15);
+		--primary-focus: rgba(250, 204, 21, 0.3);
+
+		--bg-primary: #0b0914;
+		--bg-surface: #161224;
+		--bg-surface-hover: #221b38;
+		--bg-sidebar: #110d1f;
+		--bg-hover: #2a2245;
+
+		--border-color: #312652;
+		--border-hover: #ff007f;
+
+		--text-primary: #f8fafc;
+		--text-secondary: #38bdf8;
+		--text-muted: #a855f7;
+
+		--progress-bg: #221b38;
+		--progress-fill: #facc15;
+
+		--badge-bg: #221b38;
+		--badge-border: #ff007f;
+		--badge-text: #facc15;
+
+		--btn-bg: #161224;
+		--btn-hover: #2a2245;
+		--btn-text: #f8fafc;
+
+		/* Semantic Status: Success */
+		--success: #00ff9f;
+		--success-hover: #00e58e;
+		--success-light: rgba(0, 255, 159, 0.15);
+		--success-border: rgba(0, 255, 159, 0.3);
+		--success-text: #00ff9f;
+		--success-focus: rgba(0, 255, 159, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #facc15;
+		--warning-hover: #ffbe00;
+		--warning-light: rgba(250, 204, 21, 0.15);
+		--warning-border: rgba(250, 204, 21, 0.3);
+		--warning-text: #facc15;
+		--warning-focus: rgba(250, 204, 21, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #ff0055;
+		--danger-hover: #e6004c;
+		--danger-light: rgba(255, 0, 85, 0.15);
+		--danger-border: rgba(255, 0, 85, 0.3);
+		--danger-text: #ff0055;
+		--danger-focus: rgba(255, 0, 85, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #00f0ff;
+		--info-hover: #00c8d6;
+		--info-light: rgba(0, 240, 255, 0.15);
+		--info-border: rgba(0, 240, 255, 0.3);
+		--info-text: #00f0ff;
+		--info-focus: rgba(0, 240, 255, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #625772;
+		--syntax-punctuation: #f8fafc;
+		--syntax-tag: #ff007f;
+		--syntax-string: #00ff9f;
+		--syntax-operator: #00f0ff;
+		--syntax-keyword: #ff007f;
+		--syntax-function: #facc15;
+		--syntax-variable: #38bdf8;
+	}
+
+	/* ==============================================================================
+	   10. Emerald Forest Theme
+	   ============================================================================== */
+	[data-theme='emerald'] {
+		--primary: #10b981;
+		--primary-hover: #059669;
+		--primary-light: rgba(16, 185, 129, 0.15);
+		--primary-focus: rgba(16, 185, 129, 0.3);
+
+		--bg-primary: #041711;
+		--bg-surface: #0a2920;
+		--bg-surface-hover: #113b2f;
+		--bg-sidebar: #062019;
+		--bg-hover: #174d3e;
+
+		--border-color: #174d3e;
+		--border-hover: #226653;
+
+		--text-primary: #ecfdf5;
+		--text-secondary: #6ee7b7;
+		--text-muted: #34d399;
+
+		--progress-bg: #113b2f;
+		--progress-fill: #10b981;
+
+		--badge-bg: #113b2f;
+		--badge-border: #174d3e;
+		--badge-text: #34d399;
+
+		--btn-bg: #0a2920;
+		--btn-hover: #113b2f;
+		--btn-text: #ecfdf5;
+
+		/* Semantic Status: Success */
+		--success: #10b981;
+		--success-hover: #059669;
+		--success-light: rgba(16, 185, 129, 0.15);
+		--success-border: rgba(16, 185, 129, 0.3);
+		--success-text: #34d399;
+		--success-focus: rgba(16, 185, 129, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #f59e0b;
+		--warning-hover: #d97706;
+		--warning-light: rgba(245, 158, 11, 0.15);
+		--warning-border: rgba(245, 158, 11, 0.3);
+		--warning-text: #fbbf24;
+		--warning-focus: rgba(245, 158, 11, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #ef4444;
+		--danger-hover: #dc2626;
+		--danger-light: rgba(239, 68, 68, 0.15);
+		--danger-border: rgba(239, 68, 68, 0.3);
+		--danger-text: #f87171;
+		--danger-focus: rgba(239, 68, 68, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #06b6d4;
+		--info-hover: #0891b2;
+		--info-light: rgba(6, 182, 212, 0.15);
+		--info-border: rgba(6, 182, 212, 0.3);
+		--info-text: #22d3ee;
+		--info-focus: rgba(6, 182, 212, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #226653;
+		--syntax-punctuation: #ecfdf5;
+		--syntax-tag: #f43f5e;
+		--syntax-string: #34d399;
+		--syntax-operator: #6ee7b7;
+		--syntax-keyword: #10b981;
+		--syntax-function: #a7f3d0;
+		--syntax-variable: #facc15;
+	}
+
+	/* ==============================================================================
+	   11. Midnight Sunset Theme
+	   ============================================================================== */
+	[data-theme='sunset'] {
+		--primary: #f97316;
+		--primary-hover: #ea580c;
+		--primary-light: rgba(249, 115, 22, 0.15);
+		--primary-focus: rgba(249, 115, 22, 0.3);
+
+		--bg-primary: #0f0c1b;
+		--bg-surface: #1b1730;
+		--bg-surface-hover: #272145;
+		--bg-sidebar: #141026;
+		--bg-hover: #322b59;
+
+		--border-color: #2e2752;
+		--border-hover: #483d80;
+
+		--text-primary: #fdf2f8;
+		--text-secondary: #f472b6;
+		--text-muted: #a78bfa;
+
+		--progress-bg: #272145;
+		--progress-fill: #f97316;
+
+		--badge-bg: #272145;
+		--badge-border: #483d80;
+		--badge-text: #f97316;
+
+		--btn-bg: #1b1730;
+		--btn-hover: #272145;
+		--btn-text: #fdf2f8;
+
+		/* Semantic Status: Success */
+		--success: #10b981;
+		--success-hover: #059669;
+		--success-light: rgba(16, 185, 129, 0.15);
+		--success-border: rgba(16, 185, 129, 0.3);
+		--success-text: #34d399;
+		--success-focus: rgba(16, 185, 129, 0.25);
+
+		/* Semantic Status: Warning */
+		--warning: #f59e0b;
+		--warning-hover: #d97706;
+		--warning-light: rgba(245, 158, 11, 0.15);
+		--warning-border: rgba(245, 158, 11, 0.3);
+		--warning-text: #fbbf24;
+		--warning-focus: rgba(245, 158, 11, 0.25);
+		--warn: var(--warning);
+		--warn-light: var(--warning-light);
+		--warn-border: var(--warning-border);
+		--warn-text: var(--warning-text);
+
+		/* Semantic Status: Danger / Error */
+		--danger: #f43f5e;
+		--danger-hover: #e11d48;
+		--danger-light: rgba(244, 63, 94, 0.15);
+		--danger-border: rgba(244, 63, 94, 0.3);
+		--danger-text: #fb7185;
+		--danger-focus: rgba(244, 63, 94, 0.25);
+		--error: var(--danger);
+		--error-hover: var(--danger-hover);
+		--error-light: var(--danger-light);
+		--error-border: var(--danger-border);
+		--error-text: var(--danger-text);
+
+		/* Semantic Status: Info */
+		--info: #38bdf8;
+		--info-hover: #0284c7;
+		--info-light: rgba(56, 189, 248, 0.15);
+		--info-border: rgba(56, 189, 248, 0.3);
+		--info-text: #38bdf8;
+		--info-focus: rgba(56, 189, 248, 0.25);
+
+		/* Code Syntax Highlighting Tokens */
+		--syntax-comment: #6b5b95;
+		--syntax-punctuation: #fdf2f8;
+		--syntax-tag: #f472b6;
+		--syntax-string: #facc15;
+		--syntax-operator: #f472b6;
+		--syntax-keyword: #f97316;
+		--syntax-function: #fb923c;
+		--syntax-variable: #a78bfa;
+	}
+}

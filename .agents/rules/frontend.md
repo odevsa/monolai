@@ -6,7 +6,7 @@
    - Singleton global state lives in `src/lib/state/*.svelte.ts`.
 2. **TypeScript Strictness**:
    - Strict typing with zero `any`.
-   - Keep centralized types in `src/lib/types/` synchronized with backend DTOs.
+   - Centralized interfaces in `src/lib/types/` matching backend DTOs.
 3. **Layered Client Architecture**:
    - `src/lib/api/`: Centralized typed API clients (`modelsApi`, `runtimesApi`, `chatsApi`, `hostApi`, `configApi`, `settingsApi`).
    - Components must never call raw `fetch()` or parse manual SSE chunks directly.
@@ -14,8 +14,13 @@
    - All OpenAI-compatible chat completions (`/v1/chat/completions`) and image generation (`/v1/images/generations`) must use the official `openai` JS/TS client via `src/lib/api/openai.ts`.
 5. **Internationalization (i18n)**:
    - All user-facing UI text must use the reactive helper `t('key.path')` from `src/lib/i18n`.
-   - Hardcoded UI text strings are strictly forbidden. All entries belong in `src/lib/i18n/locales/en.json`.
-6. **Design System & Layout Inviolability**:
-   - Reusable UI elements must use the Atomic Design System in `src/lib/components/ds/` (`atoms`, `molecules`, `organisms`).
-   - Use Tailwind CSS v4 design tokens and CSS variables (`var(--bg-primary)`, `var(--text-primary)`, etc.). Never hardcode inline HEX colors or generic `text-white` on themed elements.
-   - The layout shell (sidebar navigation, header action bar, floating glassmorphic chat input) is structurally canonical and must remain intact.
+   - Hardcoded UI text strings are strictly forbidden. All entries belong in `src/lib/i18n/locales/en.json` (and matching `es.json`).
+6. **Styling, Theme Tokens & Zero Hardcoded Colors Policy**:
+   - Centralized Theme Tokens: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/themes.css` (imported by `src/app.css`) under `@theme` and `[data-theme='...']`. Components must NEVER define local theme overrides or arbitrary color values.
+   - Mandatory Semantic CSS Variables: Always use theme variables (`var(--bg-primary)`, `var(--bg-surface)`, `var(--border-color)`, `var(--text-primary)`, `var(--primary)`, `var(--success)`, `var(--warning)`, `var(--danger)`, `var(--info)`, etc.).
+   - Zero Hardcoded Colors: Absolutely NO inline hardcoded HEX values (`#...`), raw `rgb()`/`rgba()`, or arbitrary Tailwind utility colors (e.g. `text-red-500`, `bg-emerald-500`, `text-white`, `bg-black`). Use the corresponding theme token (`text-[var(--danger-text)]`, `bg-[var(--success-light)]`, etc.) to guarantee seamless compatibility across all 11 themes.
+   - Layout Shell Inviolability: The layout shell (sidebar navigation, header action bar, floating glassmorphic chat input) is structurally canonical and must remain intact.
+7. **Componentization & Subcomponentization (DRY Principle)**:
+   - Avoid monolithic components that lump together views, event listeners, and business logic into a single file. Break down large pages into modular components.
+   - Deconstruct repetitive markup patterns (iterated items in lists, metric bars, repeated action rows, status indicators) into reusable subcomponents rather than duplicating raw HTML and Tailwind utility chains.
+   - Maintain high cohesion and clear encapsulation: components must accept strongly-typed `$props()` and manage only state pertinent to their isolated scope.

@@ -80,7 +80,7 @@ The backend is structured into four primary layers:
 5. **Internationalization (i18n)**:
    - Mandatory use of `t('key.path')` via `src/lib/i18n`. Hardcoded UI strings in components are forbidden. All user-facing strings are stored in `src/lib/i18n/locales/en.json`.
 6. **Styling, Theme Tokens & Zero Hardcoded Colors Policy**:
-   - **Centralized Theme Tokens**: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/app.css` under `@theme` and `[data-theme='...']`. Components must NEVER define disconnected theme blocks, local theme overrides, or arbitrary color values.
+   - **Centralized Theme Tokens**: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/themes.css` (imported by `src/app.css`) under `@theme` and `[data-theme='...']`. Components must NEVER define disconnected theme blocks, local theme overrides, or arbitrary color values.
    - **Mandatory Semantic CSS Variables**: Always use semantic theme tokens:
      - Core surfaces & text: `var(--bg-primary)`, `var(--bg-surface)`, `var(--bg-surface-hover)`, `var(--border-color)`, `var(--border-hover)`, `var(--text-primary)`, `var(--text-secondary)`, `var(--text-muted)`.
      - Brand accent: `var(--primary)`, `var(--primary-hover)`, `var(--primary-light)`, `var(--primary-focus)`.
