@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import ChatView from '$lib/components/ChatView.svelte';
-	import { FeatureGate } from '$lib/components/ds';
+	import { FeatureGate } from '$lib/components/ui';
 
 	let chatId = $derived(page.params.id);
 </script>

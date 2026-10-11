@@ -73,7 +73,7 @@ The backend is structured into four primary layers:
 3. **Layered Frontend Structure**:
    - `src/lib/api/`: Centralized HTTP, SSE, and official SDK methods (`modelsApi`, `runtimesApi`, `chatsApi`, `hostApi`, `configApi`, `settingsApi`). Components must NOT execute ad-hoc `fetch()` calls or parse raw SSE streams directly.
    - `src/lib/state/`: Global application state (active model, chat tabs, confirm modal, host metrics) using reactive runes singletons.
-   - `src/lib/components/ds/`: Atomic Mini-Design System (`atoms`, `molecules`, `organisms`) standardizing buttons, inputs, selects, cards, headings, modals, and alerts.
+   - `src/lib/components/ui/`: Atomic Mini-Design System (`atoms`, `molecules`, `organisms`) standardizing buttons, inputs, selects, cards, headings, modals, and alerts.
    - `src/routes/`: SvelteKit page routes responsible only for layout and view composition.
 4. **OpenAI Official SDK Integration**:
    - All OpenAI-compatible chat completions (`/v1/chat/completions`) and image generation (`/v1/images/generations`) must be dispatched through the official `openai` JS/TS client configured in `src/lib/api/openai.ts`.
@@ -83,6 +83,11 @@ The backend is structured into four primary layers:
    - Use Tailwind CSS v4 design tokens and CSS variables (`var(--bg-primary)`, `var(--text-primary)`, `var(--primary)`, etc.).
    - Do not use inline hardcoded HEX color values or blanket `text-white` on text elements; maintain theme consistency across all color schemes.
    - The layout shell (sidebar, floating header tabs/actions, floating glassmorphic chat input) is structurally fixed and must not be broken or stripped during feature development.
+7. **Componentization & Subcomponentization (DRY Principle)**:
+   - Avoid monolithic components that lump together views, event listeners, and business logic for multiple unrelated features or routes into a single file.
+   - Extract route-specific or contextual content (e.g., chat history, image galleries, system metrics in sidebars) into isolated components that only instantiate and run effects when their corresponding view is active.
+   - Deconstruct repetitive markup patterns (e.g., hardware metric progress bars, status items, list rows) into reusable subcomponents (`atoms`/`molecules`) rather than duplicating raw HTML and Tailwind utility chains.
+   - Maintain high cohesion and clear encapsulation: components must accept strongly-typed `$props()` and manage only state pertinent to their isolated scope.
 
 ---
 

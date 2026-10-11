@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { logsApi } from '$lib/api/logs';
-	import { PageHeader, Select } from '$lib/components/ds';
-	import type { SelectOption } from '$lib/components/ds/molecules/Select.svelte';
+	import { PageHeader, Select } from '$lib/components/ui';
+	import type { SelectOption } from '$lib/components/ui/molecules/Select.svelte';
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { headerState } from '$lib/state/header.svelte';

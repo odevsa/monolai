@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { MAX_CHART_POINTS } from '$lib';
 	import { hostApi } from '$lib/api/host';
-	import { Alert, AreaChart, PageHeader } from '$lib/components/ds';
+	import { Alert, AreaChart, PageHeader } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import {
 		getStatusType,

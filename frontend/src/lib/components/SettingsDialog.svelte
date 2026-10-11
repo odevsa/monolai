@@ -5,7 +5,7 @@
 	import type { ConfigStatus } from '$lib/types/config';
 	import { APP_VERSION } from '$lib/version';
 	import { Check, ExternalLink, Info, Palette, Settings, SlidersVertical, X } from '@lucide/svelte';
-	import Logo from './ds/atoms/Logo.svelte';
+	import { Logo } from '$lib/components/ui';
 	import GeneralSettingsTab from './GeneralSettingsTab.svelte';
 
 	let {

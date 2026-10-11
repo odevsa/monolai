@@ -10,7 +10,7 @@
 		ModelSelect,
 		PageHeader,
 		Select
-	} from '$lib/components/ds';
+	} from '$lib/components/ui';
 	import { t, tArray } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
 	import { imageGalleryState } from '$lib/state';

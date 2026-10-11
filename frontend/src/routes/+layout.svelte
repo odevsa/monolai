@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { chatsApi, configApi } from '$lib/api';
-	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ds';
+	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ui';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { askConfirm } from '$lib/confirmStore';
@@ -170,7 +170,6 @@
 
 		<div class="flex flex-1 w-full h-full min-h-0 overflow-hidden">
 			<Sidebar
-				effectiveTheme={themeType}
 				bind:collapsed={sidebarCollapsed}
 				bind:mobileOpen={mobileSidebarOpen}
 				onOpenSettings={() => (settingsOpen = true)}

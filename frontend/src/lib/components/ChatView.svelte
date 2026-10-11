@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { chatsApi, getFeatureModels, settingsApi } from '$lib/api';
 	import { streamChatCompletion } from '$lib/api/openai';
-	import { ContextIndicator, MarkdownRenderer, ModelBadge } from '$lib/components/ds';
+	import { ContextIndicator, MarkdownRenderer, ModelBadge } from '$lib/components/ui';
 	import { showAlert } from '$lib/confirmStore';
 	import { syncRecentChats } from '$lib/headerStore';
 	import { t } from '$lib/i18n';

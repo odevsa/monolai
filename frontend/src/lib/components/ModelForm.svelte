@@ -21,7 +21,7 @@
 		Trash
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
-	import Select from './ds/molecules/Select.svelte';
+	import { Select } from '$lib/components/ui';
 
 	interface RuntimeItem {
 		id: string;
@@ -528,7 +528,7 @@
 										<Select
 											bind:value={formFlags[flagKey]}
 											options={getFileOptions(formFlags[flagKey])}
-											onchange={(val) => handleFileSelect(flagKey, val)}
+											onchange={(val: string) => handleFileSelect(flagKey, val)}
 											placeholder="Select model file..."
 											ariaLabel={flagDef.name || flagKey}
 										/>
@@ -536,7 +536,7 @@
 										<Select
 											bind:value={formFlags[flagKey]}
 											options={flagDef.options.map((opt) => ({ value: opt, label: opt }))}
-											onchange={(val) => {
+											onchange={(val: string) => {
 												formFlags[flagKey] = val;
 												updateFlags({ ...formFlags });
 											}}

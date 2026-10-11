@@ -16,9 +16,7 @@
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SystemConfigCard from './SystemConfigCard.svelte';
-	import Button from './ds/atoms/Button.svelte';
-	import Alert from './ds/molecules/Alert.svelte';
-	import Select from './ds/molecules/Select.svelte';
+	import { Alert, Button, Select } from '$lib/components/ui';
 
 	let idleAutoUnloadEnabled = $state<boolean>(true);
 	let idleTimeoutSeconds = $state<number>(300);
@@ -142,7 +140,7 @@
 					value: l.id,
 					label: l.label
 				}))}
-				onchange={(val) => changeLanguage(val)}
+				onchange={(val: string) => changeLanguage(val)}
 				placeholder={t('settings.languageTitle')}
 				ariaLabel={t('settings.languageTitle')}
 			/>

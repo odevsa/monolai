@@ -9,7 +9,7 @@
 		ModelBadge,
 		PageHeader,
 		Select
-	} from '$lib/components/ds';
+	} from '$lib/components/ui';
 	import ModelForm from '$lib/components/ModelForm.svelte';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';

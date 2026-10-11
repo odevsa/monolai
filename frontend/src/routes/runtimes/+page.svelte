@@ -12,7 +12,7 @@
 		EmptyState,
 		PageHeader,
 		Select
-	} from '$lib/components/ds';
+	} from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';

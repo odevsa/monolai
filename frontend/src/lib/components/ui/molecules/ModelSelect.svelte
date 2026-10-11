@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
-	import { ModelBadge } from '$lib/components/ds';
+	import { ModelBadge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { featuresState } from '$lib/state/features.svelte';
 	import { Box, Check, ChevronDown } from '@lucide/svelte';

@@ -6,6 +6,7 @@ export { default as ContextIndicator } from './ContextIndicator.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as FeatureGate } from './FeatureGate.svelte';
 export { default as FormField } from './FormField.svelte';
+export { default as HardwareMetricBar } from './HardwareMetricBar.svelte';
 export { default as MarkdownRenderer } from './MarkdownRenderer.svelte';
 export { default as MetricTile } from './MetricTile.svelte';
 export { default as ModelBadge } from './ModelBadge.svelte';

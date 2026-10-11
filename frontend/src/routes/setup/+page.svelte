@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { configApi, hostApi } from '$lib/api';
-	import { CodeBlock } from '$lib/components/ds';
+	import { CodeBlock } from '$lib/components/ui';
 	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import {
