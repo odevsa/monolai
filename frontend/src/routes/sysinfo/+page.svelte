@@ -24,6 +24,7 @@
 		Layers,
 		MemoryStick,
 		Monitor,
+		MonitorStop,
 		Network,
 		Power,
 		RefreshCw
@@ -236,7 +237,7 @@
 							currentValue={gpu.usage ?? 0}
 							unit="%"
 							color={gpu.is_dedicated ? '#00a971' : '#10b981'}
-							icon={Gpu}
+							icon={gpu.is_dedicated ? Gpu : Monitor}
 							data={gpuHistory}
 							maxVal={100}
 							temperature={gpu.temperature_c ??
@@ -257,7 +258,7 @@
 							currentValue={vramPct}
 							unit="%"
 							color="#30d9a1"
-							icon={Layers}
+							icon={gpu.is_dedicated ? Layers : MonitorStop}
 							data={vramHistory}
 							maxVal={100}
 							unavailable={vramTotal === 0 && !gpu.is_dedicated}

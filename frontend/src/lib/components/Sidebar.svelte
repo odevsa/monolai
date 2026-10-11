@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { chatsApi } from '$lib/api/chats';
 	import { FeatureGate, Logo, ModelBadge } from '$lib/components/ds';
 	import { askConfirm } from '$lib/confirmStore';
 	import { checkFeature, featuresStore } from '$lib/featuresStore';
-	import { chatTabs, runtimesRefreshFn, syncRecentChats } from '$lib/headerStore';
+	import { runtimesRefreshFn } from '$lib/headerStore';
 	import { t } from '$lib/i18n';
 	import {
 		getStatusType,
@@ -15,7 +14,7 @@
 		unloadModel
 	} from '$lib/runningModelsStore';
 	import { chatsState, hostState, imageGalleryState } from '$lib/state';
-	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
+	import type { GeneratedImageItem } from '$lib/types/chat';
 	import { formatBytes } from '$lib/utils/format';
 	import { APP_VERSION } from '$lib/version';
 	import {
@@ -29,6 +28,7 @@
 		Layers,
 		MemoryStick,
 		MessageSquare,
+		Monitor,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Plus,
@@ -42,13 +42,11 @@
 	import { onMount } from 'svelte';
 
 	let {
-		effectiveTheme = 'dark',
 		collapsed = $bindable(false),
 		mobileOpen = $bindable(false),
 		activeChatId = $bindable('oi-1'),
 		onOpenSettings = () => {}
 	}: {
-		effectiveTheme: 'dark' | 'light';
 		collapsed: boolean;
 		mobileOpen: boolean;
 		activeChatId?: string;
@@ -60,9 +58,6 @@
 
 	let loadedModels = $derived(runningModelsState.runningModels);
 	let unloadingIds = $derived(runningModelsState.unloadingModelIds);
-	let isChatAvailable = $derived(
-		$featuresStore.isInitialized && checkFeature($featuresStore, 'chat').isSatisfied
-	);
 
 	let conversations = $derived(chatsState.conversations);
 
@@ -188,18 +183,8 @@
 
 	let cpuUsage = $derived(latestTick?.cpu_usage ?? sysinfo?.cpu.usage ?? 0);
 	let cpuBrand = $derived(sysinfo?.cpu.brand || 'Host Processor');
-	let cpuCores = $derived(sysinfo?.cpu.cores ? `${sysinfo.cpu.cores} Cores` : '');
-	let cpuTemp = $derived(latestTick?.cpu_temp_c ?? sysinfo?.cpu.temperature_c ?? null);
-	let cpuFreq = $derived(
-		latestTick?.cpu_frequency_mhz
-			? `${(latestTick.cpu_frequency_mhz / 1000).toFixed(2)} GHz`
-			: sysinfo?.cpu.frequency_mhz
-				? `${(sysinfo.cpu.frequency_mhz / 1000).toFixed(2)} GHz`
-				: ''
-	);
 
 	let ramPercentage = $derived(latestTick?.ram_percentage ?? sysinfo?.ram.percentage ?? 0);
-	let ramUsed = $derived(latestTick?.ram_used_bytes ?? sysinfo?.ram.used_bytes ?? 0);
 	let ramTotal = $derived(latestTick?.ram_total_bytes ?? sysinfo?.ram.total_bytes ?? 0);
 
 	let gpusList = $derived.by(() => {
@@ -249,7 +234,6 @@
 
 	let vramPercentage = $derived(totalVramBytes > 0 ? (usedVramBytes / totalVramBytes) * 100 : 0);
 
-	let storageUsed = $derived(latestTick?.storage_used_bytes ?? sysinfo?.storage.used_bytes ?? 0);
 	let storageTotal = $derived(latestTick?.storage_total_bytes ?? sysinfo?.storage.total_bytes ?? 0);
 	let storagePercentage = $derived(
 		latestTick?.storage_percentage ?? sysinfo?.storage.percentage ?? 0
@@ -719,13 +703,13 @@
 					>
 						<!-- CPU Status -->
 						<div class="flex flex-col gap-1.5">
-							<div class="flex items-center justify-between text-xs">
+							<div class="flex items-center justify-between text-xs gap-2">
 								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
 									<Cpu size={14} style="color: #9845e7" class="shrink-0" />
 									<span class="font-medium">CPU</span>
 								</div>
-								<span class="text-[var(--text-muted)]">
-									{cpuCores || 'CPU'}
+								<span class="text-[var(--text-muted)] truncate">
+									{cpuBrand}
 								</span>
 							</div>
 							<div class="flex items-center gap-2">
@@ -778,23 +762,22 @@
 						<!-- GPUs Status -->
 						{#if gpusList.length > 0}
 							{#each gpusList as gpu (gpu.index)}
+								{@const gpuLabel = gpu.is_dedicated ? 'GPU' : 'Video'}
 								{@const gpuColor = gpu.is_dedicated ? '#00a971' : '#10b981'}
 								<div class="flex flex-col gap-1.5">
-									<div class="flex items-center justify-between text-xs">
-										<div class="flex items-center gap-2 text-[var(--text-secondary)] min-w-0">
-											<Gpu size={14} style="color: {gpuColor}" class="shrink-0" />
-											<span class="font-medium truncate">
-												{gpusList.length > 1 ? `GPU ${gpu.index}` : 'GPU'}
+									<div class="flex items-center justify-between text-xs gap-2">
+										<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+											{#if gpu.is_dedicated}
+												<Gpu size={14} style="color: {gpuColor}" class="shrink-0" />
+											{:else}
+												<Monitor size={14} style="color: {gpuColor}" class="shrink-0" />
+											{/if}
+											<span class="font-medium">
+												{gpusList.length > 1 ? `${gpuLabel} ${gpu.index}` : gpuLabel}
 											</span>
 										</div>
-										<span class="text-[var(--text-muted)] shrink-0">
-											{gpu.memory_total_bytes
-												? formatBytes(gpu.memory_total_bytes)
-												: gpu.clock_mhz
-													? `${gpu.clock_mhz} MHz`
-													: gpu.is_dedicated
-														? 'Dedicated'
-														: 'Integrated'}
+										<span class="text-[var(--text-muted)] truncate">
+											{gpu.name}
 										</span>
 									</div>
 									<div class="flex items-center gap-2">
