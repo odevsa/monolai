@@ -222,7 +222,7 @@
 	"models": {
 		"pageTitle": "Gestión de Modelos",
 		"pageSubtitle": "Registra, configura parámetros y supervisa instancias de modelos locales",
-		"registerModel": "Registrar Modelo",
+		"addModel": "Añadir Modelo",
 		"editModel": "Editar Modelo",
 		"deleteModel": "Eliminar Modelo",
 		"deleteConfirmTitle": "Eliminar Modelo",
@@ -249,7 +249,13 @@
 		"filterByStatus": "Filtrar por estado",
 		"clearSearch": "Limpiar búsqueda",
 		"availableFiles": "Archivos de modelos disponibles en disco",
-		"selectFile": "Seleccionar archivo"
+		"selectFile": "Seleccionar archivo",
+		"connectionFailure": "Fallo de conexión con el backend:",
+		"formSubtitle": "Configure el archivo de pesos, el backend de ejecución y los parámetros.",
+		"runningPort": "En ejecución :{{port}}",
+		"noFileConfigured": "Ningún archivo configurado",
+		"copyId": "Copiar identificador",
+		"copyIdSuccess": "Identificador del modelo copiado al portapapeles"
 	},
 	"runtimes": {
 		"pageTitle": "Gestión de Runtimes",

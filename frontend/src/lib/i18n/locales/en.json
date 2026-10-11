@@ -222,7 +222,7 @@
 	"models": {
 		"pageTitle": "Models Management",
 		"pageSubtitle": "Register, configure parameters, and monitor local model instances",
-		"registerModel": "Register Model",
+		"addModel": "Add Model",
 		"editModel": "Edit Model",
 		"deleteModel": "Delete Model",
 		"deleteConfirmTitle": "Delete Model",
@@ -249,7 +249,13 @@
 		"filterByStatus": "Filter by status",
 		"clearSearch": "Clear search",
 		"availableFiles": "Available Model Files on Disk",
-		"selectFile": "Select File"
+		"selectFile": "Select File",
+		"connectionFailure": "Backend Connection Failure:",
+		"formSubtitle": "Configure weights file, runtime backend, and execution parameters.",
+		"runningPort": "Running :{{port}}",
+		"noFileConfigured": "No file configured",
+		"copyId": "Copy identifier",
+		"copyIdSuccess": "Model identifier copied to clipboard"
 	},
 	"runtimes": {
 		"pageTitle": "Runtimes Management",
