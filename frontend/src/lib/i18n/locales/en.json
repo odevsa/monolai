@@ -276,7 +276,15 @@
 		"description": {
 			"llama-cpp": "High-performance LLM inference engine in C/C++ supporting text generation, OpenAI-compatible HTTP chat and completion endpoints, multimodal vision models, and full or partial GPU layer offloading (CUDA, ROCm, Vulkan, and CPU).",
 			"sd-cpp": "Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image, SD1.x, SD2.x, SDXL, FLUX, and SD3.5 model architectures with GPU offload."
-		}
+		},
+		"connectionFailure": "Backend Connection Failure:",
+		"errorLoading": "Error loading runtimes from backend.",
+		"installationError": "Installation error occurred",
+		"uninstallTooltip": "Uninstall this runtime",
+		"updateTooltip": "Update runtime to latest manifest version",
+		"reinstallTooltip": "Reinstall runtime package",
+		"uninstallError": "Failed to uninstall runtime",
+		"installedPathLabel": "Binary Path"
 	},
 	"sysinfo": {
 		"pageTitle": "System & Hardware",

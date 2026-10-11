@@ -1,31 +1,15 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import { runtimesApi } from '$lib/api/runtimes';
-	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
-	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
-	import {
-		Alert,
-		Badge,
-		Button,
-		Card,
-		DiagonalLabel,
-		EmptyState,
-		PageHeader,
-		Select
-	} from '$lib/components/ui';
+	import { RuntimeCard } from '$lib/components/runtimes';
+	import { Alert, Button, EmptyState, PageHeader, Spinner } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
 	import { headerState } from '$lib/state/header.svelte';
 	import type { Runtime } from '$lib/types/runtimes';
-	import { formatBytes } from '$lib/utils/format';
-	import { Boxes, Cpu, Download, FolderCheck, RefreshCw, Trash } from '@lucide/svelte';
+	import { Boxes } from '@lucide/svelte';
 	import { onDestroy, onMount } from 'svelte';
-
-	const localIcons: Record<string, string> = {
-		'llama-cpp': llamaIcon,
-		'sd-cpp': sdIcon
-	};
 
 	function isInstallingStatus(status?: string): boolean {
 		if (!status) return false;
@@ -67,7 +51,7 @@
 				}
 			}
 		} catch (err: any) {
-			error = err?.message || 'Error loading runtimes';
+			error = err?.message || t('runtimes.errorLoading');
 		} finally {
 			loading = false;
 			headerState.setRuntimesRefreshing(false);
@@ -169,7 +153,7 @@
 					speed_mbps: 0,
 					downloaded_bytes: 0,
 					total_bytes: 0,
-					error_message: err?.message || 'Installation initiation failed'
+					error_message: err?.message || t('runtimes.installationError')
 				};
 			}
 		}
@@ -193,7 +177,7 @@
 			refreshFeatures(true);
 		} catch (err: any) {
 			console.error(`Failed to uninstall runtime ${runtime.id}:`, err);
-			error = err?.message || 'Failed to uninstall runtime';
+			error = err?.message || t('runtimes.uninstallError');
 		}
 	}
 
@@ -215,6 +199,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Monolai - {t('runtimes.pageTitle')}</title>
+</svelte:head>
+
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
 	<div class="flex flex-col gap-5 sm:gap-6">
 		<PageHeader
@@ -224,7 +212,7 @@
 		/>
 
 		{#if error}
-			<Alert variant="error" title="Backend Connection Failure:">
+			<Alert variant="error" title={t('runtimes.connectionFailure')}>
 				<div class="flex items-center justify-between gap-3">
 					<span>{error}</span>
 					<Button variant="secondary" size="sm" onclick={() => fetchRuntimes()}>
@@ -238,9 +226,7 @@
 			<div
 				class="flex flex-col items-center justify-center gap-3 p-16 text-[var(--text-muted)] text-sm"
 			>
-				<div
-					class="w-8 h-8 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
-				></div>
+				<Spinner size={32} />
 				<p class="m-0 text-xs">{t('common.loading')}</p>
 			</div>
 		{:else if runtimes.length === 0}
@@ -251,245 +237,17 @@
 			/>
 		{:else}
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-				{#each runtimes as runtime}
-					{@const progress = runtime.install_progress}
-					{@const isInstalling = isInstallingStatus(progress?.status)}
-
-					<Card class="relative">
-						{#if runtime.is_installed}
-							<DiagonalLabel
-								text={runtime.has_update ? t('common.update') : t('common.installed')}
-							/>
-						{/if}
-
-						<div class="flex flex-col gap-4 justify-between h-full">
-							<!-- Card Top Details -->
-							<div class="flex flex-col gap-4 justify-between h-full">
-								<div class="flex items-start justify-between gap-3">
-									<div class="flex items-start gap-3.5 min-w-0 flex-1">
-										<div
-											class="w-14 h-14 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] flex items-center justify-center p-2.5 shrink-0 overflow-hidden shadow-xs"
-										>
-											{#if localIcons[runtime.id] || runtime.icon}
-												<img
-													src={localIcons[runtime.id] || runtime.icon}
-													alt={runtime.name}
-													class="w-full h-full object-contain"
-												/>
-											{:else}
-												<Cpu size={26} class="text-[var(--primary)]" />
-											{/if}
-										</div>
-
-										<div class="min-w-0 flex-1">
-											<div class="flex flex-col gap-0.5">
-												<div class="flex items-center gap-2 flex-wrap">
-													<h3
-														class="m-0 text-base font-bold text-[var(--text-primary)] truncate"
-														title={runtime.name}
-													>
-														{runtime.name}
-													</h3>
-												</div>
-												{#if runtime.website}
-													<a
-														href={runtime.website}
-														target="_blank"
-														rel="noopener noreferrer"
-														class="text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold text-xs transition-colors truncate"
-														title={t('runtimes.visitRepo')}
-													>
-														{runtime.website}
-													</a>
-												{/if}
-												<div
-													class="flex items-center gap-1.5 text-[var(--text-muted)] text-xs flex-wrap font-mono"
-												>
-													{#if runtime.is_installed && runtime.installed_version}
-														<span>v{runtime.installed_version}</span>
-														{#if runtime.has_update}
-															<span class="text-[var(--text-muted)]">&rarr;</span>
-															<span class="text-[var(--primary)]">v{runtime.version}</span>
-														{/if}
-													{:else}
-														<span>v{runtime.version}</span>
-													{/if}
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<div class="flex flex-col gap-2 mb-auto">
-									<!-- Description -->
-									<p class="m-0 text-xs leading-relaxed text-[var(--text-secondary)]">
-										{t(`runtimes.description.${runtime.id}`)}
-									</p>
-
-									<!-- Features Badges -->
-									{#if runtime.features && runtime.features.length > 0}
-										<div class="flex items-center gap-1.5 flex-wrap">
-											{#each runtime.features as feat}
-												<Badge variant="muted" rounded="rounded-md">{feat}</Badge>
-											{/each}
-										</div>
-									{/if}
-								</div>
-
-								<!-- Installed Binary Path Hint -->
-								{#if runtime.is_installed && runtime.installed_path}
-									<div
-										class="flex items-center gap-2 px-1 py-1 rounded-xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-muted)]"
-									>
-										<FolderCheck size={13} class="text-emerald-400 shrink-0 ml-1" />
-										<span class="truncate" title={runtime.installed_path}
-											>{runtime.installed_path}</span
-										>
-										<Badge variant="success" rounded="rounded-md" class="ml-auto"
-											>{runtime.installed_acceleration}</Badge
-										>
-									</div>
-								{/if}
-
-								<!-- Acceleration Selector -->
-								{#if !runtime.is_installed && !isInstalling && runtime.available_accelerations && runtime.available_accelerations.length > 0}
-									<div
-										class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]"
-									>
-										<div class="flex items-center justify-between gap-2">
-											<span
-												class="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap shrink-0"
-												>{t('runtimes.accelerationLabel')}</span
-											>
-											<span class="text-[11px] text-[var(--text-muted)] truncate text-right"
-												>{t('runtimes.selectHardwareDesc')}</span
-											>
-										</div>
-										<div class="w-full">
-											<Select
-												bind:value={selectedAccelerations[runtime.id]}
-												onchange={(val) => {
-													selectedAccelerations[runtime.id] = val;
-												}}
-												options={runtime.available_accelerations.map((opt) => ({
-													value: opt.id,
-													label:
-														opt.label +
-														(opt.is_recommended ? ` (${t('runtimes.recommendedBadge')})` : '')
-												}))}
-												placeholder={t('runtimes.selectHardwarePlaceholder')}
-												ariaLabel={t('runtimes.accelerationLabel')}
-											/>
-										</div>
-									</div>
-								{/if}
-
-								<!-- Installation Error Notice if any -->
-								{#if progress && progress.status === 'error'}
-									<Alert variant="error" dismissible>
-										{progress.error_message || 'Installation error occurred'}
-									</Alert>
-								{/if}
-							</div>
-
-							<!-- Card Bottom Actions with Dedicated Progress Bar -->
-							<div
-								class="pt-4 border-t border-[var(--border-color)] flex items-center justify-end gap-2.5 flex-wrap"
-							>
-								{#if isInstalling && progress}
-									<div
-										class="w-full flex flex-col gap-2 p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]"
-									>
-										<div class="flex items-center justify-between gap-3 text-xs">
-											<div class="flex items-center gap-2 text-[var(--text-primary)] min-w-0">
-												<RefreshCw size={13} class="animate-spin text-[var(--primary)] shrink-0" />
-												<span class="font-medium truncate">
-													{#if progress.message}
-														{progress.message}
-													{:else if progress.status === 'extracting'}
-														{t('runtimes.extracting')}...
-													{:else}
-														{t('runtimes.downloading')}...
-													{/if}
-												</span>
-											</div>
-											<span class="font-mono text-xs font-bold text-[var(--primary)] shrink-0">
-												{progress.percent.toFixed(0)}%
-											</span>
-										</div>
-
-										<div class="w-full h-2 rounded-full bg-[var(--bg-surface)] overflow-hidden">
-											<div
-												class="h-full bg-[var(--primary)] transition-all duration-200 rounded-full"
-												style="width: {Math.max(2, Math.min(100, progress.percent))}%"
-											></div>
-										</div>
-
-										{#if progress.total_bytes > 0 || progress.speed_mbps > 0}
-											<div
-												class="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] pt-0.5"
-											>
-												<span>
-													{#if progress.total_bytes > 0}
-														{formatBytes(progress.downloaded_bytes)} of {formatBytes(
-															progress.total_bytes
-														)}
-													{/if}
-												</span>
-												<span>
-													{#if progress.speed_mbps > 0}
-														{progress.speed_mbps.toFixed(1)} MB/s
-													{/if}
-												</span>
-											</div>
-										{/if}
-									</div>
-								{:else if !runtime.is_installed}
-									<Button
-										variant="primary"
-										size="md"
-										class="w-full"
-										onclick={() => installRuntime(runtime.id)}
-									>
-										<Download size={14} />
-										<span>{t('common.install')}</span>
-									</Button>
-								{:else}
-									<Button
-										variant="danger"
-										size="sm"
-										onclick={() => uninstallRuntime(runtime)}
-										title="Uninstall this runtime"
-									>
-										<Trash size={13} />
-										<span>{t('common.uninstall')}</span>
-									</Button>
-
-									{#if runtime.has_update}
-										<Button
-											variant="primary"
-											size="sm"
-											onclick={() => confirmUpdateRuntime(runtime)}
-											title="Update runtime to latest manifest version"
-										>
-											<Download size={13} />
-											<span>{t('common.update')}</span>
-										</Button>
-									{:else}
-										<Button
-											variant="secondary"
-											size="sm"
-											onclick={() => installRuntime(runtime.id)}
-											title="Reinstall runtime package"
-										>
-											<RefreshCw size={13} />
-											<span>{t('common.reinstall')}</span>
-										</Button>
-									{/if}
-								{/if}
-							</div>
-						</div>
-					</Card>
+				{#each runtimes as runtime (runtime.id)}
+					<RuntimeCard
+						{runtime}
+						selectedAcceleration={selectedAccelerations[runtime.id]}
+						onAccelerationChange={(id, val) => {
+							selectedAccelerations[id] = val;
+						}}
+						onInstall={installRuntime}
+						onUninstall={uninstallRuntime}
+						onUpdate={confirmUpdateRuntime}
+					/>
 				{/each}
 			</div>
 		{/if}

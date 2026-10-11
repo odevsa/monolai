@@ -276,7 +276,15 @@
 		"description": {
 			"llama-cpp": "Motor de inferencia LLM de alto rendimiento en C/C++ compatible con generación de texto, endpoints de chat y completion compatibles con OpenAI, modelos de visión multimodal y descarga a GPU (CUDA, ROCm, Vulkan y CPU).",
 			"sd-cpp": "Inferencia de Stable Diffusion en C/C++ puro compatible con texto a imagen, imagen a imagen, arquitecturas SD1.x, SD2.x, SDXL, FLUX y SD3.5 con aceleración por GPU."
-		}
+		},
+		"connectionFailure": "Fallo de conexión con el backend:",
+		"errorLoading": "Error al cargar los runtimes desde el backend.",
+		"installationError": "Ocurrió un error durante la instalación",
+		"uninstallTooltip": "Desinstalar este runtime",
+		"updateTooltip": "Actualizar runtime a la última versión del manifiesto",
+		"reinstallTooltip": "Reinstalar paquete de runtime",
+		"uninstallError": "Error al desinstalar el runtime",
+		"installedPathLabel": "Ruta del binario"
 	},
 	"sysinfo": {
 		"pageTitle": "Sistema y Hardware",
