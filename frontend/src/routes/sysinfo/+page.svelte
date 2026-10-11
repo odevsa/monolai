@@ -11,43 +11,77 @@
 		unloadModel
 	} from '$lib/runningModelsStore';
 	import { headerState } from '$lib/state/header.svelte';
-	import type { HostMetricsTick, SysInfo } from '$lib/types/host';
-	import { formatBytes, formatUptime } from '$lib/utils/format';
+	import { hostState } from '$lib/state/host.svelte';
+	import type { GpuDeviceInfo, HostMetricsTick, SysInfo } from '$lib/types/host';
+	import { formatBytes, formatUptime, splitBytesValue } from '$lib/utils/format';
 	import { parseModelDetails } from '$lib/utils/model';
-	import { Activity, Box, Cpu, Gpu, MemoryStick, Monitor, Power, RefreshCw } from '@lucide/svelte';
+	import {
+		Activity,
+		Box,
+		Cpu,
+		Gpu,
+		HardDrive,
+		Layers,
+		MemoryStick,
+		Monitor,
+		Network,
+		Power,
+		RefreshCw
+	} from '@lucide/svelte';
 	import { onDestroy, onMount } from 'svelte';
 
 	let runningModelsList = $derived(runningModelsState.runningModels);
 	let unloadingIds = $derived(runningModelsState.unloadingModelIds);
 
-	let sysinfo = $state<SysInfo | null>(null);
+	let sysinfo = $derived(hostState.sysinfo);
+	let latestTick = $derived(hostState.latestTick);
 	let loadingStatic = $state(true);
-	let sseConnected = $state(false);
-	let error = $state<string | null>(null);
+	let error = $derived(hostState.error);
 
-	let latestTick = $state<HostMetricsTick | null>(null);
 	let cpuHistory = $state<number[]>([]);
 	let ramHistory = $state<number[]>([]);
-	let gpuHistory = $state<number[]>([]);
-	let vramHistory = $state<number[]>([]);
+	let diskIoHistory = $state<number[]>([]);
+	let netHistory = $state<number[]>([]);
+	let gpuHistoryMap = $state<Record<number, number[]>>({});
+	let vramHistoryMap = $state<Record<number, number[]>>({});
 
 	let unsubscribeMetrics: (() => void) | null = null;
 
-	async function fetchStaticHostInfo() {
-		try {
-			loadingStatic = true;
-			const data = await hostApi.getInfo();
-			sysinfo = data;
-			error = null;
-		} catch (e: any) {
-			error = e.message || 'Failed to connect to backend';
-		} finally {
-			loadingStatic = false;
+	let gpusList = $derived.by<GpuDeviceInfo[]>(() => {
+		if (latestTick?.gpus && latestTick.gpus.length > 0) return latestTick.gpus;
+		if (sysinfo?.gpus && sysinfo.gpus.length > 0) return sysinfo.gpus;
+		if (sysinfo?.gpu) {
+			return [
+				{
+					index: 0,
+					name: sysinfo.gpu.name,
+					vendor: sysinfo.gpu.vendor,
+					memory_total_bytes: sysinfo.gpu.memory_total_bytes,
+					memory_used_bytes: latestTick?.vram_used_bytes ?? sysinfo.vram?.used_bytes ?? null,
+					memory_free_bytes: sysinfo.vram?.free_bytes ?? null,
+					driver_version: sysinfo.gpu.driver_version,
+					is_dedicated: sysinfo.gpu.is_dedicated,
+					usage: latestTick?.gpu_usage ?? null,
+					temperature_c: null,
+					clock_mhz: null
+				}
+			];
 		}
-	}
+		return [];
+	});
+
+	let currentDiskIoBytes = $derived(
+		latestTick ? latestTick.disk_read_bytes_sec + latestTick.disk_write_bytes_sec : 0
+	);
+	let formattedDiskIo = $derived(splitBytesValue(currentDiskIoBytes, true));
+
+	let currentNetBytes = $derived(
+		latestTick ? latestTick.net_rx_bytes_sec + latestTick.net_tx_bytes_sec : 0
+	);
+	let formattedNet = $derived(splitBytesValue(currentNetBytes, true));
 
 	function reconnectMetricsStream() {
-		fetchStaticHostInfo();
+		hostState.reconnect();
 		connectMetricsStream();
 	}
 
@@ -56,35 +90,50 @@
 			unsubscribeMetrics();
 		}
 
-		unsubscribeMetrics = hostApi.subscribeMetrics(
-			(tick) => {
-				latestTick = tick;
-				sseConnected = true;
-				error = null;
-				headerState.setSysinfoStatus(true, reconnectMetricsStream);
+		unsubscribeMetrics = hostState.subscribe((tick) => {
+			headerState.setSysinfoStatus(true, reconnectMetricsStream);
 
-				cpuHistory = [...cpuHistory.slice(-(MAX_CHART_POINTS - 1)), tick.cpu_usage];
-				ramHistory = [...ramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.ram_percentage];
+			cpuHistory = [...cpuHistory.slice(-(MAX_CHART_POINTS - 1)), tick.cpu_usage];
+			ramHistory = [...ramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.ram_percentage];
 
-				if (tick.gpu_usage !== null && tick.gpu_usage !== undefined) {
-					gpuHistory = [...gpuHistory.slice(-(MAX_CHART_POINTS - 1)), tick.gpu_usage];
+			// Disk I/O activity in raw bytes/sec
+			const diskIoBytes = tick.disk_read_bytes_sec + tick.disk_write_bytes_sec;
+			diskIoHistory = [...diskIoHistory.slice(-(MAX_CHART_POINTS - 1)), diskIoBytes];
+
+			// Network throughput in raw bytes/sec
+			const netBytes = tick.net_rx_bytes_sec + tick.net_tx_bytes_sec;
+			netHistory = [...netHistory.slice(-(MAX_CHART_POINTS - 1)), netBytes];
+
+			if (tick.gpus && tick.gpus.length > 0) {
+				for (const g of tick.gpus) {
+					const prevGpu = gpuHistoryMap[g.index] || [];
+					gpuHistoryMap[g.index] = [...prevGpu.slice(-(MAX_CHART_POINTS - 1)), g.usage ?? 0];
+
+					const vramPct =
+						g.memory_total_bytes && g.memory_used_bytes
+							? (g.memory_used_bytes / g.memory_total_bytes) * 100
+							: 0;
+					const prevVram = vramHistoryMap[g.index] || [];
+					vramHistoryMap[g.index] = [...prevVram.slice(-(MAX_CHART_POINTS - 1)), vramPct];
 				}
+			} else if (tick.gpu_usage !== null && tick.gpu_usage !== undefined) {
+				const prevGpu = gpuHistoryMap[0] || [];
+				gpuHistoryMap[0] = [...prevGpu.slice(-(MAX_CHART_POINTS - 1)), tick.gpu_usage];
 
 				if (tick.vram_percentage !== null && tick.vram_percentage !== undefined) {
-					vramHistory = [...vramHistory.slice(-(MAX_CHART_POINTS - 1)), tick.vram_percentage];
+					const prevVram = vramHistoryMap[0] || [];
+					vramHistoryMap[0] = [...prevVram.slice(-(MAX_CHART_POINTS - 1)), tick.vram_percentage];
 				}
-			},
-			() => {
-				sseConnected = false;
-				headerState.setSysinfoStatus(false, reconnectMetricsStream);
 			}
-		);
+		});
 	}
 
 	let stopRunningStatePolling: (() => void) | null = null;
 
-	onMount(() => {
-		fetchStaticHostInfo();
+	onMount(async () => {
+		loadingStatic = true;
+		await hostState.fetchStaticInfo();
+		loadingStatic = false;
 		connectMetricsStream();
 		stopRunningStatePolling = startRunningStatePolling(2500);
 	});
@@ -100,32 +149,6 @@
 		}
 		headerState.setSysinfoStatus(false);
 	});
-
-	let isGpuUnavailable = $derived.by(() => {
-		if (sysinfo && (!sysinfo.gpu || !sysinfo.gpu.is_dedicated)) return true;
-		if (!sysinfo && latestTick && latestTick.gpu_usage === null) return true;
-		return false;
-	});
-
-	let isVramUnavailable = $derived.by(() => {
-		if (isGpuUnavailable) return true;
-		if (sysinfo?.vram && sysinfo.vram.total_bytes > 0) return false;
-		if (
-			latestTick &&
-			latestTick.vram_percentage !== null &&
-			latestTick.vram_percentage !== undefined
-		)
-			return false;
-		if (
-			latestTick &&
-			latestTick.vram_total_bytes !== null &&
-			latestTick.vram_total_bytes !== undefined &&
-			latestTick.vram_total_bytes > 0
-		)
-			return false;
-		if (sysinfo?.gpu?.memory_total_bytes && sysinfo.gpu.memory_total_bytes > 0) return false;
-		return true;
-	});
 </script>
 
 <svelte:head>
@@ -134,7 +157,7 @@
 
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
 	<div class="flex flex-col gap-6">
-		<!-- Page Header (clean, without duplicate Live Stream badge which lives in the floating header) -->
+		<!-- Page Header -->
 		<PageHeader
 			title={t('sysinfo.pageTitle')}
 			subtitle={t('sysinfo.pageSubtitle')}
@@ -156,14 +179,14 @@
 			</Alert>
 		{/if}
 
-		<!-- Real-Time Mountain Charts Section -->
-		<section class="flex flex-col gap-4">
+		<!-- Real-Time Telemetry Mountain Charts Section -->
+		<section class="flex flex-col gap-5">
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
-				<!-- CPU Usage Mountain Chart -->
+				<!-- 1. CPU Usage Mountain Chart -->
 				<AreaChart
-					title="CPU Utilization"
+					title={t('sysinfo.cpuTitle')}
 					subtitle={sysinfo
-						? `${sysinfo.cpu.brand} (${sysinfo.cpu.cores} cores)`
+						? `${sysinfo.cpu.brand} (${sysinfo.cpu.cores} ${t('sysinfo.cores')})`
 						: 'Host Processor'}
 					currentValue={latestTick?.cpu_usage ?? sysinfo?.cpu?.usage ?? 0}
 					unit="%"
@@ -171,11 +194,17 @@
 					icon={Cpu}
 					data={cpuHistory}
 					maxVal={100}
+					temperature={latestTick?.cpu_temp_c ?? sysinfo?.cpu?.temperature_c ?? null}
+					clock={latestTick?.cpu_frequency_mhz
+						? `${(latestTick.cpu_frequency_mhz / 1000).toFixed(2)} GHz`
+						: sysinfo?.cpu?.frequency_mhz
+							? `${(sysinfo.cpu.frequency_mhz / 1000).toFixed(2)} GHz`
+							: null}
 				/>
 
-				<!-- RAM Usage Mountain Chart -->
+				<!-- 2. RAM Usage Mountain Chart -->
 				<AreaChart
-					title="RAM Usage"
+					title={t('sysinfo.ramTitle')}
 					subtitle={sysinfo
 						? `${formatBytes(latestTick?.ram_used_bytes ?? sysinfo.ram.used_bytes)} / ${formatBytes(sysinfo.ram.total_bytes)}`
 						: 'System Memory'}
@@ -187,34 +216,109 @@
 					maxVal={100}
 				/>
 
-				<!-- GPU Utilization Mountain Chart -->
+				<!-- 3/4. Multiple GPUs Charts (Render for EVERY GPU: dedicated or integrated) -->
+				{#if gpusList.length > 0}
+					{#each gpusList as gpu (gpu.index)}
+						{@const gpuTitle =
+							gpusList.length > 1 ? `GPU ${gpu.index} (${gpu.vendor})` : t('sysinfo.gpuTitle')}
+						{@const vramTitle =
+							gpusList.length > 1 ? `VRAM (GPU ${gpu.index})` : t('sysinfo.vramTitle')}
+						{@const gpuHistory = gpuHistoryMap[gpu.index] || []}
+						{@const vramHistory = vramHistoryMap[gpu.index] || []}
+						{@const vramTotal = gpu.memory_total_bytes ?? 0}
+						{@const vramUsed = gpu.memory_used_bytes ?? 0}
+						{@const vramPct = vramTotal > 0 ? (vramUsed / vramTotal) * 100 : 0}
+
+						<!-- GPU Utilization -->
+						<AreaChart
+							title={gpuTitle}
+							subtitle={gpu.name}
+							currentValue={gpu.usage ?? 0}
+							unit="%"
+							color={gpu.is_dedicated ? '#00a971' : '#10b981'}
+							icon={Gpu}
+							data={gpuHistory}
+							maxVal={100}
+							temperature={gpu.temperature_c ??
+								(gpu.is_dedicated
+									? null
+									: (latestTick?.cpu_temp_c ?? sysinfo?.cpu.temperature_c ?? null))}
+							clock={gpu.clock_mhz ? `${gpu.clock_mhz} MHz` : null}
+						/>
+
+						<!-- GPU VRAM Usage -->
+						<AreaChart
+							title={vramTitle}
+							subtitle={vramTotal > 0
+								? `${formatBytes(vramUsed)} / ${formatBytes(vramTotal)}`
+								: gpu.is_dedicated
+									? 'Dedicated Video RAM'
+									: 'Shared System Video RAM'}
+							currentValue={vramPct}
+							unit="%"
+							color="#30d9a1"
+							icon={Layers}
+							data={vramHistory}
+							maxVal={100}
+							unavailable={vramTotal === 0 && !gpu.is_dedicated}
+							unavailableMessage="Shared Host Memory"
+						/>
+					{/each}
+				{:else}
+					<!-- Fallback when no GPU is found -->
+					<AreaChart
+						title={t('sysinfo.gpuTitle')}
+						subtitle="Graphics Processor"
+						currentValue={0}
+						unit="%"
+						color="#00a971"
+						icon={Gpu}
+						data={[]}
+						unavailable={true}
+						unavailableMessage={t('sysinfo.noGpuDetected')}
+					/>
+
+					<AreaChart
+						title={t('sysinfo.vramTitle')}
+						subtitle="Dedicated Video RAM"
+						currentValue={0}
+						unit="%"
+						color="#30d9a1"
+						icon={Layers}
+						data={[]}
+						unavailable={true}
+						unavailableMessage="No Dedicated VRAM Detected"
+					/>
+				{/if}
+
+				<!-- 5. Local Storage (Disk I/O) Mountain Chart -->
 				<AreaChart
-					title="GPU Utilization"
-					subtitle={sysinfo?.gpu ? sysinfo.gpu.name : 'Dedicated Graphics'}
-					currentValue={latestTick?.gpu_usage ?? (isGpuUnavailable ? 0 : 0)}
-					unit="%"
-					color="#00a971"
-					icon={Gpu}
-					data={gpuHistory}
-					maxVal={100}
-					unavailable={isGpuUnavailable}
-					unavailableMessage="No Dedicated GPU Detected"
+					title={t('sysinfo.diskTitle')}
+					subtitle={latestTick
+						? `${formatBytes(latestTick.storage_used_bytes)} / ${formatBytes(latestTick.storage_total_bytes)} • R: ${formatBytes(latestTick.disk_read_bytes_sec)}/s  W: ${formatBytes(latestTick.disk_write_bytes_sec)}/s`
+						: sysinfo?.storage
+							? `${formatBytes(sysinfo.storage.used_bytes)} / ${formatBytes(sysinfo.storage.total_bytes)}`
+							: 'Storage I/O'}
+					currentValue={formattedDiskIo.value}
+					unit={formattedDiskIo.unit}
+					color="#3b82f6"
+					icon={HardDrive}
+					data={diskIoHistory}
+					maxVal={Math.max(1024, ...diskIoHistory)}
 				/>
 
-				<!-- VRAM Memory Mountain Chart -->
+				<!-- 6. Network Traffic Mountain Chart -->
 				<AreaChart
-					title="VRAM Usage"
-					subtitle={!isVramUnavailable
-						? `${formatBytes(latestTick?.vram_used_bytes ?? sysinfo?.vram?.used_bytes ?? 0)} / ${formatBytes(latestTick?.vram_total_bytes ?? sysinfo?.vram?.total_bytes ?? sysinfo?.gpu?.memory_total_bytes ?? 0)}`
-						: 'Dedicated Video RAM'}
-					currentValue={latestTick?.vram_percentage ?? sysinfo?.vram?.percentage ?? 0}
-					unit="%"
-					color="#30d9a1"
-					icon={MemoryStick}
-					data={vramHistory}
-					maxVal={100}
-					unavailable={isVramUnavailable}
-					unavailableMessage="No Dedicated VRAM Detected"
+					title={t('sysinfo.networkTitle')}
+					subtitle={latestTick
+						? `↓ ${formatBytes(latestTick.net_rx_bytes_sec)}/s  ↑ ${formatBytes(latestTick.net_tx_bytes_sec)}/s`
+						: 'Network Throughput'}
+					currentValue={formattedNet.value}
+					unit={formattedNet.unit}
+					color="#06b6d4"
+					icon={Network}
+					data={netHistory}
+					maxVal={Math.max(1024, ...netHistory)}
 				/>
 			</div>
 		</section>
@@ -388,13 +492,7 @@
 					</div>
 				</div>
 
-				<div
-					class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 {sysinfo.gpu
-						? (sysinfo.vram?.total_bytes ?? sysinfo.gpu.memory_total_bytes)
-							? 'xl:grid-cols-6'
-							: 'xl:grid-cols-5'
-						: ''} gap-4"
-				>
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 					<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
 						<span
 							class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
@@ -434,31 +532,6 @@
 							>{formatUptime(sysinfo.os.uptime_seconds)}</span
 						>
 					</div>
-
-					{#if sysinfo.gpu}
-						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
-							<span
-								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-								>{t('sysinfo.dedicatedGpu')}</span
-							>
-							<span
-								class="text-sm font-semibold text-[var(--text-primary)] truncate"
-								title={sysinfo.gpu.name}>{sysinfo.gpu.name}</span
-							>
-						</div>
-					{/if}
-
-					{#if sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes}
-						<div class="flex flex-col gap-1.5 p-3.5 bg-white/[0.02] rounded-xl border-0">
-							<span
-								class="text-[0.75rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]"
-								>{t('sysinfo.vramTitle')}</span
-							>
-							<span class="text-sm font-semibold text-[var(--text-primary)]">
-								{formatBytes(sysinfo.vram?.total_bytes ?? sysinfo.gpu?.memory_total_bytes ?? 0)}
-							</span>
-						</div>
-					{/if}
 				</div>
 			</section>
 		{/if}

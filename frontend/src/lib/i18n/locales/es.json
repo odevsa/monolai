@@ -241,7 +241,11 @@
 		"free": "libre",
 		"driver": "Controlador",
 		"dedicatedGpu": "GPU Dedicada",
-		"integratedGpu": "GPU Integrada"
+		"integratedGpu": "GPU Integrada",
+		"diskTitle": "Almacenamiento Local (Disco)",
+		"networkTitle": "Actividad de Red",
+		"noGpuDetected": "No se detectó aceleración gráfica",
+		"storageTitle": "Almacenamiento"
 	},
 	"settings": {
 		"title": "Configuración",

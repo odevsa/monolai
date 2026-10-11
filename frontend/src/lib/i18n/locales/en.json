@@ -241,7 +241,11 @@
 		"free": "free",
 		"driver": "Driver",
 		"dedicatedGpu": "Dedicated GPU",
-		"integratedGpu": "Integrated GPU"
+		"integratedGpu": "Integrated GPU",
+		"diskTitle": "Local Storage (Disk)",
+		"networkTitle": "Network Activity",
+		"noGpuDetected": "No Graphics Acceleration Detected",
+		"storageTitle": "Storage"
 	},
 	"settings": {
 		"title": "Settings",

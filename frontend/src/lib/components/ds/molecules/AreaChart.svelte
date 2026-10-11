@@ -13,7 +13,9 @@
 		currentValue = 0,
 		icon: IconComponent = null,
 		unavailable = false,
-		unavailableMessage = 'Resource Not Available'
+		unavailableMessage = 'Resource Not Available',
+		temperature = null,
+		clock = null
 	}: {
 		data: number[];
 		maxVal?: number;
@@ -26,6 +28,8 @@
 		icon?: any;
 		unavailable?: boolean;
 		unavailableMessage?: string;
+		temperature?: number | null;
+		clock?: string | null;
 	} = $props();
 
 	const id = Math.random().toString(36).substring(2, 9);
@@ -65,6 +69,19 @@
 		return `${pathD} L ${last.x.toFixed(1)},${height} L ${first.x.toFixed(1)},${height} Z`;
 	});
 
+	function hexToRgba(hex: string, alpha: number): string {
+		const clean = hex.replace('#', '');
+		if (clean.length === 6) {
+			const r = parseInt(clean.substring(0, 2), 16);
+			const g = parseInt(clean.substring(2, 4), 16);
+			const b = parseInt(clean.substring(4, 6), 16);
+			return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+		}
+		return hex;
+	}
+
+	let badgeBg = $derived(hexToRgba(color, 0.18));
+	let badgeBorder = $derived(hexToRgba(color, 0.35));
 	let lastPoint = $derived(points.length > 0 ? points[points.length - 1] : null);
 </script>
 
@@ -79,7 +96,9 @@
 				</div>
 			{/if}
 			<div class="min-w-0 flex-1">
-				<h3 class="m-0 text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h3>
+				<div class="flex items-center gap-2">
+					<h3 class="m-0 text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h3>
+				</div>
 				{#if subtitle}
 					<span class="text-xs text-[var(--text-muted)] block mt-0.5 truncate" title={subtitle}
 						>{subtitle}</span
@@ -119,6 +138,28 @@
 		<div
 			class="w-full h-[140px] relative overflow-hidden rounded-xl bg-[var(--bg-surface-hover)] border-0"
 		>
+			{#if (temperature !== undefined && temperature !== null) || clock}
+				<div class="absolute top-1.5 left-1.5 z-10 flex items-center gap-1 pointer-events-none">
+					{#if temperature !== undefined && temperature !== null}
+						<span
+							class="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-lg backdrop-blur-md shadow-xs"
+							style="background-color: {badgeBg}; color: {color}; border: 1px solid {badgeBorder};"
+							title="Operating Temperature"
+						>
+							{temperature.toFixed(1)}°C
+						</span>
+					{/if}
+					{#if clock}
+						<span
+							class="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-lg backdrop-blur-md shadow-xs"
+							style="background-color: {badgeBg}; color: {color}; border: 1px solid {badgeBorder};"
+							title="Operating Clock Frequency"
+						>
+							{clock}
+						</span>
+					{/if}
+				</div>
+			{/if}
 			<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none" class="w-full h-full block">
 				<defs>
 					<linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

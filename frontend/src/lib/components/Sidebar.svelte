@@ -14,14 +14,20 @@
 		unloadAllModels,
 		unloadModel
 	} from '$lib/runningModelsStore';
-	import { chatsState, imageGalleryState } from '$lib/state';
+	import { chatsState, hostState, imageGalleryState } from '$lib/state';
 	import type { ChatConversation, GeneratedImageItem } from '$lib/types/chat';
+	import { formatBytes } from '$lib/utils/format';
 	import { APP_VERSION } from '$lib/version';
 	import {
 		Activity,
 		Box,
 		Boxes,
+		Cpu,
+		Gpu,
+		HardDrive,
 		Image as ImageIcon,
+		Layers,
+		MemoryStick,
 		MessageSquare,
 		PanelLeftClose,
 		PanelLeftOpen,
@@ -167,6 +173,85 @@
 		currentPath.startsWith('/chat/') ? currentPath.replace('/chat/', '') : ''
 	);
 	let isExpanded = $derived(!collapsed || mobileOpen);
+
+	$effect(() => {
+		if (isSysInfoPage) {
+			const unsub = hostState.subscribe();
+			return unsub;
+		}
+	});
+
+	let sysinfo = $derived(hostState.sysinfo);
+	let latestTick = $derived(hostState.latestTick);
+
+	let cpuUsage = $derived(latestTick?.cpu_usage ?? sysinfo?.cpu.usage ?? 0);
+	let cpuBrand = $derived(sysinfo?.cpu.brand || 'Host Processor');
+	let cpuCores = $derived(sysinfo?.cpu.cores ? `${sysinfo.cpu.cores} Cores` : '');
+	let cpuTemp = $derived(latestTick?.cpu_temp_c ?? sysinfo?.cpu.temperature_c ?? null);
+	let cpuFreq = $derived(
+		latestTick?.cpu_frequency_mhz
+			? `${(latestTick.cpu_frequency_mhz / 1000).toFixed(2)} GHz`
+			: sysinfo?.cpu.frequency_mhz
+				? `${(sysinfo.cpu.frequency_mhz / 1000).toFixed(2)} GHz`
+				: ''
+	);
+
+	let ramPercentage = $derived(latestTick?.ram_percentage ?? sysinfo?.ram.percentage ?? 0);
+	let ramUsed = $derived(latestTick?.ram_used_bytes ?? sysinfo?.ram.used_bytes ?? 0);
+	let ramTotal = $derived(latestTick?.ram_total_bytes ?? sysinfo?.ram.total_bytes ?? 0);
+
+	let gpusList = $derived.by(() => {
+		if (latestTick?.gpus && latestTick.gpus.length > 0) return latestTick.gpus;
+		if (sysinfo?.gpus && sysinfo.gpus.length > 0) return sysinfo.gpus;
+		if (sysinfo?.gpu) {
+			return [
+				{
+					index: 0,
+					name: sysinfo.gpu.name,
+					vendor: sysinfo.gpu.vendor,
+					memory_total_bytes: sysinfo.gpu.memory_total_bytes,
+					memory_used_bytes: latestTick?.vram_used_bytes ?? sysinfo.vram?.used_bytes ?? null,
+					memory_free_bytes: sysinfo.vram?.free_bytes ?? null,
+					driver_version: sysinfo.gpu.driver_version,
+					is_dedicated: sysinfo.gpu.is_dedicated,
+					usage: latestTick?.gpu_usage ?? null,
+					temperature_c: null,
+					clock_mhz: null
+				}
+			];
+		}
+		return [];
+	});
+
+	let totalVramBytes = $derived.by(() => {
+		if (latestTick?.vram_total_bytes && latestTick.vram_total_bytes > 0)
+			return latestTick.vram_total_bytes;
+		if (sysinfo?.vram?.total_bytes && sysinfo.vram.total_bytes > 0) return sysinfo.vram.total_bytes;
+		let sum = 0;
+		for (const g of gpusList) {
+			if (g.memory_total_bytes) sum += g.memory_total_bytes;
+		}
+		return sum;
+	});
+
+	let usedVramBytes = $derived.by(() => {
+		if (latestTick?.vram_used_bytes !== null && latestTick?.vram_used_bytes !== undefined)
+			return latestTick.vram_used_bytes;
+		if (sysinfo?.vram?.used_bytes) return sysinfo.vram.used_bytes;
+		let sum = 0;
+		for (const g of gpusList) {
+			if (g.memory_used_bytes) sum += g.memory_used_bytes;
+		}
+		return sum;
+	});
+
+	let vramPercentage = $derived(totalVramBytes > 0 ? (usedVramBytes / totalVramBytes) * 100 : 0);
+
+	let storageUsed = $derived(latestTick?.storage_used_bytes ?? sysinfo?.storage.used_bytes ?? 0);
+	let storageTotal = $derived(latestTick?.storage_total_bytes ?? sysinfo?.storage.total_bytes ?? 0);
+	let storagePercentage = $derived(
+		latestTick?.storage_percentage ?? sysinfo?.storage.percentage ?? 0
+	);
 </script>
 
 <!-- Mobile Overlay Backdrop -->
@@ -602,6 +687,180 @@
 						</div>
 					</div>
 				</FeatureGate>
+			{:else if isSysInfoPage}
+				<div class="flex flex-col gap-3">
+					<div
+						class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider px-1"
+					>
+						System Status
+					</div>
+
+					<div
+						class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-3.5"
+					>
+						<!-- CPU Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<Cpu size={14} style="color: #9845e7" class="shrink-0" />
+									<span class="font-medium">CPU</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{cpuCores || 'CPU'}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #9845e7; width: {Math.min(
+											100,
+											Math.max(0, cpuUsage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{cpuUsage.toFixed(0)}%
+								</span>
+							</div>
+						</div>
+
+						<!-- RAM Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<MemoryStick size={14} style="color: #c875ff" class="shrink-0" />
+									<span class="font-medium">RAM</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{formatBytes(ramTotal)}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #c875ff; width: {Math.min(
+											100,
+											Math.max(0, ramPercentage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{ramPercentage.toFixed(0)}%
+								</span>
+							</div>
+						</div>
+
+						<!-- GPUs Status -->
+						{#if gpusList.length > 0}
+							{#each gpusList as gpu (gpu.index)}
+								{@const gpuColor = gpu.is_dedicated ? '#00a971' : '#10b981'}
+								<div class="flex flex-col gap-1.5">
+									<div class="flex items-center justify-between text-xs">
+										<div class="flex items-center gap-2 text-[var(--text-secondary)] min-w-0">
+											<Gpu size={14} style="color: {gpuColor}" class="shrink-0" />
+											<span class="font-medium truncate">
+												{gpusList.length > 1 ? `GPU ${gpu.index}` : 'GPU'}
+											</span>
+										</div>
+										<span class="text-[var(--text-muted)] shrink-0">
+											{gpu.memory_total_bytes
+												? formatBytes(gpu.memory_total_bytes)
+												: gpu.clock_mhz
+													? `${gpu.clock_mhz} MHz`
+													: gpu.is_dedicated
+														? 'Dedicated'
+														: 'Integrated'}
+										</span>
+									</div>
+									<div class="flex items-center gap-2">
+										<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+											<div
+												class="h-full rounded-full transition-all duration-500"
+												style="background-color: {gpuColor}; width: {Math.min(
+													100,
+													Math.max(0, gpu.usage ?? 0)
+												).toFixed(0)}%"
+											></div>
+										</div>
+										<span
+											class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+										>
+											{gpu.usage !== null && gpu.usage !== undefined
+												? `${gpu.usage.toFixed(0)}%`
+												: '0%'}
+										</span>
+									</div>
+								</div>
+							{/each}
+						{/if}
+
+						<!-- VRAM Status -->
+						{#if totalVramBytes > 0}
+							<div class="flex flex-col gap-1.5">
+								<div class="flex items-center justify-between text-xs">
+									<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+										<Layers size={14} style="color: #30d9a1" class="shrink-0" />
+										<span class="font-medium">VRAM</span>
+									</div>
+									<span class="text-[var(--text-muted)]">
+										{formatBytes(totalVramBytes)}
+									</span>
+								</div>
+								<div class="flex items-center gap-2">
+									<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+										<div
+											class="h-full rounded-full transition-all duration-500"
+											style="background-color: #30d9a1; width: {Math.min(
+												100,
+												Math.max(0, vramPercentage)
+											).toFixed(0)}%"
+										></div>
+									</div>
+									<span
+										class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+									>
+										{vramPercentage.toFixed(0)}%
+									</span>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Storage (Disk) Status -->
+						<div class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between text-xs">
+								<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+									<HardDrive size={14} style="color: #3b82f6" class="shrink-0" />
+									<span class="font-medium">Disk</span>
+								</div>
+								<span class="text-[var(--text-muted)]">
+									{formatBytes(storageTotal)}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+									<div
+										class="h-full rounded-full transition-all duration-500"
+										style="background-color: #3b82f6; width: {Math.min(
+											100,
+											Math.max(0, storagePercentage)
+										).toFixed(0)}%"
+									></div>
+								</div>
+								<span
+									class="text-[12px] text-[var(--text-muted)] font-bold w-8 text-right shrink-0 tabular-nums"
+								>
+									{storagePercentage.toFixed(0)}%
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
 			{/if}
 		</div>
 	{/if}
