@@ -69,19 +69,22 @@
 		return `${pathD} L ${last.x.toFixed(1)},${height} L ${first.x.toFixed(1)},${height} Z`;
 	});
 
-	function hexToRgba(hex: string, alpha: number): string {
-		const clean = hex.replace('#', '');
+	function getAlphaColor(colorVal: string, alpha: number): string {
+		if (colorVal.startsWith('var(')) {
+			return `color-mix(in srgb, ${colorVal} ${Math.round(alpha * 100)}%, transparent)`;
+		}
+		const clean = colorVal.replace('#', '');
 		if (clean.length === 6) {
 			const r = parseInt(clean.substring(0, 2), 16);
 			const g = parseInt(clean.substring(2, 4), 16);
 			const b = parseInt(clean.substring(4, 6), 16);
 			return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 		}
-		return hex;
+		return colorVal;
 	}
 
-	let badgeBg = $derived(hexToRgba(color, 0.18));
-	let badgeBorder = $derived(hexToRgba(color, 0.35));
+	let badgeBg = $derived(getAlphaColor(color, 0.18));
+	let badgeBorder = $derived(getAlphaColor(color, 0.35));
 	let lastPoint = $derived(points.length > 0 ? points[points.length - 1] : null);
 </script>
 
@@ -125,7 +128,7 @@
 			class="w-full h-[140px] flex flex-col items-center justify-center p-4 text-center bg-[var(--bg-surface-hover)] rounded-xl border-0"
 		>
 			<div
-				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-semibold"
+				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--warning-light)] border border-[var(--warning-border)] text-[var(--warning-text)] text-xs font-semibold"
 			>
 				<TriangleAlert size={15} />
 				<span>{unavailableMessage}</span>

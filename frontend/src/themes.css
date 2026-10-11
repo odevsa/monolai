@@ -60,6 +60,15 @@
 	--color-info-border: var(--info-border);
 	--color-info-text: var(--info-text);
 
+	/* Telemetry & Chart Metrics */
+	--color-chart-cpu: var(--chart-cpu);
+	--color-chart-ram: var(--chart-ram);
+	--color-chart-gpu: var(--chart-gpu);
+	--color-chart-gpu-shared: var(--chart-gpu-shared);
+	--color-chart-vram: var(--chart-vram);
+	--color-chart-disk: var(--chart-disk);
+	--color-chart-net: var(--chart-net);
+
 	/* Backwards-compatibility aliases */
 	--color-primary-main: var(--primary);
 	--color-bg-app: var(--bg-primary);
@@ -158,6 +167,15 @@
 		--syntax-keyword: #818cf8;
 		--syntax-function: #fbbf24;
 		--syntax-variable: #f97316;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #9845e7;
+		--chart-ram: #c875ff;
+		--chart-gpu: #00a971;
+		--chart-gpu-shared: #10b981;
+		--chart-vram: #30d9a1;
+		--chart-disk: #3b82f6;
+		--chart-net: #06b6d4;
 	}
 
 	/* ==============================================================================
