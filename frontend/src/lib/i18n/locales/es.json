@@ -411,8 +411,8 @@
 		"reconnecting": "Reconectando...",
 		"linesCount": "{{count}} líneas",
 		"bufferWarning": "Pantalla limitada a {{limit}} líneas para máximo rendimiento",
-		"serviceLabel": "Servicio:",
-		"levelLabel": "Nivel:",
+		"serviceLabel": "Servicio",
+		"levelLabel": "Nivel",
 		"terminalTitle": "REGISTROS",
 		"scrollToBottom": "Ir al final"
 	},

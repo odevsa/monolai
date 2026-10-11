@@ -27,9 +27,12 @@
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
 		<!-- Service Select -->
 		<div class="lg:col-span-4 flex items-center gap-2">
-			<span class="text-xs text-[var(--text-muted)] font-medium shrink-0 flex items-center gap-1.5">
+			<span
+				title={t('logs.serviceLabel')}
+				aria-label={t('logs.serviceLabel')}
+				class="text-xs text-[var(--text-muted)] font-medium shrink-0 flex items-center gap-1.5"
+			>
 				<Terminal size={14} class="text-[var(--primary)]" />
-				{t('logs.serviceLabel')}
 			</span>
 			<div class="flex-1 min-w-0">
 				<Select
@@ -43,9 +46,12 @@
 
 		<!-- Level Select -->
 		<div class="lg:col-span-3 flex items-center gap-2">
-			<span class="text-xs text-[var(--text-muted)] font-medium shrink-0 flex items-center gap-1.5">
+			<span
+				title={t('logs.levelLabel')}
+				aria-label={t('logs.levelLabel')}
+				class="text-xs text-[var(--text-muted)] font-medium shrink-0 flex items-center gap-1.5"
+			>
 				<Funnel size={14} class="text-[var(--primary)]" />
-				{t('logs.levelLabel')}
 			</span>
 			<div class="flex-1 min-w-0">
 				<Select
