@@ -21,14 +21,14 @@
 	import { formatBytes } from '$lib/utils/format';
 	import { getMainModelFilePath } from '$lib/utils/model';
 	import {
-		AlertTriangle,
+		TriangleAlert,
 		ArrowLeft,
 		Box,
 		FileText,
 		Pencil,
 		Plus,
 		Search,
-		Trash2,
+		Trash,
 		X
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
@@ -442,7 +442,7 @@
 										</Badge>
 									{:else if isMissing}
 										<Badge variant="warning">
-											<AlertTriangle size={11} class="shrink-0" />
+											<TriangleAlert size={11} class="shrink-0" />
 											<span>{t('models.fileMissing')}</span>
 										</Badge>
 									{/if}
@@ -495,7 +495,7 @@
 									onclick={() => deleteModel(model.id)}
 									title={t('common.delete')}
 								>
-									<Trash2 size={13} />
+									<Trash size={13} />
 									<span>{t('common.delete')}</span>
 								</Button>
 							</div>

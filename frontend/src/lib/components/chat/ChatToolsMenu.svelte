@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { REASONING_PRESETS, type ReasoningPreset } from '$lib/utils/context';
-	import { Check, ChevronRight, Lightbulb, Plus, Trash2 } from '@lucide/svelte';
+	import { Check, ChevronRight, Lightbulb, Plus, Trash } from '@lucide/svelte';
 	import { onMount, tick } from 'svelte';
 
 	interface ChatToolsMenuProps {
@@ -184,7 +184,7 @@
 				}}
 			>
 				<div class="flex items-center gap-2">
-					<Trash2 size={16} />
+					<Trash size={16} />
 					<span>{t('chat.clearPromptHistory')}</span>
 				</div>
 			</button>

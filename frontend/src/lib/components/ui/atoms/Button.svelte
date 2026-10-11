@@ -28,7 +28,7 @@
 
 	const variantClasses = {
 		primary:
-			'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] border border-transparent shadow-sm',
+			'bg-[var(--primary)] text-[var(--btn-text)] hover:bg-[var(--primary-hover)] border border-transparent shadow-sm',
 		secondary:
 			'bg-[var(--btn-bg)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--btn-hover)] hover:border-[var(--border-hover)]',
 		danger:

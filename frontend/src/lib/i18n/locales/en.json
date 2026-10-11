@@ -410,7 +410,11 @@
 		"liveStreaming": "Live streaming",
 		"reconnecting": "Reconnecting...",
 		"linesCount": "{{count}} lines",
-		"bufferWarning": "Display capped at {{limit}} lines for peak UI performance"
+		"bufferWarning": "Display capped at {{limit}} lines for peak UI performance",
+		"serviceLabel": "Service:",
+		"levelLabel": "Level:",
+		"terminalTitle": "LOGS",
+		"scrollToBottom": "Scroll to bottom"
 	},
 	"errors": {
 		"networkError": "Network request failed. Is the backend server running?",

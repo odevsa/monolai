@@ -9,7 +9,7 @@
 		class: className = '',
 		children
 	}: {
-		variant?: 'success' | 'warning' | 'danger' | 'primary' | 'muted';
+		variant?: 'success' | 'warning' | 'danger' | 'primary' | 'muted' | 'info';
 		rounded?: 'rounded-full' | 'rounded-md' | 'rounded-sm';
 		pulse?: boolean;
 		blur?: boolean;
@@ -22,7 +22,8 @@
 		warning: 'bg-[var(--warning-light)] text-[var(--warning-text)] border-[var(--warning-border)]',
 		danger: 'bg-[var(--danger-light)] text-[var(--danger-text)] border-[var(--danger-border)]',
 		primary: 'bg-[var(--primary-light)] text-[var(--primary)] border-[var(--primary-focus)]',
-		muted: 'bg-white/5 text-[var(--text-muted)] border-[var(--border-color)]'
+		info: 'bg-[var(--info-light)] text-[var(--info-text)] border-[var(--info-border)]',
+		muted: 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-color)]'
 	};
 
 	const dotClasses = {
@@ -30,6 +31,7 @@
 		warning: 'bg-[var(--warning)] shadow-[0_0_6px_var(--warning)]',
 		danger: 'bg-[var(--danger)] shadow-[0_0_6px_var(--danger)]',
 		primary: 'bg-[var(--primary)] shadow-[0_0_6px_var(--primary-focus)]',
+		info: 'bg-[var(--info)] shadow-[0_0_6px_var(--info)]',
 		muted: 'bg-[var(--text-muted)]'
 	};
 </script>

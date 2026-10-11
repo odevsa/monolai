@@ -44,7 +44,7 @@
 
 <div
 	class="relative flex items-center w-full rounded-lg bg-[var(--bg-primary)] border transition-all duration-150 {error
-		? 'border-red-500/50 focus-within:ring-2 focus-within:ring-red-500/20'
+		? 'border-[var(--danger)] focus-within:ring-2 focus-within:ring-[var(--danger-focus)]'
 		: 'border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:ring-1 focus-within:ring-[var(--primary)]/40'} {disabled
 		? 'opacity-50 cursor-not-allowed pointer-events-none'
 		: ''} {className}"

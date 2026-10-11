@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { chatsApi, configApi } from '$lib/api';
-	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ui';
+	import { configApi } from '$lib/api';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
-	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
 	import { chatsState } from '$lib/state/chats.svelte';
+	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
-	import { PanelLeftOpen, Plus, RefreshCw, Trash2, X } from '@lucide/svelte';
+	import { PanelLeftOpen, Plus, RefreshCw, Trash, X } from '@lucide/svelte';
 	import { onMount, setContext } from 'svelte';
 	import '../app.css';
 
@@ -236,7 +236,7 @@
 									title={t('chat.deleteChat')}
 									aria-label={t('chat.deleteChat')}
 								>
-									<Trash2 size={15} />
+									<Trash size={15} />
 								</button>
 							</FeatureGate>
 						{/if}

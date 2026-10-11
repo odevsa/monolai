@@ -24,3 +24,7 @@
    - Avoid monolithic components that lump together views, event listeners, and business logic into a single file. Break down large pages into modular components.
    - Deconstruct repetitive markup patterns (iterated items in lists, metric bars, repeated action rows, status indicators) into reusable subcomponents rather than duplicating raw HTML and Tailwind utility chains.
    - Maintain high cohesion and clear encapsulation: components must accept strongly-typed `$props()` and manage only state pertinent to their isolated scope.
+   - Zero local `<style>` blocks in components: use 100% Tailwind CSS classes with semantic theme variables.
+8. **Mandatory Global UI Design System Usage (`src/lib/components/ui/`)**:
+   - Always favor canonical UI components from `src/lib/components/ui/` (`Button`, `Badge`, `Input`, `Select`, `Card`, `Modal`, `Alert`, `EmptyState`) instead of writing ad-hoc raw HTML controls (`<button>`, `<input>`, `<select>`) with manual utility chains.
+   - If a reusable UI pattern or control variant is needed across multiple views (e.g. specialized pills, action buttons, filter inputs) and does not yet exist, create it as a global atom/molecule in `src/lib/components/ui/` rather than duplicating local ad-hoc markup in page views.

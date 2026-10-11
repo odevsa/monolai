@@ -410,7 +410,11 @@
 		"liveStreaming": "Transmisión en vivo",
 		"reconnecting": "Reconectando...",
 		"linesCount": "{{count}} líneas",
-		"bufferWarning": "Pantalla limitada a {{limit}} líneas para máximo rendimiento"
+		"bufferWarning": "Pantalla limitada a {{limit}} líneas para máximo rendimiento",
+		"serviceLabel": "Servicio:",
+		"levelLabel": "Nivel:",
+		"terminalTitle": "REGISTROS",
+		"scrollToBottom": "Ir al final"
 	},
 	"errors": {
 		"networkError": "La solicitud de red falló. ¿Está en ejecución el servidor backend?",

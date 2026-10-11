@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { Copy, RotateCw, Trash2 } from '@lucide/svelte';
+	import { Copy, RotateCw, Trash } from '@lucide/svelte';
 
 	interface ChatMessageActionsProps {
 		role: 'user' | 'assistant';
@@ -47,6 +47,6 @@
 		aria-label={t('chat.deleteTooltip')}
 		onclick={onDelete}
 	>
-		<Trash2 size={14} />
+		<Trash size={14} />
 	</button>
 </div>
