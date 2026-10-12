@@ -4,7 +4,6 @@
 	import { Alert, Button, Input, Select, Toggle } from '$lib/components/ui';
 	import { AVAILABLE_LOCALES, i18n, isLocaleSupported, t } from '$lib/i18n';
 	import { THEMES, type ThemeId } from '$lib/themes';
-	import type { ConfigStatus } from '$lib/types/config';
 	import { formatTimeoutDuration } from '$lib/utils/format';
 	import {
 		Check,
@@ -258,10 +257,10 @@
 			<SettingGroup title={t('settings.groupProcess')}>
 				<SettingRow
 					icon={RotateCcw}
-					title={t('settings.autoUnload')}
-					subtitle={t('settings.autoUnloadDesc')}
+					title={t('settings.idleAutoUnload')}
+					subtitle={t('settings.idleAutoUnloadDesc')}
 				>
-					<Toggle bind:checked={idleAutoUnload} ariaLabel={t('settings.autoUnload')} />
+					<Toggle bind:checked={idleAutoUnload} ariaLabel={t('settings.idleAutoUnload')} />
 				</SettingRow>
 
 				<SettingRow

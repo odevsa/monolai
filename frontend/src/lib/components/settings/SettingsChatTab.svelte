@@ -6,6 +6,7 @@
 	import { Check, MessageSquare, RotateCcw, Save, ShieldCheck } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SettingGroup from './SettingGroup.svelte';
+	import { SettingRow } from '.';
 
 	let systemPrompt = $state(DEFAULT_SYSTEM_PROMPT);
 	let isLoading = $state(true);
@@ -71,35 +72,26 @@
 		{/if}
 
 		<SettingGroup title={t('settings.groupChat')} description={t('settings.systemPromptDesc')}>
-			<div class="flex flex-col gap-3 p-4">
-				<div class="flex items-center justify-between gap-2 flex-wrap">
-					<div class="flex items-center gap-2.5">
-						<MessageSquare size={17} class="text-[var(--primary)] shrink-0" />
-						<div class="flex flex-col">
-							<span class="text-xs sm:text-sm font-semibold text-[var(--text-primary)]">
-								{t('settings.defaultSystemPrompt')}
-							</span>
-							<span class="text-[11px] text-[var(--text-muted)]">
-								~{tokenCount} tokens
-							</span>
-						</div>
-					</div>
-
+			<SettingRow
+				icon={MessageSquare}
+				title={t('settings.defaultSystemPrompt')}
+				subtitle={`~${tokenCount} tokens`}
+				vertical={true}
+			>
+				{#snippet actionSnippet()}
 					<Button variant="ghost" size="xs" onclick={resetToDefault}>
 						<RotateCcw size={12} />
 						<span>{t('settings.resetDefault')}</span>
 					</Button>
-				</div>
+				{/snippet}
 
-				<div class="w-full">
-					<Textarea
-						bind:value={systemPrompt}
-						rows={8}
-						placeholder={t('settings.systemPromptPlaceholder')}
-						class="w-full text-xs font-sans leading-relaxed"
-					/>
-				</div>
-			</div>
+				<Textarea
+					bind:value={systemPrompt}
+					rows={8}
+					placeholder={t('settings.systemPromptPlaceholder')}
+					class="w-full text-xs font-sans leading-relaxed"
+				/>
+			</SettingRow>
 		</SettingGroup>
 	</div>
 

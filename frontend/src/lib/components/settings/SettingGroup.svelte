@@ -21,9 +21,7 @@
 		</h5>
 	{/if}
 
-	<div
-		class="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl divide-y divide-[var(--border-color)]/60 shadow-2xs"
-	>
+	<div class="w-full flex flex-col gap-0.5 rounded-2xl shadow-2xs">
 		{@render children()}
 	</div>
 

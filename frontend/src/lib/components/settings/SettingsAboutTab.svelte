@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { configApi } from '$lib/api/config';
-	import { Badge, Logo } from '$lib/components/ui';
+	import { Logo } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { ConfigStatus } from '$lib/types/config';
 	import { APP_VERSION } from '$lib/version';
-	import { Cpu, ExternalLink, Layers, Network, ShieldCheck, Sparkles, Zap } from '@lucide/svelte';
+	import { Cpu, Network, Palette, ScrollText, ShieldCheck, Sparkles } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SettingGroup from './SettingGroup.svelte';
 	import SettingRow from './SettingRow.svelte';
@@ -23,12 +23,8 @@
 
 <div class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5 min-h-0 w-full items-center">
 	<!-- Featured App Header -->
-	<div class="flex flex-col items-center gap-2 py-2 text-center max-w-sm">
-		<div
-			class="relative p-2.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-2xs"
-		>
-			<Logo size={42} />
-		</div>
+	<div class="flex flex-col items-center gap-4 py-2 text-center max-w-sm">
+		<Logo size={64} />
 		<div>
 			<h4 class="m-0 text-base font-bold text-[var(--text-primary)]">
 				{t('settings.aboutAppName')}
@@ -42,9 +38,9 @@
 	<!-- System Specifications -->
 	<SettingGroup title={t('settings.groupAboutSpecs')}>
 		<SettingRow icon={Sparkles} title={t('settings.appVersion')}>
-			<Badge variant="primary" rounded="rounded-md">
+			<span class="text-xs font-semibold text-[var(--text-secondary)]">
 				v{APP_VERSION}
-			</Badge>
+			</span>
 		</SettingRow>
 
 		<SettingRow icon={ShieldCheck} title={t('settings.privacy')}>
@@ -54,36 +50,25 @@
 		</SettingRow>
 
 		<SettingRow icon={Cpu} title={t('settings.backend')}>
-			<span class="text-xs font-mono font-medium text-[var(--text-secondary)]">
-				Rust (Axum + Tokio)
-			</span>
+			<span class="text-xs font-mono font-medium text-[var(--text-secondary)]"> Rust </span>
 		</SettingRow>
 
-		<SettingRow icon={Layers} title={t('settings.frontend')}>
+		<SettingRow icon={Palette} title={t('settings.frontend')}>
 			<span class="text-xs font-mono font-medium text-[var(--text-secondary)]">
 				Svelte 5 + Tailwind
 			</span>
 		</SettingRow>
-
-		{#if configStatus}
-			{#if configStatus.host !== undefined && configStatus.port !== undefined}
-				<SettingRow icon={Network} title={t('settings.apiEndpoint')}>
-					<span class="text-xs font-mono text-[var(--text-secondary)]">
-						{configStatus.host}:{configStatus.port}
-					</span>
-				</SettingRow>
-			{/if}
-
-			<SettingRow icon={Zap} title={t('settings.hardware')}>
-				<Badge variant="muted" rounded="rounded-md" class="uppercase font-mono text-[10px]">
-					{configStatus.hardware || 'auto'}
-				</Badge>
-			</SettingRow>
-		{/if}
 	</SettingGroup>
 
 	<!-- Resources & Links -->
 	<SettingGroup title={t('settings.groupAboutResources')}>
+		<SettingRow
+			icon={ScrollText}
+			title={t('settings.apiDocumentation')}
+			subtitle="{window.location.hostname}:{window.location.port}/api/swagger"
+			href="{window.location.origin}/api/swagger"
+		/>
+
 		<SettingRow
 			title={t('settings.githubRepo')}
 			subtitle="github.com/odevsa/monolai"
@@ -96,7 +81,6 @@
 					/>
 				</svg>
 			{/snippet}
-			<ExternalLink size={14} class="text-[var(--text-muted)] group-hover:text-[var(--primary)]" />
 		</SettingRow>
 	</SettingGroup>
 </div>
