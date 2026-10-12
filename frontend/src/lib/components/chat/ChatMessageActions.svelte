@@ -13,12 +13,7 @@
 	let { role, onCopy, onDelete, onRetry }: ChatMessageActionsProps = $props();
 </script>
 
-<div
-	class="flex items-center gap-1.5 opacity-0 group-hover/message:opacity-100 max-sm:opacity-100 transition-opacity duration-150 mt-0.5 {role ===
-	'user'
-		? 'justify-end'
-		: ''}"
->
+<div class="flex items-center gap-1.5 mt-0.5 {role === 'user' ? 'justify-end' : ''}">
 	<Button
 		variant="ghost"
 		size="icon-sm"

@@ -57,8 +57,24 @@ impl LogService {
         }
     }
 
+    /// Checks whether logging is enabled via settings (feature flag "enable_log")
+    pub async fn is_logging_enabled(&self) -> bool {
+        let val = self.setting_repo.get("enable_log").await.ok().flatten();
+        match val {
+            Some(s) => {
+                let lower = s.trim().to_lowercase();
+                lower != "false" && lower != "0" && lower != "off" && lower != "no"
+            }
+            None => true,
+        }
+    }
+
     /// Records a new log entry, stores in memory ring-buffer, writes to disk with rotation, and broadcasts to live listeners
     pub async fn record(&self, service: &str, level: &str, message: &str) {
+        if !self.is_logging_enabled().await {
+            return;
+        }
+
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let timestamp = chrono::Utc::now().to_rfc3339();
 
@@ -349,6 +365,33 @@ mod tests {
         assert_eq!(monolai_after_clear.len(), 0);
         let remaining = service.get_entries(&LogFilterQuery::default()).await;
         assert_eq!(remaining.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_log_service_enable_log_flag() {
+        let temp_dir = std::env::temp_dir().join(format!("monolai_test_logs_{}", uuid::Uuid::new_v4()));
+        let logs_path = temp_dir.join("logs");
+        let pool = init_db("sqlite::memory:").await.unwrap();
+        let setting_repo = SettingRepository::new(pool).await;
+
+        let service = LogService::new(logs_path.clone(), setting_repo.clone());
+
+        // Default: enabled
+        service.record("monolai", "INFO", "Should be recorded 1").await;
+        let entries = service.get_entries(&LogFilterQuery::default()).await;
+        assert_eq!(entries.len(), 1);
+
+        // Disable logging
+        setting_repo.set("enable_log", "false").await.unwrap();
+        service.record("monolai", "INFO", "Should NOT be recorded").await;
+        let entries_after = service.get_entries(&LogFilterQuery::default()).await;
+        assert_eq!(entries_after.len(), 1);
+
+        // Re-enable logging
+        setting_repo.set("enable_log", "true").await.unwrap();
+        service.record("monolai", "INFO", "Should be recorded 2").await;
+        let entries_re_enabled = service.get_entries(&LogFilterQuery::default()).await;
+        assert_eq!(entries_re_enabled.len(), 2);
     }
 }
 

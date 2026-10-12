@@ -3,6 +3,7 @@
 	import { settingsApi } from '$lib/api/settings';
 	import { Alert, Button, Input, Select, Toggle } from '$lib/components/ui';
 	import { AVAILABLE_LOCALES, i18n, isLocaleSupported, t } from '$lib/i18n';
+	import { headerState } from '$lib/state/header.svelte';
 	import { THEMES, type ThemeId } from '$lib/themes';
 	import { formatTimeoutDuration } from '$lib/utils/format';
 	import {
@@ -89,7 +90,9 @@
 			}
 
 			if (appSettings) {
-				if (appSettings.language && isLocaleSupported(appSettings.language)) {
+				const savedPreference =
+					typeof window !== 'undefined' ? localStorage.getItem('monolai_language') : null;
+				if (!savedPreference && appSettings.language && isLocaleSupported(appSettings.language)) {
 					i18n.setLocale(appSettings.language);
 				}
 				if (appSettings.idle_auto_unload_enabled !== undefined) {
@@ -101,6 +104,7 @@
 				}
 				if (appSettings.enable_log !== undefined) {
 					enableLog = appSettings.enable_log !== 'false';
+					headerState.logsEnabled = enableLog;
 				}
 				if (appSettings.max_log_size_mb !== undefined) {
 					const parsed = parseInt(appSettings.max_log_size_mb, 10);
@@ -137,6 +141,8 @@
 				enable_log: enableLog ? 'true' : 'false',
 				max_log_size_mb: String(Math.max(1, maxLogSizeMb))
 			});
+
+			headerState.logsEnabled = enableLog;
 
 			saveSuccess = true;
 			setTimeout(() => {
@@ -177,6 +183,7 @@
 							options={languageOptions}
 							onchange={(val: string) => {
 								i18n.setLocale(val);
+								settingsApi.updateAll({ language: val }).catch(console.error);
 							}}
 							placeholder={t('settings.languageTitle')}
 							ariaLabel={t('settings.languageTitle')}

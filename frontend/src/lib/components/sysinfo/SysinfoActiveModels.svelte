@@ -41,7 +41,6 @@
 
 	{#if runningModels.length === 0}
 		<EmptyState
-			size="sm"
 			icon={Box}
 			title={t('sysinfo.noModelsLoaded')}
 			description={t('sysinfo.noModelsLoadedDesc')}

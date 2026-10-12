@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 pub struct SettingRepository {
     pool: SqlitePool,
-    cache: Arc<RwLock<HashMap<String, String>>>,
+    cache: Arc<RwLock<HashMap<String, Option<String>>>>,
 }
 
 impl SettingRepository {
@@ -28,28 +28,40 @@ impl SettingRepository {
         let mut map = self.cache.write().await;
         map.clear();
         for (k, v) in rows {
-            map.insert(k, v);
+            map.insert(k, Some(v));
         }
         Ok(())
     }
 
     pub async fn get_all(&self) -> AppResult<HashMap<String, String>> {
         let map = self.cache.read().await;
-        if !map.is_empty() {
-            return Ok(map.clone());
+        let mut active = HashMap::new();
+        for (k, v) in map.iter() {
+            if let Some(val) = v {
+                active.insert(k.clone(), val.clone());
+            }
+        }
+        if !active.is_empty() {
+            return Ok(active);
         }
         drop(map);
 
         self.refresh_cache().await?;
         let map = self.cache.read().await;
-        Ok(map.clone())
+        let mut active = HashMap::new();
+        for (k, v) in map.iter() {
+            if let Some(val) = v {
+                active.insert(k.clone(), val.clone());
+            }
+        }
+        Ok(active)
     }
 
     pub async fn get(&self, key: &str) -> AppResult<Option<String>> {
         {
             let map = self.cache.read().await;
-            if let Some(val) = map.get(key) {
-                return Ok(Some(val.clone()));
+            if let Some(cached) = map.get(key) {
+                return Ok(cached.clone());
             }
         }
 
@@ -58,10 +70,8 @@ impl SettingRepository {
             .fetch_optional(&self.pool)
             .await?;
 
-        if let Some(ref val) = row {
-            let mut map = self.cache.write().await;
-            map.insert(key.to_string(), val.clone());
-        }
+        let mut map = self.cache.write().await;
+        map.insert(key.to_string(), row.clone());
 
         Ok(row)
     }
@@ -85,7 +95,7 @@ impl SettingRepository {
         .await?;
 
         let mut map = self.cache.write().await;
-        map.insert(key.to_string(), value.to_string());
+        map.insert(key.to_string(), Some(value.to_string()));
         Ok(())
     }
 
@@ -96,7 +106,7 @@ impl SettingRepository {
             .await?;
 
         let mut map = self.cache.write().await;
-        map.remove(key);
+        map.insert(key.to_string(), None);
         Ok(())
     }
 }

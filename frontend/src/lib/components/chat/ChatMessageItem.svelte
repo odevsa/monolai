@@ -2,6 +2,7 @@
 	import { MarkdownRenderer, ModelBadge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { Box, CircleAlert, Clock, Square, Zap } from '@lucide/svelte';
+	import Loader from '../ui/atoms/Loader.svelte';
 	import ChatMessageActions from './ChatMessageActions.svelte';
 	import ChatReasoningBlock from './ChatReasoningBlock.svelte';
 
@@ -63,17 +64,7 @@
 				{/if}
 
 				{#if !message.content && !message.reasoning && isGenerating}
-					<div
-						class="inline-flex items-center gap-1.5 py-2 px-3 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-color)]"
-					>
-						<span class="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-pulse"></span>
-						<span
-							class="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-pulse [animation-delay:200ms]"
-						></span>
-						<span
-							class="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-pulse [animation-delay:400ms]"
-						></span>
-					</div>
+					<Loader />
 				{:else if !message.content && (message.status === 'CANCELLED' || message.status === 'INTERRUPTED')}
 					<span class="italic text-[var(--text-muted)] text-[0.85rem]">
 						({message.status === 'INTERRUPTED' ? t('chat.interrupted') : t('chat.cancelledByUser')})

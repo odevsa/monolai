@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { logsApi } from '$lib/api/logs';
+	import { settingsApi } from '$lib/api/settings';
 	import { LogsFilterBar, LogsTerminalHeader, LogsTerminalViewer } from '$lib/components/logs';
 	import { PageHeader } from '$lib/components/ui';
 	import type { SelectOption } from '$lib/components/ui/molecules/Select.svelte';
@@ -22,6 +23,7 @@
 	let showModelTag = $state(false);
 	let isLoading = $state(true);
 	let isConnected = $state(false);
+	let isInitialLoad = $state(true);
 
 	let terminalContainer = $state<HTMLDivElement | null>(null);
 	let unsubscribeStream: (() => void) | null = null;
@@ -60,12 +62,27 @@
 		return list;
 	});
 
+	let userInteracting = false;
+	let userInteractionTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function markUserInteraction() {
+		userInteracting = true;
+		if (userInteractionTimer) clearTimeout(userInteractionTimer);
+		userInteractionTimer = setTimeout(() => {
+			userInteracting = false;
+		}, 300);
+	}
+
 	function scrollToBottom(smooth = false) {
 		if (!terminalContainer) return;
-		terminalContainer.scrollTo({
-			top: terminalContainer.scrollHeight,
-			behavior: smooth ? 'smooth' : 'auto'
-		});
+		if (smooth) {
+			terminalContainer.scrollTo({
+				top: terminalContainer.scrollHeight,
+				behavior: 'smooth'
+			});
+		} else {
+			terminalContainer.scrollTop = terminalContainer.scrollHeight;
+		}
 		isScrolledUp = false;
 	}
 
@@ -79,13 +96,13 @@
 	function handleTerminalScroll() {
 		if (!terminalContainer) return;
 		checkIsScrolledUp();
-		if (isScrolledUp) {
-			if (autoScroll) {
-				autoScroll = false;
-			}
-		} else {
+		if (!isScrolledUp) {
 			if (!autoScroll) {
 				autoScroll = true;
+			}
+		} else if (userInteracting) {
+			if (autoScroll) {
+				autoScroll = false;
 			}
 		}
 	}
@@ -93,7 +110,7 @@
 	async function loadInitialData() {
 		isLoading = true;
 		try {
-			const [servicesList, initialEntries] = await Promise.all([
+			const [servicesList, initialEntries, appSettings] = await Promise.all([
 				logsApi.getServices().catch(() => ['all', 'monolai']),
 				logsApi
 					.getLogs({
@@ -101,19 +118,30 @@
 						level: selectedLevel !== 'ALL' ? selectedLevel : undefined,
 						limit: MAX_DISPLAY_LINES
 					})
-					.catch(() => [])
+					.catch(() => []),
+				settingsApi.getAll().catch(() => null)
 			]);
+
+			if (appSettings && appSettings.enable_log !== undefined) {
+				headerState.logsEnabled = appSettings.enable_log !== 'false';
+			}
+			headerState.setLogsStatus(isConnected, reconnectStream);
 
 			const unique = Array.from(new Set(['all', 'monolai', ...servicesList]));
 			availableServices = unique;
 			logEntries = initialEntries;
 
 			await tick();
-			if (autoScroll) {
-				scrollToBottom(false);
+			if (autoScroll && terminalContainer) {
+				terminalContainer.scrollTo({
+					top: terminalContainer.scrollHeight,
+					behavior: 'auto'
+				});
+				isScrolledUp = false;
 			} else {
 				checkIsScrolledUp();
 			}
+			isInitialLoad = false;
 		} catch (err) {
 			console.error('Failed to load initial logs:', err);
 		} finally {
@@ -216,6 +244,9 @@
 		if (unsubscribeStream) {
 			unsubscribeStream();
 		}
+		if (userInteractionTimer) {
+			clearTimeout(userInteractionTimer);
+		}
 		headerState.setLogsStatus(false);
 	});
 </script>
@@ -269,6 +300,7 @@
 			{isScrolledUp}
 			bind:containerElement={terminalContainer}
 			onScroll={handleTerminalScroll}
+			onUserInteraction={markUserInteraction}
 			onScrollToBottom={() => {
 				autoScroll = true;
 				scrollToBottom(true);

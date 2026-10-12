@@ -585,7 +585,8 @@
 		"serviceLabel": "Servicio",
 		"levelLabel": "Nivel",
 		"terminalTitle": "REGISTROS",
-		"scrollToBottom": "Ir al final"
+		"scrollToBottom": "Ir al final",
+		"paused": "Pausado"
 	},
 	"errors": {
 		"networkError": "La solicitud de red falló. ¿Está en ejecución el servidor backend?",

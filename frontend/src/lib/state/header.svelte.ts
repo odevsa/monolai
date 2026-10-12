@@ -11,6 +11,7 @@ class HeaderStateManager {
 	sysinfoConnected = $state<boolean>(false);
 	sysinfoReconnectFn = $state<(() => void) | null>(null);
 	logsConnected = $state<boolean>(false);
+	logsEnabled = $state<boolean>(true);
 	logsReconnectFn = $state<(() => void) | null>(null);
 	runtimesRefreshing = $state<boolean>(false);
 	runtimesRefreshFn = $state<(() => void) | null>(null);

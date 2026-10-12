@@ -13,6 +13,7 @@
 		isScrolledUp: boolean;
 		containerElement?: HTMLDivElement | null;
 		onScroll: () => void;
+		onUserInteraction?: () => void;
 		onScrollToBottom: () => void;
 	}
 
@@ -24,16 +25,28 @@
 		isScrolledUp,
 		containerElement = $bindable(null),
 		onScroll,
+		onUserInteraction,
 		onScrollToBottom
 	}: LogsTerminalViewerProps = $props();
 </script>
 
 <div class="relative flex-1 min-h-[340px] flex flex-col overflow-hidden">
 	<!-- Terminal Scrollable Body -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		bind:this={containerElement}
 		onscroll={onScroll}
-		class="flex-1 min-h-[340px] overflow-y-auto overflow-x-auto p-3.5 pt-1 font-mono text-[11px] leading-relaxed select-text space-y-0.5 scroll-smooth bg-transparent"
+		onwheel={() => onUserInteraction?.()}
+		ontouchmove={() => onUserInteraction?.()}
+		onpointermove={(e) => {
+			if (e.buttons > 0) onUserInteraction?.();
+		}}
+		onkeydown={(e) => {
+			if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+				onUserInteraction?.();
+			}
+		}}
+		class="flex-1 min-h-[340px] overflow-y-auto overflow-x-auto p-3.5 pt-1 font-mono text-[11px] leading-relaxed select-text space-y-0.5 bg-transparent"
 	>
 		{#if isLoading && entries.length === 0}
 			<div
@@ -44,7 +57,6 @@
 			</div>
 		{:else if entries.length === 0}
 			<EmptyState
-				size="sm"
 				icon={ScrollText}
 				title={t('logs.noLogs')}
 				class="border-0 bg-transparent min-h-[200px]"

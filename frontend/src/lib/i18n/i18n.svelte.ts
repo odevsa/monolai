@@ -1,5 +1,12 @@
 import en from './locales/en.json';
 import es from './locales/es.json';
+import ptBR from './locales/pt-BR.json';
+import fr from './locales/fr.json';
+import de from './locales/de.json';
+import zhCN from './locales/zh-CN.json';
+import ja from './locales/ja.json';
+import ru from './locales/ru.json';
+import it from './locales/it.json';
 
 type TranslationSchema = typeof en;
 
@@ -22,7 +29,14 @@ export const DEFAULT_LOCALE = 'en';
 
 export const AVAILABLE_LOCALES: LocaleOption[] = [
 	{ id: 'en', label: 'English' },
-	{ id: 'es', label: 'Español' }
+	{ id: 'pt-BR', label: 'Português (Brasil)' },
+	{ id: 'es', label: 'Español' },
+	{ id: 'fr', label: 'Français' },
+	{ id: 'de', label: 'Deutsch' },
+	{ id: 'zh-CN', label: '简体中文' },
+	{ id: 'ja', label: '日本語' },
+	{ id: 'ru', label: 'Русский' },
+	{ id: 'it', label: 'Italiano' }
 ];
 
 export function isLocaleSupported(locale: string): boolean {
@@ -52,8 +66,11 @@ function detectInitialLocale(): string {
 				return exactMatch.id;
 			}
 
-			// 2. Base language prefix match (e.g. 'es-419' -> 'es')
-			const baseMatch = AVAILABLE_LOCALES.find((loc) => loc.id.toLowerCase() === baseCode);
+			// 2. Base language prefix match (e.g. 'es-419' -> 'es', 'pt' -> 'pt-BR', 'zh' -> 'zh-CN')
+			const baseMatch = AVAILABLE_LOCALES.find(
+				(loc) =>
+					loc.id.toLowerCase() === baseCode || loc.id.toLowerCase().split('-')[0] === baseCode
+			);
 			if (baseMatch) {
 				return baseMatch.id;
 			}
@@ -66,7 +83,14 @@ class I18nManager {
 	currentLocale = $state<string>(detectInitialLocale());
 	private catalogs: Record<string, Record<string, any>> = {
 		en,
-		es
+		'pt-BR': ptBR,
+		es,
+		fr,
+		de,
+		'zh-CN': zhCN,
+		ja,
+		ru,
+		it
 	};
 
 	setLocale(locale: string) {

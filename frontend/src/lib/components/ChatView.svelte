@@ -315,7 +315,8 @@
 				}
 
 				loadedChatId = targetChatId;
-				scrollToBottom();
+				await tick();
+				scrollToBottom(false);
 			} else {
 				messages = [];
 				loadedChatId = targetChatId;
@@ -382,6 +383,9 @@
 		}
 
 		return () => {
+			if (userChatInteractionTimer) {
+				clearTimeout(userChatInteractionTimer);
+			}
 			if (typeof window !== 'undefined') {
 				window.removeEventListener('monolai:model-unload', onUnloadEvent);
 			}
@@ -410,6 +414,17 @@
 		};
 	});
 
+	let userInteractingWithChat = false;
+	let userChatInteractionTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function markUserChatInteraction() {
+		userInteractingWithChat = true;
+		if (userChatInteractionTimer) clearTimeout(userChatInteractionTimer);
+		userChatInteractionTimer = setTimeout(() => {
+			userInteractingWithChat = false;
+		}, 300);
+	}
+
 	function handleScroll() {
 		if (messagesContainer) {
 			updateScrollbarWidth();
@@ -417,22 +432,31 @@
 			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 			showScrollButton = distanceFromBottom >= 100;
 
-			if (distanceFromBottom > 80) {
-				autoScrollChat = false;
-			} else if (distanceFromBottom <= 40) {
+			if (distanceFromBottom <= 40) {
 				autoScrollChat = true;
+			} else if (userInteractingWithChat && distanceFromBottom > 80) {
+				autoScrollChat = false;
 			}
 		}
 	}
 
-	async function scrollToBottom() {
+	async function scrollToBottom(smooth = true) {
 		autoScrollChat = true;
 		await tick();
 		if (messagesContainer) {
-			messagesContainer.scrollTo({
-				top: messagesContainer.scrollHeight,
-				behavior: 'smooth'
-			});
+			if (smooth) {
+				messagesContainer.scrollTo({
+					top: messagesContainer.scrollHeight,
+					behavior: 'smooth'
+				});
+			} else {
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				requestAnimationFrame(() => {
+					if (messagesContainer) {
+						messagesContainer.scrollTop = messagesContainer.scrollHeight;
+					}
+				});
+			}
 			showScrollButton = false;
 		}
 	}
@@ -927,12 +951,23 @@
 	style:--keyboard-input-height="{inputSectionHeight}px"
 >
 	<!-- Messages Container with Smooth Scroll & Upward History -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="page flex-1 overflow-y-auto flex flex-col overscroll-y-contain pt-[4.5rem] px-6 pb-36 max-sm:pt-[4.25rem] max-sm:px-4 max-sm:pb-[7.5rem] {isKeyboardOpen
 			? '!pb-[max(8rem,calc(var(--keyboard-input-height,100px)+1.25rem))] transition-[padding-bottom] duration-200 ease-out'
 			: ''}"
 		bind:this={messagesContainer}
 		onscroll={handleScroll}
+		onwheel={markUserChatInteraction}
+		ontouchmove={markUserChatInteraction}
+		onpointermove={(e) => {
+			if (e.buttons > 0) markUserChatInteraction();
+		}}
+		onkeydown={(e) => {
+			if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+				markUserChatInteraction();
+			}
+		}}
 	>
 		{#if messages.length === 0}
 			<ChatEmptyState />

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { configApi } from '$lib/api';
+	import { settingsApi } from '$lib/api/settings';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ui';
@@ -12,7 +13,7 @@
 	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
-	import { PanelLeftOpen, Plus, RefreshCw, Trash, X } from '@lucide/svelte';
+	import { PanelLeftOpen, Plus, RefreshCw, Square, Trash, X } from '@lucide/svelte';
 	import { onMount, setContext } from 'svelte';
 	import '../app.css';
 
@@ -75,8 +76,16 @@
 
 	setContext('checkConfigStatus', checkConfigStatus);
 
-	onMount(() => {
+	onMount(async () => {
 		checkConfigStatus();
+		try {
+			const settings = await settingsApi.getAll();
+			if (settings?.enable_log !== undefined) {
+				headerState.logsEnabled = settings.enable_log !== 'false';
+			}
+		} catch (err) {
+			console.error('Failed to fetch initial settings:', err);
+		}
 	});
 
 	$effect(() => {
@@ -269,16 +278,25 @@
 						{/if}
 						{#if isLogsPage}
 							<Badge
-								variant={!headerState.logsConnected && headerState.logsReconnectFn
-									? 'warning'
-									: 'success'}
-								pulse
+								variant={!headerState.logsEnabled
+									? 'muted'
+									: !headerState.logsConnected && headerState.logsReconnectFn
+										? 'warning'
+										: 'success'}
+								pulse={headerState.logsEnabled && headerState.logsConnected}
 								blur
 							>
+								{#if !headerState.logsEnabled}
+									<Square variant="solid" size={12} color="var(--text-muted)" />
+								{/if}
 								<span class="truncate">
-									{headerState.logsConnected ? t('sysinfo.streamActive') : t('sysinfo.connecting')}
+									{!headerState.logsEnabled
+										? t('logs.paused')
+										: headerState.logsConnected
+											? t('sysinfo.streamActive')
+											: t('sysinfo.connecting')}
 								</span>
-								{#if !headerState.logsConnected && headerState.logsReconnectFn}
+								{#if headerState.logsEnabled && !headerState.logsConnected && headerState.logsReconnectFn}
 									<button
 										type="button"
 										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-amber-400 cursor-pointer rounded"
