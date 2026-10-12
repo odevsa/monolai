@@ -36,11 +36,15 @@ pub fn probe_health(port: u16, timeout: Duration) -> bool {
 /// Dispatches a configuration update notification to the running backend via HTTP API.
 pub fn notify_backend_config(port: u16, config: &GuiConfig) -> Result<(), String> {
     let payload = serde_json::json!({
-        "models": config.models_dir.trim(),
-        "runtimes": config.runtimes_dir.trim(),
-        "hardware": config.hardware.trim(),
+        "models": config.models.trim(),
+        "runtimes": config.runtimes.trim(),
         "host": config.host.trim(),
         "port": config.port,
+        "gui": {
+            "minimize_on_start": config.gui.minimize_on_start,
+            "autostart_server": config.gui.autostart_server,
+            "autostart_app": config.gui.autostart_app,
+        }
     });
 
     let body = serde_json::to_string(&payload)

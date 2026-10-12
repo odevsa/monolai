@@ -2,14 +2,12 @@ export interface ConfigStatus {
 	is_valid: boolean;
 	has_models: boolean;
 	has_runtimes: boolean;
-	has_hardware?: boolean;
 	created_auto_file: boolean;
 	is_docker?: boolean;
 	loaded_path: string | null;
 	expected_path: string;
 	models_dir: string | null;
 	runtimes_dir?: string | null;
-	hardware?: string;
 	host?: string;
 	port?: number;
 	error_message: string | null;
@@ -28,7 +26,7 @@ export interface HardwareReport {
 export interface SetupConfigPayload {
 	models: string;
 	runtimes: string;
-	hardware: string;
+	hardware?: string;
 	host: string;
 	port: number;
 }

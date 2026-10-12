@@ -15,19 +15,33 @@ pub struct SaveConfigRequest {
     pub models: String,
     /// Absolute or relative path to runtimes directory
     pub runtimes: String,
-    /// Target hardware acceleration: "auto", "cpu", "cuda", "rocm", or "vulkan"
-    #[serde(default = "default_hardware")]
-    pub hardware: String,
+    /// Optional legacy hardware parameter (deprecated/ignored)
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub hardware: Option<String>,
     /// Optional host address to bind (e.g. 0.0.0.0 or 127.0.0.1)
     #[serde(default)]
     pub host: Option<String>,
     /// Optional port to bind (e.g. 8080)
     #[serde(default)]
     pub port: Option<u16>,
+    /// Optional desktop GUI preferences
+    #[serde(default)]
+    pub gui: Option<GuiPreferencesDto>,
 }
 
-fn default_hardware() -> String {
-    "auto".to_string()
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct GuiPreferencesDto {
+    #[serde(default = "default_true")]
+    pub minimize_on_start: bool,
+    #[serde(default = "default_true")]
+    pub autostart_server: bool,
+    #[serde(default = "default_true")]
+    pub autostart_app: bool,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -122,13 +136,17 @@ pub async fn save_setup_config_handler(
         return Err(AppError::bad_request("Runtimes directory cannot be empty"));
     }
 
+    let gui_tuple = payload.gui.as_ref().map(|g| {
+        (g.minimize_on_start, g.autostart_server, g.autostart_app)
+    });
+
     save_config(
         state.cli_config_path.as_deref(),
         &models,
         &runtimes,
-        payload.hardware.trim(),
         host,
         port,
+        gui_tuple,
     )
     .map_err(AppError::internal)?;
 
@@ -156,11 +174,10 @@ mod tests {
 
     #[test]
     fn test_deserialize_save_config_request() {
-        let json = r#"{"models":"/path/models","runtimes":"/path/runtimes","hardware":"cuda","host":"0.0.0.0","port":8080}"#;
+        let json = r#"{"models":"/path/models","runtimes":"/path/runtimes","host":"0.0.0.0","port":8080}"#;
         let req: SaveConfigRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.models, "/path/models");
         assert_eq!(req.runtimes, "/path/runtimes");
-        assert_eq!(req.hardware, "cuda");
         assert_eq!(req.host.as_deref(), Some("0.0.0.0"));
         assert_eq!(req.port, Some(8080));
     }

@@ -1,0 +1,23 @@
+# ==============================================================================
+# Monolai Configuration File
+# ==============================================================================
+# Target file path: {config_path}
+#
+# 1. Models Directory:
+# Directory for storing local AI model files (.gguf, .safetensors).
+models: {models}
+
+# 2. Runtimes Directory:
+# Directory where upstream runtime engines (llama-cpp, sd-cpp) are installed and managed.
+runtimes: {runtimes}
+
+# 3. Network Configuration:
+# Host address and HTTP port for the Monolai server
+host: {host}
+port: {port}
+
+# 4. Desktop GUI Preferences:
+gui:
+  minimize_on_start: {minimize_on_start}
+  autostart_server: {autostart_server}
+  autostart_app: {autostart_app}

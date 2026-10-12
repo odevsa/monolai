@@ -44,6 +44,7 @@
 		"yes": "Sim",
 		"no": "Não",
 		"ready": "Pronto",
+		"disabled": "Desativado",
 		"running": "Executando",
 		"missing": "Ausente",
 		"version": "Versão",

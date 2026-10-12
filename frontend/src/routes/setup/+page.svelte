@@ -19,7 +19,6 @@
 	// Wizard Form State
 	let modelsDir = $state('');
 	let runtimesDir = $state('');
-	let selectedHardware = $state('auto');
 	let host = $state('0.0.0.0');
 	let port = $state(8080);
 
@@ -50,9 +49,6 @@
 				}
 				if (!runtimesDir && status.runtimes_dir) {
 					runtimesDir = status.runtimes_dir;
-				}
-				if (status.hardware && status.hardware !== 'auto') {
-					selectedHardware = status.hardware;
 				}
 				if (status.host) {
 					host = status.host;
@@ -107,7 +103,6 @@
 			await configApi.setup({
 				models: targetModels,
 				runtimes: targetRuntimes,
-				hardware: selectedHardware,
 				host: targetHost,
 				port: parsedPort
 			});
@@ -192,12 +187,10 @@
 				{#if activeTab === 'wizard'}
 					<SetupWizard
 						{configStatus}
-						{hardwareReport}
 						{isStorageConfigured}
 						{saving}
 						bind:modelsDir
 						bind:runtimesDir
-						bind:selectedHardware
 						bind:host
 						bind:port
 						onsubmit={saveSetup}

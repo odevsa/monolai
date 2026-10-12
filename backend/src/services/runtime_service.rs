@@ -5,7 +5,7 @@ use crate::infrastructure::downloader::{
     find_installed_binary, get_installed_metadata, install_runtime, uninstall_runtime,
     RuntimeInstallerManager,
 };
-use crate::infrastructure::hardware::{detect_hardware, resolve_target_acceleration};
+use crate::infrastructure::hardware::detect_hardware;
 use crate::infrastructure::process::manifests::{get_manifest_for_runtime, get_runtime_manifests};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -40,15 +40,14 @@ impl RuntimeService {
     }
 
     pub async fn get_runtimes(&self) -> Vec<RuntimeItem> {
-        let (runtimes_dir, configured_hardware) = {
+        let runtimes_dir = {
             let cfg = self.config.read().await;
             let dir = cfg.runtimes.as_deref().unwrap_or("").to_string();
-            let hw = cfg.hardware.clone();
-            (crate::core::config::expand_tilde(dir), hw)
+            crate::core::config::expand_tilde(dir)
         };
 
         let hw_report = detect_hardware();
-        let active_accel = resolve_target_acceleration(configured_hardware.as_deref());
+        let active_accel = hw_report.recommended_acceleration.clone();
         let manifests = self.manifests();
         let mut items = Vec::new();
 
@@ -136,7 +135,7 @@ impl RuntimeService {
         runtime_id: &str,
         hardware_override: Option<String>,
     ) -> AppResult<()> {
-        let (runtimes_dir, configured_hardware) = {
+        let runtimes_dir = {
             let cfg = self.config.read().await;
             let dir = cfg.runtimes.as_deref().unwrap_or("").to_string();
             if dir.trim().is_empty() {
@@ -144,15 +143,14 @@ impl RuntimeService {
                     "Runtimes directory is not configured in config.yaml",
                 ));
             }
-            let hw = cfg.hardware.clone();
-            (crate::core::config::expand_tilde(dir), hw)
+            crate::core::config::expand_tilde(dir)
         };
 
         let manifest = self.manifest_by_id(runtime_id).ok_or_else(|| {
             AppError::not_found(format!("Runtime manifest for '{}' not found", runtime_id))
         })?;
 
-        let hw = hardware_override.or(configured_hardware);
+        let hw = hardware_override;
         let installer_mgr = self.installer_manager.clone();
         let rid = runtime_id.to_string();
 
@@ -226,7 +224,6 @@ mod tests {
     #[tokio::test]
     async fn test_runtime_recommendation_never_defaults_to_cuda_without_gpu() {
         let mut cfg = crate::core::config::AppConfig::default();
-        cfg.hardware = Some("auto".to_string());
         cfg.runtimes = Some("/tmp".to_string());
 
         let service = RuntimeService::new(

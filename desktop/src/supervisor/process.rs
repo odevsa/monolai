@@ -16,10 +16,9 @@ pub fn spawn_server_process(
     }
     cmd.env("HOST", &config.host);
     cmd.env("PORT", config.port.to_string());
-    cmd.env("HARDWARE", &config.hardware);
-    cmd.env("MODELS_DIR", &config.models_dir);
-    cmd.env("RUNTIMES_DIR", &config.runtimes_dir);
-    cmd.arg("--config").arg(GuiConfig::backend_yaml_path());
+    cmd.env("MODELS_DIR", &config.models);
+    cmd.env("RUNTIMES_DIR", &config.runtimes);
+    cmd.arg("--config").arg(GuiConfig::config_path());
 
     // Redirect child stdout and stderr to server.log to avoid invalid handle crashes on Windows GUI
     let log_dir = dirs::data_local_dir()
@@ -100,12 +99,11 @@ pub fn run_maintenance_command(
     cmd.arg(flag);
 
     if let Some(cfg) = config {
-        cmd.arg("--config").arg(GuiConfig::backend_yaml_path());
+        cmd.arg("--config").arg(GuiConfig::config_path());
         cmd.env("HOST", &cfg.host);
         cmd.env("PORT", cfg.port.to_string());
-        cmd.env("HARDWARE", &cfg.hardware);
-        cmd.env("MODELS_DIR", &cfg.models_dir);
-        cmd.env("RUNTIMES_DIR", &cfg.runtimes_dir);
+        cmd.env("MODELS_DIR", &cfg.models);
+        cmd.env("RUNTIMES_DIR", &cfg.runtimes);
     }
 
     process_ext::configure_background_command(&mut cmd);

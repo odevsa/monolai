@@ -44,6 +44,7 @@
 		"yes": "Yes",
 		"no": "No",
 		"ready": "Ready",
+		"disabled": "Disabled",
 		"running": "Running",
 		"missing": "Missing",
 		"version": "Version",

@@ -19,8 +19,7 @@
 		RotateCcw,
 		Save,
 		ScrollText,
-		ShieldCheck,
-		Zap
+		ShieldCheck
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SettingGroup from './SettingGroup.svelte';
@@ -37,7 +36,6 @@
 	let port = $state(8080);
 	let modelsDir = $state('');
 	let runtimesDir = $state('');
-	let hardware = $state('auto');
 
 	// Settings state
 	let idleAutoUnload = $state(true);
@@ -50,14 +48,6 @@
 	let isSaving = $state(false);
 	let saveSuccess = $state(false);
 	let errorMessage = $state<string | null>(null);
-
-	const hardwareOptions = [
-		{ value: 'auto', label: 'Auto (Recommended)' },
-		{ value: 'cuda', label: 'NVIDIA CUDA' },
-		{ value: 'cpu', label: 'CPU Only' },
-		{ value: 'vulkan', label: 'Vulkan' },
-		{ value: 'rocm', label: 'AMD ROCm' }
-	];
 
 	let themeOptions = $derived(
 		THEMES.map((th) => ({
@@ -86,7 +76,6 @@
 				port = cfgStatus.port ?? 8080;
 				modelsDir = cfgStatus.models_dir || '';
 				runtimesDir = cfgStatus.runtimes_dir || '';
-				hardware = cfgStatus.hardware || 'auto';
 			}
 
 			if (appSettings) {
@@ -129,8 +118,7 @@
 				host: host.trim() || '0.0.0.0',
 				port: Number(port) || 8080,
 				models: modelsDir.trim(),
-				runtimes: runtimesDir.trim(),
-				hardware
+				runtimes: runtimesDir.trim()
 			});
 
 			// Save settings in database
@@ -239,21 +227,6 @@
 				<SettingRow icon={Cpu} title={t('settings.runtimesDir')} subtitle="Binaries folder">
 					<div class="w-48 sm:w-64">
 						<Input bind:value={runtimesDir} placeholder="e.g. ~/.local/share/monolai/runtimes" />
-					</div>
-				</SettingRow>
-
-				<SettingRow
-					icon={Zap}
-					title={t('settings.hardware')}
-					subtitle="Inference acceleration target"
-				>
-					<div class="w-40 sm:w-48">
-						<Select
-							bind:value={hardware}
-							options={hardwareOptions}
-							placeholder={t('settings.hardware')}
-							ariaLabel={t('settings.hardware')}
-						/>
 					</div>
 				</SettingRow>
 			</SettingGroup>

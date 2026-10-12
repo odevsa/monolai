@@ -78,7 +78,8 @@ The backend is structured into four primary layers:
 4. **OpenAI Official SDK Integration**:
    - All OpenAI-compatible chat completions (`/v1/chat/completions`) and image generation (`/v1/images/generations`) must be dispatched through the official `openai` JS/TS client configured in `src/lib/api/openai.ts`.
 5. **Internationalization (i18n)**:
-   - Mandatory use of `t('key.path')` via `src/lib/i18n`. Hardcoded UI strings in components are forbidden. All user-facing strings are stored in `src/lib/i18n/locales/en.json`.
+   - Mandatory use of `t('key.path')` via `src/lib/i18n`. Hardcoded UI strings in components are forbidden.
+   - **Feature Development Workflow**: When implementing new features or components, agents MUST only introduce the `t('context.key')` calls in the views and add the canonical English definition to `src/lib/i18n/locales/en.json`. Do NOT populate or translate all other locale `.json` files (`pt-BR.json`, `de.json`, `fr.json`, etc.) during feature development, as bulk translations are performed on demand. Run `just i18n-check` to verify that no `t()` call is missing from `en.json`.
 6. **Styling, Theme Tokens & Zero Hardcoded Colors Policy**:
    - **Centralized Theme Tokens**: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/themes.css` (imported by `src/app.css`) under `@theme` and `[data-theme='...']`. Components must NEVER define disconnected theme blocks, local theme overrides, or arbitrary color values.
    - **Mandatory Semantic CSS Variables**: Always use semantic theme tokens:

@@ -1,21 +1,18 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
-	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
+	import type { ConfigStatus } from '$lib/types/config';
 	import { Check } from '@lucide/svelte';
 	import SetupConfigPathInfo from './SetupConfigPathInfo.svelte';
-	import SetupHardwareSection from './SetupHardwareSection.svelte';
 	import SetupNetworkSection from './SetupNetworkSection.svelte';
 	import SetupStorageSection from './SetupStorageSection.svelte';
 
 	let {
 		configStatus,
-		hardwareReport = null,
 		isStorageConfigured = false,
 		saving = false,
 		modelsDir = $bindable(''),
 		runtimesDir = $bindable(''),
-		selectedHardware = $bindable('auto'),
 		host = $bindable('0.0.0.0'),
 		port = $bindable(8080),
 		onsubmit,
@@ -23,12 +20,10 @@
 		onResetRuntimes
 	}: {
 		configStatus: ConfigStatus;
-		hardwareReport?: HardwareReport | null;
 		isStorageConfigured: boolean;
 		saving?: boolean;
 		modelsDir: string;
 		runtimesDir: string;
-		selectedHardware: string;
 		host: string;
 		port: number;
 		onsubmit: () => void;
@@ -52,8 +47,6 @@
 		{onResetModels}
 		{onResetRuntimes}
 	/>
-
-	<SetupHardwareSection {hardwareReport} bind:selectedHardware {isStorageConfigured} />
 
 	<SetupNetworkSection
 		isDocker={!!configStatus.is_docker}

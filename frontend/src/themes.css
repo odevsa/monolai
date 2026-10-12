@@ -263,6 +263,15 @@
 		--syntax-keyword: #4f46e5;
 		--syntax-function: #b45309;
 		--syntax-variable: #c2410c;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #7c3aed;
+		--chart-ram: #a855f7;
+		--chart-gpu: #059669;
+		--chart-gpu-shared: #10b981;
+		--chart-vram: #0d9488;
+		--chart-disk: #2563eb;
+		--chart-net: #0891b2;
 	}
 
 	/* ==============================================================================
@@ -276,27 +285,29 @@
 
 		--bg-primary: #181825;
 		--bg-surface: #1e1e2e;
-		--bg-surface-hover: #313244;
+		--bg-surface-hover: #262738;
 		--bg-sidebar: #11111b;
-		--bg-hover: #45475a;
+		--bg-hover: #313244;
 
 		--border-color: #313244;
 		--border-hover: #45475a;
 
 		--text-primary: #cdd6f4;
-		--text-secondary: #b4befe;
-		--text-muted: #a6adc8;
+		--text-secondary: #a6adc8;
+		--text-muted: #7f849c;
 
 		--progress-bg: #313244;
 		--progress-fill: #cba6f7;
 
 		--badge-bg: #313244;
 		--badge-border: #45475a;
-		--badge-text: #f5c2e7;
+		--badge-text: #cdd6f4;
 
 		--btn-bg: #1e1e2e;
 		--btn-hover: #313244;
 		--btn-text: #cdd6f4;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #a6e3a1;
@@ -348,6 +359,15 @@
 		--syntax-keyword: #cba6f7;
 		--syntax-function: #89b4fa;
 		--syntax-variable: #fab387;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #cba6f7;
+		--chart-ram: #f5c2e7;
+		--chart-gpu: #a6e3a1;
+		--chart-gpu-shared: #94e2d5;
+		--chart-vram: #89dceb;
+		--chart-disk: #89b4fa;
+		--chart-net: #fab387;
 	}
 
 	/* ==============================================================================
@@ -361,27 +381,29 @@
 
 		--bg-primary: #1e1e1e;
 		--bg-surface: #252526;
-		--bg-surface-hover: #2d2d2d;
+		--bg-surface-hover: #2d2d30;
 		--bg-sidebar: #181818;
-		--bg-hover: #37373d;
+		--bg-hover: #2a2d2e;
 
-		--border-color: #3c3c3c;
-		--border-hover: #505050;
+		--border-color: #333333;
+		--border-hover: #454545;
 
 		--text-primary: #cccccc;
-		--text-secondary: #9cdcfe;
-		--text-muted: #858585;
+		--text-secondary: #9d9d9d;
+		--text-muted: #6e6e6e;
 
-		--progress-bg: #3c3c3c;
+		--progress-bg: #333333;
 		--progress-fill: #007acc;
 
-		--badge-bg: #2d2d2d;
+		--badge-bg: #2d2d30;
 		--badge-border: #3c3c3c;
-		--badge-text: #4ec9b0;
+		--badge-text: #cccccc;
 
 		--btn-bg: #252526;
-		--btn-hover: #37373d;
+		--btn-hover: #2d2d30;
 		--btn-text: #ffffff;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #4ec9b0;
@@ -433,6 +455,15 @@
 		--syntax-keyword: #569cd6;
 		--syntax-function: #dcdcaa;
 		--syntax-variable: #9cdcfe;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #c586c0;
+		--chart-ram: #d16969;
+		--chart-gpu: #4ec9b0;
+		--chart-gpu-shared: #6a9955;
+		--chart-vram: #9cdcfe;
+		--chart-disk: #007acc;
+		--chart-net: #dcdcaa;
 	}
 
 	/* ==============================================================================
@@ -446,27 +477,29 @@
 
 		--bg-primary: #1e1f29;
 		--bg-surface: #282a36;
-		--bg-surface-hover: #343746;
+		--bg-surface-hover: #323544;
 		--bg-sidebar: #21222c;
 		--bg-hover: #383a4c;
 
-		--border-color: #44475a;
+		--border-color: #3b3e52;
 		--border-hover: #6272a4;
 
 		--text-primary: #f8f8f2;
-		--text-secondary: #f1fa8c;
+		--text-secondary: #b3b8d4;
 		--text-muted: #6272a4;
 
-		--progress-bg: #44475a;
+		--progress-bg: #3b3e52;
 		--progress-fill: #bd93f9;
 
-		--badge-bg: #343746;
+		--badge-bg: #323544;
 		--badge-border: #44475a;
-		--badge-text: #ff79c6;
+		--badge-text: #f8f8f2;
 
 		--btn-bg: #282a36;
-		--btn-hover: #44475a;
+		--btn-hover: #343746;
 		--btn-text: #f8f8f2;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #50fa7b;
@@ -518,6 +551,15 @@
 		--syntax-keyword: #ff79c6;
 		--syntax-function: #50fa7b;
 		--syntax-variable: #bd93f9;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #bd93f9;
+		--chart-ram: #ff79c6;
+		--chart-gpu: #50fa7b;
+		--chart-gpu-shared: #8be9fd;
+		--chart-vram: #69ff94;
+		--chart-disk: #6272a4;
+		--chart-net: #ffb86c;
 	}
 
 	/* ==============================================================================
@@ -531,27 +573,29 @@
 
 		--bg-primary: #242933;
 		--bg-surface: #2e3440;
-		--bg-surface-hover: #3b4252;
-		--bg-sidebar: #272c36;
-		--bg-hover: #434c5e;
+		--bg-surface-hover: #353c4a;
+		--bg-sidebar: #20242d;
+		--bg-hover: #3b4252;
 
 		--border-color: #3b4252;
 		--border-hover: #4c566a;
 
 		--text-primary: #eceff4;
-		--text-secondary: #e5e9f0;
-		--text-muted: #d8dee9;
+		--text-secondary: #d8dee9;
+		--text-muted: #8892b0;
 
 		--progress-bg: #3b4252;
 		--progress-fill: #88c0d0;
 
-		--badge-bg: #3b4252;
-		--badge-border: #4c566a;
-		--badge-text: #8fbcbb;
+		--badge-bg: #353c4a;
+		--badge-border: #434c5e;
+		--badge-text: #d8dee9;
 
 		--btn-bg: #2e3440;
 		--btn-hover: #3b4252;
 		--btn-text: #eceff4;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #a3be8c;
@@ -603,6 +647,15 @@
 		--syntax-keyword: #81a1c1;
 		--syntax-function: #88c0d0;
 		--syntax-variable: #b48ead;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #b48ead;
+		--chart-ram: #d08770;
+		--chart-gpu: #a3be8c;
+		--chart-gpu-shared: #8fbcbb;
+		--chart-vram: #88c0d0;
+		--chart-disk: #81a1c1;
+		--chart-net: #5e81ac;
 	}
 
 	/* ==============================================================================
@@ -616,27 +669,29 @@
 
 		--bg-primary: #1a1b26;
 		--bg-surface: #24283b;
-		--bg-surface-hover: #2f354e;
+		--bg-surface-hover: #2a2f45;
 		--bg-sidebar: #16161e;
-		--bg-hover: #3b4261;
+		--bg-hover: #2f354e;
 
-		--border-color: #292e42;
+		--border-color: #2c324b;
 		--border-hover: #414868;
 
 		--text-primary: #c0caf5;
-		--text-secondary: #bb9af7;
-		--text-muted: #787c99;
+		--text-secondary: #9aa5ce;
+		--text-muted: #565f89;
 
 		--progress-bg: #292e42;
 		--progress-fill: #7aa2f7;
 
-		--badge-bg: #2f354e;
-		--badge-border: #414868;
-		--badge-text: #7dcfff;
+		--badge-bg: #2a2f45;
+		--badge-border: #3b4261;
+		--badge-text: #c0caf5;
 
 		--btn-bg: #24283b;
 		--btn-hover: #2f354e;
 		--btn-text: #c0caf5;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #9ece6a;
@@ -688,6 +743,15 @@
 		--syntax-keyword: #bb9af7;
 		--syntax-function: #7aa2f7;
 		--syntax-variable: #e0af68;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #bb9af7;
+		--chart-ram: #f7768e;
+		--chart-gpu: #9ece6a;
+		--chart-gpu-shared: #73daca;
+		--chart-vram: #2ac3de;
+		--chart-disk: #7aa2f7;
+		--chart-net: #e0af68;
 	}
 
 	/* ==============================================================================
@@ -699,29 +763,31 @@
 		--primary-light: rgba(255, 216, 102, 0.15);
 		--primary-focus: rgba(255, 216, 102, 0.3);
 
-		--bg-primary: #2d2a2e;
-		--bg-surface: #3a373b;
-		--bg-surface-hover: #49454a;
-		--bg-sidebar: #221f22;
-		--bg-hover: #5b575c;
+		--bg-primary: #221f22;
+		--bg-surface: #2d2a2e;
+		--bg-surface-hover: #373439;
+		--bg-sidebar: #1c191c;
+		--bg-hover: #3a373b;
 
-		--border-color: #49454a;
-		--border-hover: #726e74;
+		--border-color: #403e41;
+		--border-hover: #5b575c;
 
 		--text-primary: #fcfcfa;
-		--text-secondary: #a9dc76;
-		--text-muted: #939293;
+		--text-secondary: #c1c0c0;
+		--text-muted: #727072;
 
-		--progress-bg: #49454a;
+		--progress-bg: #403e41;
 		--progress-fill: #ffd866;
 
-		--badge-bg: #49454a;
-		--badge-border: #726e74;
-		--badge-text: #ab9df2;
+		--badge-bg: #373439;
+		--badge-border: #49454a;
+		--badge-text: #fcfcfa;
 
-		--btn-bg: #3a373b;
-		--btn-hover: #49454a;
+		--btn-bg: #2d2a2e;
+		--btn-hover: #373439;
 		--btn-text: #fcfcfa;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #a9dc76;
@@ -773,6 +839,15 @@
 		--syntax-keyword: #ff6188;
 		--syntax-function: #a9dc76;
 		--syntax-variable: #78dce8;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #ab9df2;
+		--chart-ram: #ff6188;
+		--chart-gpu: #a9dc76;
+		--chart-gpu-shared: #78dce8;
+		--chart-vram: #ffd866;
+		--chart-disk: #fc9867;
+		--chart-net: #727072;
 	}
 
 	/* ==============================================================================
@@ -784,29 +859,31 @@
 		--primary-light: rgba(250, 204, 21, 0.15);
 		--primary-focus: rgba(250, 204, 21, 0.3);
 
-		--bg-primary: #0b0914;
-		--bg-surface: #161224;
-		--bg-surface-hover: #221b38;
-		--bg-sidebar: #110d1f;
-		--bg-hover: #2a2245;
+		--bg-primary: #090712;
+		--bg-surface: #140f24;
+		--bg-surface-hover: #1e1736;
+		--bg-sidebar: #0e0a1b;
+		--bg-hover: #281f47;
 
-		--border-color: #312652;
-		--border-hover: #ff007f;
+		--border-color: #2b204e;
+		--border-hover: #4a3680;
 
 		--text-primary: #f8fafc;
-		--text-secondary: #38bdf8;
-		--text-muted: #a855f7;
+		--text-secondary: #94a3b8;
+		--text-muted: #64748b;
 
-		--progress-bg: #221b38;
+		--progress-bg: #1e1736;
 		--progress-fill: #facc15;
 
-		--badge-bg: #221b38;
-		--badge-border: #ff007f;
-		--badge-text: #facc15;
+		--badge-bg: #1e1736;
+		--badge-border: #382c59;
+		--badge-text: #f8fafc;
 
-		--btn-bg: #161224;
-		--btn-hover: #2a2245;
+		--btn-bg: #140f24;
+		--btn-hover: #1e1736;
 		--btn-text: #f8fafc;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #00ff9f;
@@ -858,6 +935,15 @@
 		--syntax-keyword: #ff007f;
 		--syntax-function: #facc15;
 		--syntax-variable: #38bdf8;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #a855f7;
+		--chart-ram: #ff007f;
+		--chart-gpu: #00ff9f;
+		--chart-gpu-shared: #00f0ff;
+		--chart-vram: #38bdf8;
+		--chart-disk: #facc15;
+		--chart-net: #ff0055;
 	}
 
 	/* ==============================================================================
@@ -869,29 +955,31 @@
 		--primary-light: rgba(16, 185, 129, 0.15);
 		--primary-focus: rgba(16, 185, 129, 0.3);
 
-		--bg-primary: #041711;
-		--bg-surface: #0a2920;
-		--bg-surface-hover: #113b2f;
-		--bg-sidebar: #062019;
-		--bg-hover: #174d3e;
+		--bg-primary: #05140f;
+		--bg-surface: #0a2119;
+		--bg-surface-hover: #0f2e24;
+		--bg-sidebar: #061913;
+		--bg-hover: #143b2e;
 
-		--border-color: #174d3e;
-		--border-hover: #226653;
+		--border-color: #174234;
+		--border-hover: #225c49;
 
 		--text-primary: #ecfdf5;
-		--text-secondary: #6ee7b7;
-		--text-muted: #34d399;
+		--text-secondary: #a7c4ba;
+		--text-muted: #5d8274;
 
-		--progress-bg: #113b2f;
+		--progress-bg: #0f2e24;
 		--progress-fill: #10b981;
 
-		--badge-bg: #113b2f;
-		--badge-border: #174d3e;
-		--badge-text: #34d399;
+		--badge-bg: #0f2e24;
+		--badge-border: #1a4d3d;
+		--badge-text: #ecfdf5;
 
-		--btn-bg: #0a2920;
-		--btn-hover: #113b2f;
+		--btn-bg: #0a2119;
+		--btn-hover: #0f2e24;
 		--btn-text: #ecfdf5;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #10b981;
@@ -935,7 +1023,7 @@
 		--info-focus: rgba(6, 182, 212, 0.25);
 
 		/* Code Syntax Highlighting Tokens */
-		--syntax-comment: #226653;
+		--syntax-comment: #3d6a5c;
 		--syntax-punctuation: #ecfdf5;
 		--syntax-tag: #f43f5e;
 		--syntax-string: #34d399;
@@ -943,6 +1031,15 @@
 		--syntax-keyword: #10b981;
 		--syntax-function: #a7f3d0;
 		--syntax-variable: #facc15;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #8b5cf6;
+		--chart-ram: #ec4899;
+		--chart-gpu: #10b981;
+		--chart-gpu-shared: #34d399;
+		--chart-vram: #06b6d4;
+		--chart-disk: #0284c7;
+		--chart-net: #f59e0b;
 	}
 
 	/* ==============================================================================
@@ -954,29 +1051,31 @@
 		--primary-light: rgba(249, 115, 22, 0.15);
 		--primary-focus: rgba(249, 115, 22, 0.3);
 
-		--bg-primary: #0f0c1b;
-		--bg-surface: #1b1730;
-		--bg-surface-hover: #272145;
-		--bg-sidebar: #141026;
-		--bg-hover: #322b59;
+		--bg-primary: #0e0c1a;
+		--bg-surface: #18142c;
+		--bg-surface-hover: #231c40;
+		--bg-sidebar: #120f22;
+		--bg-hover: #2e2554;
 
-		--border-color: #2e2752;
-		--border-hover: #483d80;
+		--border-color: #2c244f;
+		--border-hover: #45377d;
 
 		--text-primary: #fdf2f8;
-		--text-secondary: #f472b6;
-		--text-muted: #a78bfa;
+		--text-secondary: #cbd5e1;
+		--text-muted: #82779c;
 
-		--progress-bg: #272145;
+		--progress-bg: #231c40;
 		--progress-fill: #f97316;
 
-		--badge-bg: #272145;
-		--badge-border: #483d80;
-		--badge-text: #f97316;
+		--badge-bg: #231c40;
+		--badge-border: #3d316e;
+		--badge-text: #fdf2f8;
 
-		--btn-bg: #1b1730;
-		--btn-hover: #272145;
+		--btn-bg: #18142c;
+		--btn-hover: #231c40;
 		--btn-text: #fdf2f8;
+
+		--logo-slash: #ffffff;
 
 		/* Semantic Status: Success */
 		--success: #10b981;
@@ -1028,5 +1127,14 @@
 		--syntax-keyword: #f97316;
 		--syntax-function: #fb923c;
 		--syntax-variable: #a78bfa;
+
+		/* Telemetry & Charts */
+		--chart-cpu: #a855f7;
+		--chart-ram: #f43f5e;
+		--chart-gpu: #10b981;
+		--chart-gpu-shared: #2dd4bf;
+		--chart-vram: #f97316;
+		--chart-disk: #38bdf8;
+		--chart-net: #fbbf24;
 	}
 }

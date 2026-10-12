@@ -99,45 +99,7 @@ pub fn show_settings_screen(
 
             ui.add_space(16.0);
 
-            // Group 2: Hardware Acceleration
-            egui::Frame::none()
-                .fill(theme.bg_surface)
-                .stroke(Stroke::new(1.0_f32, theme.border))
-                .rounding(Rounding::same(8.0))
-                .inner_margin(Margin::same(CARD_PAD))
-                .show(ui, |ui| {
-                    ui.set_width(inner_w);
-                    ui.set_max_width(inner_w);
-
-                    ui.label(
-                        RichText::new("Hardware Acceleration")
-                            .strong()
-                            .size(13.0)
-                            .color(theme.text_primary),
-                    );
-                    ui.add_space(14.0);
-
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Backend:").color(theme.text_secondary).size(13.0));
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            ui.spacing_mut().interact_size.y = CONTROL_H;
-                            egui::ComboBox::from_id_salt("hw_combo")
-                                .selected_text(&config.hardware)
-                                .width(160.0)
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(&mut config.hardware, "auto".to_string(), "Auto (Recommended)");
-                                    ui.selectable_value(&mut config.hardware, "cpu".to_string(), "CPU (Portable)");
-                                    ui.selectable_value(&mut config.hardware, "cuda".to_string(), "CUDA (NVIDIA GPU)");
-                                    ui.selectable_value(&mut config.hardware, "vulkan".to_string(), "Vulkan");
-                                    ui.selectable_value(&mut config.hardware, "rocm".to_string(), "ROCm (AMD)");
-                                });
-                        });
-                    });
-                });
-
-            ui.add_space(16.0);
-
-            // Group 3: Storage Directories
+            // Group 2: Storage Directories
             egui::Frame::none()
                 .fill(theme.bg_surface)
                 .stroke(Stroke::new(1.0_f32, theme.border))
@@ -162,12 +124,12 @@ pub fn show_settings_screen(
                     ui.label(RichText::new("Models Directory:").color(theme.text_secondary).size(13.0));
                     ui.add_space(6.0);
                     ui.horizontal(|ui| {
-                        let edit = components::singleline_input(&mut config.models_dir).desired_width(input_w);
+                        let edit = components::singleline_input(&mut config.models).desired_width(input_w);
                         ui.add_sized([input_w, CONTROL_H], edit);
                         let browse_btn = ui.add_sized([browse_w, CONTROL_H], egui::Button::new("Browse..."));
                         if browse_btn.clicked() {
                             if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                                config.models_dir = folder.to_string_lossy().to_string();
+                                config.models = folder.to_string_lossy().to_string();
                             }
                         }
                     });
@@ -177,12 +139,12 @@ pub fn show_settings_screen(
                     ui.label(RichText::new("Runtimes Directory:").color(theme.text_secondary).size(13.0));
                     ui.add_space(6.0);
                     ui.horizontal(|ui| {
-                        let edit = components::singleline_input(&mut config.runtimes_dir).desired_width(input_w);
+                        let edit = components::singleline_input(&mut config.runtimes).desired_width(input_w);
                         ui.add_sized([input_w, CONTROL_H], edit);
                         let browse_btn = ui.add_sized([browse_w, CONTROL_H], egui::Button::new("Browse..."));
                         if browse_btn.clicked() {
                             if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                                config.runtimes_dir = folder.to_string_lossy().to_string();
+                                config.runtimes = folder.to_string_lossy().to_string();
                             }
                         }
                     });
@@ -190,7 +152,7 @@ pub fn show_settings_screen(
 
             ui.add_space(16.0);
 
-            // Group 4: Application Behavior
+            // Group 3: Application Behavior
             egui::Frame::none()
                 .fill(theme.bg_surface)
                 .stroke(Stroke::new(1.0_f32, theme.border))
@@ -209,17 +171,17 @@ pub fn show_settings_screen(
                     ui.add_space(14.0);
 
                     ui.checkbox(
-                        &mut config.autostart_app,
+                        &mut config.gui.autostart_app,
                         "Start on system startup",
                     );
                     ui.add_space(8.0);
                     ui.checkbox(
-                        &mut config.autostart_server,
+                        &mut config.gui.autostart_server,
                         "Start service automatically on launch",
                     );
                     ui.add_space(8.0);
                     ui.checkbox(
-                        &mut config.minimize_on_start,
+                        &mut config.gui.minimize_on_start,
                         "Minimize to system tray when service starts",
                     );
                 });
@@ -240,7 +202,7 @@ pub fn show_settings_screen(
                 )
                 .clicked()
             {
-                let _ = autostart::set_autostart_app(config.autostart_app, config.minimize_on_start);
+                let _ = autostart::set_autostart_app(config.gui.autostart_app, config.gui.minimize_on_start);
                 let _ = config.save();
                 supervisor.notify_config(config.clone());
                 feedback.saved = Some(Instant::now());

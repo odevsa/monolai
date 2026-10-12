@@ -101,11 +101,11 @@ impl DesktopApp {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         let mut config = GuiConfig::load();
         if !GuiConfig::config_path().exists() {
-            let _ = autostart::set_autostart_app(true, config.minimize_on_start);
-            config.autostart_app = true;
+            let _ = autostart::set_autostart_app(true, config.gui.minimize_on_start);
+            config.gui.autostart_app = true;
             let _ = config.save();
         } else if autostart::is_autostart_app_enabled() {
-            config.autostart_app = true;
+            config.gui.autostart_app = true;
         }
 
         let supervisor = SupervisorHandle::new(cc.egui_ctx.clone());
@@ -160,7 +160,7 @@ impl DesktopApp {
             last_theme_check: Instant::now(),
         };
 
-        if app.config.autostart_server {
+        if app.config.gui.autostart_server {
             app.supervisor.start(config);
         }
 
@@ -187,7 +187,7 @@ impl DesktopApp {
                     }
 
                     // Auto-minimize when transitioning to Running if configured
-                    if is_running && !was_running && self.config.minimize_on_start {
+                    if is_running && !was_running && self.config.gui.minimize_on_start {
                         self.minimize_after = Some(Instant::now() + Duration::from_secs(1));
                         ctx.request_repaint_after(Duration::from_secs(1));
                     }

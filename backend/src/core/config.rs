@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 pub struct AppConfig {
     pub models: Option<String>,
     pub runtimes: Option<String>,
-    pub hardware: Option<String>,
     pub host: Option<String>,
     pub port: Option<u16>,
 }
@@ -16,14 +15,12 @@ pub struct ConfigStatus {
     pub is_valid: bool,
     pub has_models: bool,
     pub has_runtimes: bool,
-    pub has_hardware: bool,
     pub created_auto_file: bool,
     pub is_docker: bool,
     pub loaded_path: Option<String>,
     pub expected_path: String,
     pub models_dir: Option<String>,
     pub runtimes_dir: Option<String>,
-    pub hardware: String,
     pub host: String,
     pub port: u16,
     pub error_message: Option<String>,
@@ -154,43 +151,45 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     p.to_path_buf()
 }
 
+pub const CONFIG_TEMPLATE: &str = include_str!("../../../config.example.yaml");
+
+pub fn render_config_template(
+    config_path: &str,
+    models: &str,
+    runtimes: &str,
+    host: &str,
+    port: u16,
+    minimize_on_start: bool,
+    autostart_server: bool,
+    autostart_app: bool,
+) -> String {
+    CONFIG_TEMPLATE
+        .replace("{config_path}", config_path)
+        .replace("{models}", models)
+        .replace("{runtimes}", runtimes)
+        .replace("{host}", host)
+        .replace("{port}", &port.to_string())
+        .replace("{minimize_on_start}", &minimize_on_start.to_string())
+        .replace("{autostart_server}", &autostart_server.to_string())
+        .replace("{autostart_app}", &autostart_app.to_string())
+}
+
 pub fn generate_commented_example_yaml(
     expected_path: &str,
     models_dir: &str,
     runtimes_dir: &str,
-    hardware: &str,
     host: &str,
     port: u16,
 ) -> String {
-    let hw = if hardware.trim().is_empty() {
-        "auto"
-    } else {
-        hardware.trim()
-    };
-    format!(
-        r#"# ==============================================================================
-# Monolai Configuration File
-# ==============================================================================
-# Target file path: {}
-#
-# 1. Models Directory:
-# Directory for storing local AI model files (.gguf, .safetensors).
-models: {}
-
-# 2. Runtimes Directory:
-# Directory where upstream runtime engines (llama-cpp, sd-cpp) are installed and managed.
-runtimes: {}
-
-# 3. Hardware Acceleration:
-# Preferred target acceleration: auto, cpu, cuda, rocm, vulkan, oneapi
-hardware: {}
-
-# 4. Network Configuration:
-# Host address and HTTP port for the Monolai server
-host: {}
-port: {}
-"#,
-        expected_path, models_dir, runtimes_dir, hw, host, port
+    render_config_template(
+        expected_path,
+        models_dir,
+        runtimes_dir,
+        host,
+        port,
+        true,
+        true,
+        true,
     )
 }
 
@@ -223,9 +222,6 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     let env_runtimes = std::env::var("RUNTIMES_DIR")
         .ok()
         .filter(|r| !r.trim().is_empty());
-    let env_hardware = std::env::var("HARDWARE")
-        .ok()
-        .filter(|h| !h.trim().is_empty());
     let env_host = std::env::var("HOST").ok().filter(|h| !h.trim().is_empty());
     let env_port = std::env::var("PORT")
         .ok()
@@ -233,13 +229,11 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
 
     let initial_host = env_host.clone().unwrap_or_else(|| default_host.clone());
     let initial_port = env_port.unwrap_or(default_port);
-    let initial_hardware = env_hardware.clone().unwrap_or_else(|| "auto".to_string());
 
     let example_yaml = generate_commented_example_yaml(
         &expected_path_str,
         &default_models_str,
         &default_runtimes_str,
-        &initial_hardware,
         &initial_host,
         initial_port,
     );
@@ -250,14 +244,13 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
 
     // In Docker, automatically create the configuration with container volumes
     if !expected_path_buf.exists() && in_docker {
-        let hw_to_save = env_hardware.clone().unwrap_or_default();
         if save_config(
             Some(&expected_path_str),
             &default_models_str,
             &default_runtimes_str,
-            &hw_to_save,
             Some(&initial_host),
             Some(initial_port),
+            None,
         )
         .is_ok()
         {
@@ -272,19 +265,16 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     if !expected_path_buf.exists() {
         let models_dir = env_models.unwrap_or(default_models_str);
         let runtimes_dir = env_runtimes.unwrap_or(default_runtimes_str);
-        let hardware = env_hardware.unwrap_or_else(|| "auto".to_string());
         let status = ConfigStatus {
             is_valid: false,
             has_models: false,
             has_runtimes: false,
-            has_hardware: false,
             created_auto_file,
             is_docker: in_docker,
             loaded_path: None,
             expected_path: expected_path_str,
             models_dir: Some(models_dir),
             runtimes_dir: Some(runtimes_dir),
-            hardware,
             host: initial_host,
             port: initial_port,
             error_message: Some(
@@ -303,14 +293,12 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 is_valid: false,
                 has_models: false,
                 has_runtimes: false,
-                has_hardware: false,
                 created_auto_file,
                 is_docker: in_docker,
                 loaded_path: Some(expected_path_str.clone()),
                 expected_path: expected_path_str,
                 models_dir: None,
                 runtimes_dir: None,
-                hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
                 host: initial_host,
                 port: initial_port,
                 error_message: Some(format!("Failed to read config file: {}", e)),
@@ -328,14 +316,12 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
                 is_valid: false,
                 has_models: false,
                 has_runtimes: false,
-                has_hardware: false,
                 created_auto_file,
                 is_docker: in_docker,
                 loaded_path: Some(expected_path_str.clone()),
                 expected_path: expected_path_str,
                 models_dir: None,
                 runtimes_dir: None,
-                hardware: env_hardware.unwrap_or_else(|| "auto".to_string()),
                 host: initial_host,
                 port: initial_port,
                 error_message: Some(format!("Invalid YAML configuration structure: {}", e)),
@@ -351,9 +337,6 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     }
     if let Some(dir) = env_runtimes {
         config.runtimes = Some(dir);
-    }
-    if let Some(hw) = env_hardware {
-        config.hardware = Some(hw);
     }
     if let Some(h) = env_host {
         config.host = Some(h);
@@ -372,12 +355,7 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         .as_ref()
         .map_or(false, |r| !r.trim().is_empty());
 
-    let has_hardware = config
-        .hardware
-        .as_ref()
-        .map_or(false, |h| !h.trim().is_empty());
-
-    let is_valid = has_models && has_runtimes && has_hardware;
+    let is_valid = has_models && has_runtimes;
 
     let active_models_dir = config
         .models
@@ -387,10 +365,6 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         .runtimes
         .clone()
         .unwrap_or_else(|| default_runtimes_str.clone());
-    let active_hardware = config
-        .hardware
-        .clone()
-        .unwrap_or_else(|| "auto".to_string());
     let active_host = config.host.clone().unwrap_or(initial_host);
     let active_port = config.port.unwrap_or(initial_port);
 
@@ -398,23 +372,18 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
         is_valid,
         has_models,
         has_runtimes,
-        has_hardware,
         created_auto_file,
         is_docker: in_docker,
         loaded_path: Some(expected_path_str.clone()),
         expected_path: expected_path_str,
         models_dir: Some(active_models_dir),
         runtimes_dir: Some(active_runtimes_dir),
-        hardware: active_hardware,
         host: active_host,
         port: active_port,
         error_message: if is_valid {
             None
         } else {
-            Some(
-                "Configuration is missing required fields (models, runtimes, or hardware)."
-                    .to_string(),
-            )
+            Some("Configuration is missing required fields (models or runtimes).".to_string())
         },
         example_yaml,
         cli_command_example,
@@ -423,13 +392,117 @@ pub fn load_config(explicit_path: Option<&str>) -> (AppConfig, ConfigStatus) {
     (config, status)
 }
 
+pub fn update_or_append_gui_section(
+    content: &str,
+    minimize_on_start: bool,
+    autostart_server: bool,
+    autostart_app: bool,
+) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut in_gui = false;
+    let mut filtered_lines = Vec::new();
+
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed == "# 4. Desktop GUI Preferences:" {
+            continue;
+        }
+        if trimmed.starts_with("minimize_on_start:")
+            || trimmed.starts_with("autostart_server:")
+            || trimmed.starts_with("autostart_app:")
+        {
+            continue;
+        }
+        if trimmed == "gui:" || trimmed.starts_with("gui:") {
+            in_gui = true;
+            continue;
+        }
+        if in_gui {
+            if line.starts_with("  ") || line.starts_with('\t') || trimmed.is_empty() {
+                continue;
+            } else {
+                in_gui = false;
+            }
+        }
+        filtered_lines.push(line);
+    }
+
+    let mut result = filtered_lines.join("\n");
+    if !result.is_empty() && !result.ends_with('\n') {
+        result.push('\n');
+    }
+    result.push_str(&format!(
+        "\n# 4. Desktop GUI Preferences:\ngui:\n  minimize_on_start: {}\n  autostart_server: {}\n  autostart_app: {}\n",
+        minimize_on_start, autostart_server, autostart_app
+    ));
+    result
+}
+
+pub fn update_yaml_field(content: &str, key: &str, value: &str) -> String {
+    let mut replaced = false;
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+
+    for line in lines.iter_mut() {
+        let trimmed = line.trim();
+        if trimmed.starts_with(key) {
+            let rest = trimmed[key.len()..].trim_start();
+            if rest.starts_with(':') {
+                let indent_len = line.len() - line.trim_start().len();
+                let indent = &line[..indent_len];
+                let val_part = rest[1..].trim();
+                if let Some(comment_idx) = val_part.find('#') {
+                    let comment = &val_part[comment_idx..];
+                    *line = format!("{}{}: {} {}", indent, key, value, comment);
+                } else {
+                    *line = format!("{}{}: {}", indent, key, value);
+                }
+                replaced = true;
+                break;
+            }
+        }
+    }
+
+    if !replaced {
+        for line in lines.iter_mut() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('#') {
+                let unhash = trimmed[1..].trim_start();
+                if unhash.starts_with(key) {
+                    let rest = unhash[key.len()..].trim_start();
+                    if rest.starts_with(':') {
+                        let indent_len = line.len() - line.trim_start().len();
+                        let indent = &line[..indent_len];
+                        *line = format!("{}{}: {}", indent, key, value);
+                        replaced = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut result = lines.join("\n");
+    if content.ends_with('\n') {
+        result.push('\n');
+    }
+
+    if !replaced {
+        if !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
+        }
+        result.push_str(&format!("{}: {}\n", key, value));
+    }
+
+    result
+}
+
 pub fn save_config(
     explicit_path: Option<&str>,
     models: &str,
     runtimes: &str,
-    hardware: &str,
     host: Option<&str>,
     port: Option<u16>,
+    gui: Option<(bool, bool, bool)>,
 ) -> Result<(), String> {
     let target_path = if let Some(p) = explicit_path {
         expand_tilde(p)
@@ -449,22 +522,49 @@ pub fn save_config(
 
     let h = host.unwrap_or(default_host);
     let p = port.unwrap_or(default_port);
-    let hw = if hardware.trim().is_empty() {
-        "auto"
+
+    let final_yaml = if target_path.exists() {
+        if let Ok(existing) = fs::read_to_string(&target_path) {
+            let mut updated = update_yaml_field(&existing, "models", models.trim());
+            updated = update_yaml_field(&updated, "runtimes", runtimes.trim());
+            updated = update_yaml_field(&updated, "host", h);
+            updated = update_yaml_field(&updated, "port", &p.to_string());
+
+            if let Some((min_start, auto_srv, auto_app)) = gui {
+                update_or_append_gui_section(&updated, min_start, auto_srv, auto_app)
+            } else if !existing.contains("gui:") {
+                update_or_append_gui_section(&updated, true, true, true)
+            } else {
+                updated
+            }
+        } else {
+            let (min_start, auto_srv, auto_app) = gui.unwrap_or((true, true, true));
+            render_config_template(
+                &target_path.to_string_lossy(),
+                models.trim(),
+                runtimes.trim(),
+                h,
+                p,
+                min_start,
+                auto_srv,
+                auto_app,
+            )
+        }
     } else {
-        hardware.trim()
+        let (min_start, auto_srv, auto_app) = gui.unwrap_or((true, true, true));
+        render_config_template(
+            &target_path.to_string_lossy(),
+            models.trim(),
+            runtimes.trim(),
+            h,
+            p,
+            min_start,
+            auto_srv,
+            auto_app,
+        )
     };
 
-    let yaml_content = generate_commented_example_yaml(
-        &target_path.to_string_lossy(),
-        models.trim(),
-        runtimes.trim(),
-        hw,
-        h,
-        p,
-    );
-
-    fs::write(&target_path, yaml_content).map_err(|e| {
+    fs::write(&target_path, final_yaml).map_err(|e| {
         format!(
             "Failed to write configuration file at {}: {}",
             target_path.display(),
@@ -491,22 +591,22 @@ mod tests {
             "/tmp/config.yaml",
             "/tmp/models",
             "/tmp/runtimes",
-            "auto",
             "127.0.0.1",
             8080,
         );
         assert!(yaml.contains("models: /tmp/models"));
         assert!(yaml.contains("runtimes: /tmp/runtimes"));
-        assert!(yaml.contains("hardware: auto"));
+        assert!(!yaml.contains("hardware:"));
         assert!(yaml.contains("port: 8080"));
         assert!(yaml.contains("# 1. Models Directory:"));
         assert!(yaml.contains("# 2. Runtimes Directory:"));
-        assert!(yaml.contains("# 3. Hardware Acceleration:"));
-        assert!(yaml.contains("# 4. Network Configuration:"));
+        assert!(yaml.contains("# 3. Network Configuration:"));
+        assert!(yaml.contains("# 4. Desktop GUI Preferences:"));
+        assert!(yaml.contains("minimize_on_start: true"));
     }
 
     #[test]
-    fn test_save_config_includes_comments() {
+    fn test_save_config_includes_comments_and_gui() {
         let temp_file = std::env::temp_dir().join(format!(
             "monolai_test_config_{}.yaml",
             uuid::Uuid::new_v4()
@@ -517,23 +617,44 @@ mod tests {
             Some(&path_str),
             "/custom/models",
             "/custom/runtimes",
-            "cuda",
             Some("127.0.0.1"),
             Some(9000),
+            Some((false, true, false)),
         )
         .unwrap();
 
         let content = fs::read_to_string(&temp_file).unwrap();
-        let _ = fs::remove_file(&temp_file);
         assert!(content.contains("# =============================================================================="));
         assert!(content.contains("# 1. Models Directory:"));
         assert!(content.contains("models: /custom/models"));
         assert!(content.contains("# 2. Runtimes Directory:"));
         assert!(content.contains("runtimes: /custom/runtimes"));
-        assert!(content.contains("# 3. Hardware Acceleration:"));
-        assert!(content.contains("hardware: cuda"));
-        assert!(content.contains("# 4. Network Configuration:"));
+        assert!(!content.contains("hardware:"));
+        assert!(content.contains("# 3. Network Configuration:"));
         assert!(content.contains("host: 127.0.0.1"));
         assert!(content.contains("port: 9000"));
+        assert!(content.contains("# 4. Desktop GUI Preferences:"));
+        assert!(content.contains("minimize_on_start: false"));
+        assert!(content.contains("autostart_server: true"));
+        assert!(content.contains("autostart_app: false"));
+
+        // Now update without GUI parameter, ensure GUI section is preserved!
+        save_config(
+            Some(&path_str),
+            "/custom/models2",
+            "/custom/runtimes2",
+            Some("0.0.0.0"),
+            Some(8080),
+            None,
+        )
+        .unwrap();
+
+        let updated_content = fs::read_to_string(&temp_file).unwrap();
+        let _ = fs::remove_file(&temp_file);
+        assert!(updated_content.contains("models: /custom/models2"));
+        assert!(updated_content.contains("runtimes: /custom/runtimes2"));
+        assert!(updated_content.contains("minimize_on_start: false"));
+        assert!(updated_content.contains("autostart_server: true"));
+        assert!(updated_content.contains("autostart_app: false"));
     }
 }

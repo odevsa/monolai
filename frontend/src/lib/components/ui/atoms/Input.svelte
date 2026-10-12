@@ -20,6 +20,7 @@
 		min = undefined,
 		max = undefined,
 		step = undefined,
+		tabindex = undefined,
 		oninput,
 		onchange,
 		onkeydown,
@@ -41,6 +42,7 @@
 		min?: number | string;
 		max?: number | string;
 		step?: number | string;
+		tabindex?: number | undefined | null;
 		oninput?: (e: Event) => void;
 		onchange?: (e: Event) => void;
 		onkeydown?: (e: KeyboardEvent) => void;
@@ -104,6 +106,7 @@
 		{oninput}
 		{onchange}
 		{onkeydown}
+		{tabindex}
 		class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] font-normal border-0 outline-none select-text min-w-0 {prefix
 			? 'pl-1.5'
 			: ''} {sizeClasses[size]}"
