@@ -105,8 +105,8 @@
 			saveError = null;
 
 			await configApi.setup({
-				models_dir: targetModels,
-				runtimes_dir: targetRuntimes,
+				models: targetModels,
+				runtimes: targetRuntimes,
 				hardware: selectedHardware,
 				host: targetHost,
 				port: parsedPort

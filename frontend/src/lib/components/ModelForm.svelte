@@ -266,21 +266,27 @@
 	}
 
 	function getFileOptions(currentValue: string) {
-		if (availableFiles.length === 0) {
-			return [{ value: '', label: 'No files found in models directory' }];
-		}
 		const opts = availableFiles.map((fileItem) => ({
 			value: getFilePath(fileItem),
 			label: getFileRelativePath(fileItem)
 		}));
-		if (currentValue && !availableFiles.some((f) => getFilePath(f) === currentValue)) {
-			opts.push({
-				value: currentValue,
+		const resolvedCurrent = resolve(currentValue);
+		if (
+			resolvedCurrent &&
+			!availableFiles.some(
+				(f) => getFilePath(f) === resolvedCurrent || getFileRelativePath(f) === currentValue
+			)
+		) {
+			opts.unshift({
+				value: resolvedCurrent,
 				label: getFileRelativePath({
-					absolute_path: currentValue,
+					absolute_path: resolvedCurrent,
 					relative_path: currentValue
 				})
 			});
+		}
+		if (opts.length === 0) {
+			return [{ value: '', label: 'No files found in models directory' }];
 		}
 		return opts;
 	}
@@ -379,7 +385,13 @@
 	}
 </script>
 
-<div class="model-form-container">
+<form
+	class="model-form-container"
+	onsubmit={(e) => {
+		e.preventDefault();
+		handleSubmit();
+	}}
+>
 	{#if formError}
 		<div class="error-banner">
 			<CircleAlert size={16} />
@@ -632,6 +644,12 @@
 								rows="6"
 								value={customText}
 								oninput={(e) => handleCustomTextChange((e.target as HTMLTextAreaElement).value)}
+								onkeydown={(e) => {
+									if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+										e.preventDefault();
+										handleSubmit();
+									}
+								}}
 								placeholder="--model /path/to/model.gguf --ctx-size 4096 --n-gpu-layers 99"
 								class="textarea-control font-mono command-textarea"></textarea>
 						</div>
@@ -646,10 +664,9 @@
 				Cancel
 			</button>
 			<button
-				type="button"
+				type="submit"
 				class="app-btn app-btn-primary app-btn-md"
 				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
-				onclick={handleSubmit}
 				title={installedRuntimes.length === 0
 					? 'Cannot save model without an installed runtime'
 					: 'Save Model'}
@@ -659,7 +676,7 @@
 			</button>
 		</div>
 	</div>
-</div>
+</form>
 
 <style>
 	.model-form-container {

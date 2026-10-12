@@ -25,7 +25,9 @@ pub struct ChatMessageRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateChatPayload {
+    #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
     pub title: Option<String>,
 }
 
@@ -36,22 +38,33 @@ pub struct UpdateChatPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateChatMessagePayload {
+    #[serde(default)]
     pub id: Option<String>,
     pub role: String,
     pub content: String,
+    #[serde(default)]
     pub tokens: Option<i64>,
+    #[serde(default)]
     pub duration: Option<String>,
+    #[serde(default)]
     pub speed: Option<String>,
+    #[serde(default)]
     pub model_tags: Option<String>,
+    #[serde(default)]
     pub status: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct UpdateChatMessagePayload {
     pub content: String,
+    #[serde(default)]
     pub tokens: Option<i64>,
+    #[serde(default)]
     pub duration: Option<String>,
+    #[serde(default)]
     pub speed: Option<String>,
+    #[serde(default)]
     pub model_tags: Option<String>,
+    #[serde(default)]
     pub status: Option<String>,
 }

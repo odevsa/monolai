@@ -135,9 +135,15 @@ impl ModelService {
         payload.id = target_id.clone();
 
         let runtime = payload.runtime.trim().to_string();
-        if runtime.is_empty() {
-            return Err(AppError::bad_request("Runtime engine cannot be empty."));
-        }
+        let runtime = if runtime.is_empty() {
+            if let Some(existing) = self.repo.get_by_id(id).await? {
+                existing.runtime
+            } else {
+                return Err(AppError::bad_request("Runtime engine cannot be empty."));
+            }
+        } else {
+            runtime
+        };
         payload.runtime = runtime;
 
         let mut model = self.repo.update(id, &payload).await?;

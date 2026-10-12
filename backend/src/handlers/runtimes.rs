@@ -16,7 +16,9 @@ use std::time::Duration;
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct InstallRuntimeRequest {
+    #[serde(default)]
     pub hardware: Option<String>,
+    #[serde(default)]
     pub acceleration: Option<String>,
 }
 

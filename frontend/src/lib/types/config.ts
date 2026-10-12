@@ -26,8 +26,8 @@ export interface HardwareReport {
 }
 
 export interface SetupConfigPayload {
-	models_dir: string;
-	runtimes_dir: string;
+	models: string;
+	runtimes: string;
 	hardware: string;
 	host: string;
 	port: number;

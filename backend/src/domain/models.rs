@@ -14,6 +14,7 @@ pub struct ModelRecord {
 pub struct CreateModelPayload {
     #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub runtime: String,
     #[serde(default)]
     #[schema(value_type = Object)]

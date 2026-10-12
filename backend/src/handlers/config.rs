@@ -19,8 +19,10 @@ pub struct SaveConfigRequest {
     #[serde(default = "default_hardware")]
     pub hardware: String,
     /// Optional host address to bind (e.g. 0.0.0.0 or 127.0.0.1)
+    #[serde(default)]
     pub host: Option<String>,
     /// Optional port to bind (e.g. 8080)
+    #[serde(default)]
     pub port: Option<u16>,
 }
 
@@ -147,3 +149,20 @@ pub async fn save_setup_config_handler(
         config_status: fresh_status,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_save_config_request() {
+        let json = r#"{"models":"/path/models","runtimes":"/path/runtimes","hardware":"cuda","host":"0.0.0.0","port":8080}"#;
+        let req: SaveConfigRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.models, "/path/models");
+        assert_eq!(req.runtimes, "/path/runtimes");
+        assert_eq!(req.hardware, "cuda");
+        assert_eq!(req.host.as_deref(), Some("0.0.0.0"));
+        assert_eq!(req.port, Some(8080));
+    }
+}
+
