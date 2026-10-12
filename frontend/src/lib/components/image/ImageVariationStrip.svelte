@@ -26,6 +26,7 @@
 						: 'border-transparent opacity-70 hover:opacity-100 hover:border-[var(--border-hover)]'}"
 					onclick={() => onSelect(item)}
 					title={item.prompt}
+					aria-label={item.prompt}
 				>
 					<img src={item.src} alt={item.prompt} class="w-full h-full object-cover" />
 				</button>

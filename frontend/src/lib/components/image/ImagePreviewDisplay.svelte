@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui';
+	import { Badge, EmptyState } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
 	import { formatElapsedTime } from '$lib/utils/format';
@@ -63,20 +63,11 @@
 		</div>
 	{:else}
 		<!-- Empty State Placeholder -->
-		<div class="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm">
-			<div
-				class="w-12 h-12 rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] flex items-center justify-center border border-[var(--border-color)]"
-			>
-				<ImageIcon size={24} />
-			</div>
-			<div class="flex flex-col gap-1">
-				<span class="text-sm font-semibold text-[var(--text-primary)]">
-					{t('image.noImageTitle')}
-				</span>
-				<span class="text-xs text-[var(--text-muted)] leading-relaxed">
-					{t('image.noImageDesc')}
-				</span>
-			</div>
-		</div>
+		<EmptyState
+			title={t('image.noImageTitle')}
+			description={t('image.noImageDesc')}
+			icon={ImageIcon}
+			class="border-0 bg-transparent max-w-sm"
+		/>
 	{/if}
 </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { Check, ChevronDown, Search } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -16,6 +17,7 @@
 		searchable = false,
 		searchPlaceholder = 'Search...',
 		class: className = '',
+		id = '',
 		ariaLabel = '',
 		disabled = false,
 		onchange
@@ -26,6 +28,7 @@
 		searchable?: boolean;
 		searchPlaceholder?: string;
 		class?: string;
+		id?: string;
 		ariaLabel?: string;
 		disabled?: boolean;
 		onchange?: (val: string) => void;
@@ -84,6 +87,7 @@
 
 <div class="relative {open ? 'z-40' : 'z-10'} {className}" bind:this={containerRef}>
 	<button
+		{id}
 		type="button"
 		class="flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg cursor-pointer transition-colors duration-150 box-border bg-[var(--bg-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-color)] select-none {disabled
 			? 'opacity-50 cursor-not-allowed pointer-events-none'
@@ -121,7 +125,9 @@
 			{/if}
 
 			{#if filteredOptions.length === 0}
-				<div class="px-3 py-2 text-xs text-[var(--text-muted)] text-center">No options found</div>
+				<div class="px-3 py-2 text-xs text-[var(--text-muted)] text-center">
+					{t('common.noOptionsFound')}
+				</div>
 			{:else}
 				{#each filteredOptions as opt (opt.value)}
 					<button

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Input } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { ChevronDown, ChevronUp, Dices, SlidersVertical } from '@lucide/svelte';
 
@@ -87,6 +88,7 @@
 								seed = Math.floor(Math.random() * 2147483647);
 							}}
 							title={t('image.randomizeSeed')}
+							aria-label={t('image.randomizeSeed')}
 							{disabled}
 						>
 							<Dices size={12} />
@@ -100,6 +102,7 @@
 									seed = '';
 								}}
 								title={t('image.clearSeed')}
+								aria-label={t('image.clearSeed')}
 								{disabled}
 							>
 								{t('image.clearSeed')}
@@ -107,13 +110,13 @@
 						{/if}
 					</div>
 				</div>
-				<input
+				<Input
 					id="image-seed-input"
 					type="number"
 					bind:value={seed}
 					placeholder={t('image.seedPlaceholder')}
+					size="sm"
 					{disabled}
-					class="w-full px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] placeholder:[var(--text-muted)] disabled:opacity-50"
 				/>
 			</div>
 		</div>

@@ -159,7 +159,7 @@
 			const totalSecs = Math.round((Date.now() - startTime) / 100) / 10;
 
 			if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
-				throw new Error('No image data returned from image generation endpoint');
+				throw new Error(t('image.noImageDataReturned'));
 			}
 
 			const generatedList: GeneratedImage[] = data.data.map((item: any, idx: number) => {
@@ -196,7 +196,7 @@
 			if (err.name === 'AbortError') {
 				generationError = generationError || t('image.interrupted');
 			} else {
-				generationError = err.message || 'Image generation failed';
+				generationError = err.message || t('image.generationFailed');
 			}
 		} finally {
 			if (generationTimer) {

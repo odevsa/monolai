@@ -53,7 +53,8 @@
 		"selectModel": "Select Model",
 		"selectActiveModel": "SELECT ACTIVE MODEL",
 		"noModelsRegistered": "No models registered",
-		"disk": "Disk"
+		"disk": "Disk",
+		"noOptionsFound": "No options found"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -211,6 +212,8 @@
 		"generateImage": "Generate Image",
 		"generatingWithTime": "Generating... ({{time}})",
 		"generationError": "Generation Error:",
+		"generationFailed": "Image generation failed",
+		"noImageDataReturned": "No image data returned from image generation endpoint",
 		"preview": "Preview",
 		"reusePrompt": "Reuse prompt",
 		"copyImage": "Copy image",

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FeatureModelItem } from '$lib/api/models';
-	import { Alert, Badge, Card, ModelSelect, Select } from '$lib/components/ui';
+	import { Alert, Badge, Button, Card, ModelSelect, Select, Textarea } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import { Dices, RefreshCw, Sparkles } from '@lucide/svelte';
@@ -72,7 +72,7 @@
 <Card>
 	<div class="flex flex-col gap-4">
 		<!-- Studio Header -->
-		<div class="flex items-center justify-between pb-1 border-b border-[var(--border-color)]">
+		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
 				<Sparkles size={16} class="text-[var(--primary)]" />
 				<h3 class="m-0 text-sm font-bold text-[var(--text-primary)]">
@@ -109,39 +109,44 @@
 					</label>
 					<span class="text-[11px] text-[var(--text-muted)]">{t('image.ctrlEnterHint')}</span>
 				</div>
-				<button
-					type="button"
-					class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+				<Button
+					variant="secondary"
+					size="xs"
 					onclick={onInsertRandomPrompt}
 					title={t('image.randomPromptTitle')}
+					ariaLabel={t('image.randomPromptTitle')}
 					disabled={isGenerating}
 				>
 					<Dices size={13} class="text-[var(--primary)]" />
 					<span>{t('image.randomPromptBtn')}</span>
-				</button>
+				</Button>
 			</div>
-			<textarea
+			<Textarea
 				id="image-prompt"
 				bind:value={prompt}
 				onkeydown={handleKeyDown}
 				rows={4}
+				size="md"
+				resize="y"
 				placeholder={t('image.promptPlaceholder')}
-				class="w-full p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-sm text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] disabled:opacity-50"
-				disabled={isGenerating}></textarea>
+				disabled={isGenerating}
+			/>
 		</div>
 
 		<!-- Negative Prompt -->
 		<div class="flex flex-col gap-1">
 			<label for="image-negative-prompt" class="text-xs font-semibold text-[var(--text-secondary)]">
-				{t('image.negativePromptTitle')}
+				{t('image.negativePromptLabel')}
 			</label>
-			<textarea
+			<Textarea
 				id="image-negative-prompt"
 				bind:value={negativePrompt}
 				rows={2}
+				size="sm"
+				resize="y"
 				placeholder={t('image.negativePromptPlaceholder')}
-				class="w-full p-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] outline-none resize-y transition-colors focus:border-[var(--primary)] disabled:opacity-50"
-				disabled={isGenerating}></textarea>
+				disabled={isGenerating}
+			/>
 		</div>
 
 		<!-- Dimensions & Quantity Row -->
@@ -151,6 +156,7 @@
 					{t('image.dimensions')}
 				</label>
 				<Select
+					id="image-size-select"
 					bind:value={selectedSize}
 					options={sizeOptions}
 					placeholder={t('image.selectDimensions')}
@@ -163,6 +169,7 @@
 					{t('image.quantity')}
 				</label>
 				<Select
+					id="image-count-select"
 					bind:value={selectedCount}
 					options={countOptions}
 					placeholder={t('image.selectQuantity')}
@@ -176,9 +183,10 @@
 
 		<!-- Generate Action Button -->
 		<div class="pt-2">
-			<button
-				type="button"
-				class="app-btn app-btn-primary w-full py-2.5 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+			<Button
+				variant="primary"
+				size="lg"
+				class="w-full"
 				disabled={isGenerating || !prompt.trim() || !selectedModel}
 				onclick={onGenerate}
 			>
@@ -191,7 +199,7 @@
 					<Sparkles size={16} />
 					<span>{t('image.generateImage')}</span>
 				{/if}
-			</button>
+			</Button>
 		</div>
 
 		<!-- Error Alert -->

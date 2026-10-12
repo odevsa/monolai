@@ -2,6 +2,8 @@
 	let {
 		value = $bindable(''),
 		variant = 'surface',
+		size = 'sm',
+		resize = 'none',
 		rows = 3,
 		placeholder = '',
 		disabled = false,
@@ -13,6 +15,8 @@
 	}: {
 		value?: string;
 		variant?: 'surface' | 'glass';
+		size?: 'sm' | 'md' | 'lg';
+		resize?: 'none' | 'y' | 'x' | 'both';
 		rows?: number;
 		placeholder?: string;
 		disabled?: boolean;
@@ -29,6 +33,19 @@
 		glass:
 			'bg-[var(--bg-surface)]/40 backdrop-blur-md border-[var(--border-color)]/70 focus:border-[var(--border-hover)] focus:bg-[var(--bg-surface)]/70'
 	};
+
+	const sizeClasses = {
+		sm: 'text-xs p-2.5',
+		md: 'text-sm p-3',
+		lg: 'text-base p-3.5'
+	};
+
+	const resizeClasses = {
+		none: 'resize-none',
+		y: 'resize-y',
+		x: 'resize-x',
+		both: 'resize'
+	};
 </script>
 
 <textarea
@@ -39,8 +56,9 @@
 	{disabled}
 	{oninput}
 	{onkeydown}
-	class="w-full text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg p-2.5 border transition-all duration-150 outline-none resize-none leading-relaxed {variantClasses[
+	class="w-full text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg border transition-all duration-150 outline-none leading-relaxed {variantClasses[
 		variant
-	]} {error ? 'border-red-500/50 focus:ring-red-500/20' : ''} {disabled
-		? 'opacity-50 cursor-not-allowed pointer-events-none'
-		: ''} {className}"></textarea>
+	]} {sizeClasses[size]} {resizeClasses[resize]} {error
+		? 'border-[var(--danger)] focus:ring-2 focus:ring-[var(--danger-focus)]'
+		: ''} {disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''} {className}"
+></textarea>
