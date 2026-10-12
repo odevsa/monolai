@@ -221,7 +221,7 @@
 </script>
 
 <svelte:head>
-	<title>Monolai - {t('logs.title')}</title>
+	<title>{t('app.title')} - {t('logs.title')}</title>
 </svelte:head>
 
 <div

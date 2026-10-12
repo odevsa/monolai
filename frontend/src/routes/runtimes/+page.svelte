@@ -200,7 +200,7 @@
 </script>
 
 <svelte:head>
-	<title>Monolai - {t('runtimes.pageTitle')}</title>
+	<title>{t('app.title')} - {t('runtimes.pageTitle')}</title>
 </svelte:head>
 
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">

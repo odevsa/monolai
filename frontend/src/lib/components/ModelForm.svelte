@@ -22,7 +22,7 @@
 		Trash
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
-	import { Select, Tabs } from '$lib/components/ui';
+	import { Alert, Button, Input, Select, Tabs } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 
 	interface RuntimeItem {
@@ -385,26 +385,25 @@
 </script>
 
 <form
-	class="model-form-container"
+	class="flex flex-col gap-4"
 	onsubmit={(e) => {
 		e.preventDefault();
 		handleSubmit();
 	}}
 >
 	{#if formError}
-		<div class="error-banner">
-			<CircleAlert size={16} />
-			<span>{formError}</span>
-		</div>
+		<Alert variant="error" dismissible ondismiss={() => (formError = null)}>
+			{formError}
+		</Alert>
 	{/if}
 
-	<div class="model-form-body">
+	<div class="flex flex-col gap-4">
 		<!-- Model ID -->
-		<div class="form-group">
-			<label class="form-label" for="model-id">
-				{t('models.modelId')} <span class="required-star">*</span>
+		<div class="flex flex-col gap-1.5">
+			<label class="text-xs font-semibold text-[var(--text-primary)]" for="model-id">
+				{t('models.modelId')} <span class="text-[var(--danger)]">*</span>
 			</label>
-			<input
+			<Input
 				id="model-id"
 				type="text"
 				bind:value={formId}
@@ -412,19 +411,19 @@
 					hasUserEditedId = true;
 				}}
 				placeholder="e.g. Qwen3.8:27b-q4-mtp"
-				class="input-control {validateId(formId) && formId ? 'has-error' : ''}"
+				error={!!validateId(formId) && !!formId}
 			/>
 			{#if validateId(formId) && formId}
-				<span class="field-error-text">{validateId(formId)}</span>
+				<span class="text-xs text-[var(--danger-text)]">{validateId(formId)}</span>
 			{:else}
-				<span class="field-hint">{t('models.modelIdHint')}</span>
+				<span class="text-xs text-[var(--text-muted)]">{t('models.modelIdHint')}</span>
 			{/if}
 		</div>
 
 		<!-- Runtime Engine Select -->
-		<div class="form-group">
-			<label class="form-label" for="model-runtime">
-				{t('models.runtimeEngine')} <span class="required-star">*</span>
+		<div class="flex flex-col gap-1.5">
+			<label class="text-xs font-semibold text-[var(--text-primary)]" for="model-runtime">
+				{t('models.runtimeEngine')} <span class="text-[var(--danger)]">*</span>
 			</label>
 			{#if installedRuntimeOptions.length > 0}
 				<Select
@@ -436,12 +435,12 @@
 				/>
 			{:else}
 				<div
-					class="p-3 text-xs rounded-xl bg-[var(--bg-primary)] border border-amber-500/30 text-amber-500 flex items-center justify-between gap-3"
+					class="p-3 text-xs rounded-xl bg-[var(--bg-primary)] border border-[var(--warning-border)] text-[var(--warning-text)] flex items-center justify-between gap-3"
 				>
 					<span>{t('models.noInstalledRuntimesWarning')}</span>
 					<a
 						href="/runtimes"
-						class="app-btn app-btn-secondary app-btn-sm shrink-0 whitespace-nowrap !no-underline"
+						class="inline-flex items-center px-2.5 py-1 text-xs rounded-lg bg-[var(--btn-bg)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--btn-hover)] shrink-0 whitespace-nowrap no-underline font-medium"
 					>
 						{t('navigation.runtimes')}
 					</a>
@@ -465,15 +464,16 @@
 			>
 				{#snippet action()}
 					{#if activeFormTab === 'flags'}
-						<button
-							type="button"
-							class="app-btn app-btn-secondary app-btn-sm"
+						<Button
+							variant="secondary"
+							size="sm"
 							onclick={resetDefaultFlags}
 							title={t('models.resetDefaults')}
+							ariaLabel={t('models.resetDefaults')}
 						>
 							<RotateCcw size={13} />
 							<span>{t('models.resetDefaults')}</span>
-						</button>
+						</Button>
 					{/if}
 				{/snippet}
 
@@ -483,41 +483,47 @@
 						<div class="flex flex-col gap-3">
 							{#each Object.keys(formFlags) as flagKey}
 								{@const flagDef = currentManifest?.flags.find((f) => f.flag === flagKey)}
-								<div class="flag-control-row">
-									<div class="flag-card-header">
-										<span class="flag-name font-mono">{flagKey}</span>
+								<div
+									class="flex flex-col gap-1.5 pb-3 border-b border-[var(--border-color)] last:border-b-0 last:pb-0"
+								>
+									<div class="flex items-center gap-2">
+										<span class="text-xs font-mono font-bold text-[var(--primary)]">{flagKey}</span>
 										{#if flagDef?.name}
-											<span class="flag-label">{flagDef.name}</span>
+											<span class="text-xs text-[var(--text-secondary)]">{flagDef.name}</span>
 										{/if}
 
 										<!-- Info Tooltip Button -->
 										{#if flagDef?.description}
-											<div class="info-tooltip-container">
+											<div class="relative group/tip inline-flex items-center">
 												<button
 													type="button"
-													class="info-icon-btn"
+													class="p-0.5 text-[var(--text-muted)] hover:text-[var(--primary)] bg-transparent border-0 cursor-pointer rounded flex items-center justify-center transition-colors"
 													aria-label={t('models.flagDescription')}
 													title={flagDef.description}
 												>
 													<Info size={13} />
 												</button>
-												<div class="info-tooltip">
+												<div
+													class="hidden group-hover/tip:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] px-2 py-1 rounded-md text-xs shadow-lg max-w-[240px] w-max z-50 pointer-events-none"
+												>
 													{flagDef.description}
 												</div>
 											</div>
 										{/if}
 
-										<button
-											type="button"
-											class="remove-flag-btn"
+										<Button
+											variant="ghost"
+											size="icon-xs"
+											class="ml-auto text-[var(--text-muted)] hover:text-[var(--danger-text)]"
 											onclick={() => removeFlag(flagKey)}
 											title={t('models.removeFlag')}
+											ariaLabel={t('models.removeFlag')}
 										>
 											<Trash size={14} />
-										</button>
+										</Button>
 									</div>
 
-									<div class="flag-input-wrapper">
+									<div class="mt-0.5">
 										{#if flagDef?.type === 'file'}
 											<Select
 												value={formFlags[flagKey] || ''}
@@ -538,7 +544,9 @@
 												ariaLabel={flagDef.name || flagKey}
 											/>
 										{:else if flagDef?.type === 'bool'}
-											<label class="bool-checkbox-label">
+											<label
+												class="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer select-none"
+											>
 												<input
 													type="checkbox"
 													checked={formFlags[flagKey] === 'true'}
@@ -548,12 +556,12 @@
 															[flagKey]: (e.target as HTMLInputElement).checked ? 'true' : 'false'
 														});
 													}}
-													class="setting-checkbox"
+													class="accent-[var(--primary)] w-4 h-4 cursor-pointer"
 												/>
 												<span>{t('models.enableFlag')}</span>
 											</label>
 										{:else if flagDef?.type === 'int' || flagDef?.type === 'float'}
-											<input
+											<Input
 												type="number"
 												value={formFlags[flagKey] || ''}
 												oninput={(e) => {
@@ -562,10 +570,10 @@
 														[flagKey]: (e.target as HTMLInputElement).value
 													});
 												}}
-												class="input-control"
+												size="sm"
 											/>
 										{:else}
-											<input
+											<Input
 												type="text"
 												value={formFlags[flagKey] || ''}
 												oninput={(e) => {
@@ -574,7 +582,7 @@
 														[flagKey]: (e.target as HTMLInputElement).value
 													});
 												}}
-												class="input-control"
+												size="sm"
 											/>
 										{/if}
 									</div>
@@ -585,7 +593,7 @@
 
 					<!-- Add Optional Flag -->
 					{#if unusedFlags.length > 0}
-						<div class="add-flag-row">
+						<div class="flex items-center gap-2 mt-1">
 							<Select
 								class="flex-1 min-w-0"
 								bind:value={selectedAddFlag}
@@ -599,42 +607,48 @@
 								placeholder={t('models.selectOptionalFlag')}
 								ariaLabel={t('models.addOptionalFlag')}
 							/>
-							<button
-								type="button"
-								class="app-btn app-btn-secondary app-btn-sm"
+							<Button
+								variant="secondary"
+								size="sm"
 								disabled={!selectedAddFlag}
 								onclick={addFlag}
+								class="shrink-0 whitespace-nowrap"
 							>
 								<Plus size={15} />
 								<span>{t('models.addFlag')}</span>
-							</button>
+							</Button>
 						</div>
 					{/if}
 				{:else}
 					<!-- Custom Raw Command Text Editor -->
-					<div class="custom-command-editor font-mono">
-						<div class="command-editor-header">
-							<label class="form-label" for="custom-text">
+					<div class="flex flex-col gap-2 font-mono">
+						<div class="flex items-center justify-between">
+							<label class="text-xs font-semibold text-[var(--text-primary)]" for="custom-text">
 								{t('models.rawCliHint')}
 							</label>
-							<button
-								type="button"
-								class="copy-cmd-btn"
+							<Button
+								variant="secondary"
+								size="xs"
 								onclick={copyFullCommand}
 								title={t('models.copyFullCommand')}
+								ariaLabel={t('models.copyFullCommand')}
 							>
 								{#if isCopied}
-									<Check size={13} class="text-green" />
+									<Check size={13} class="text-[var(--success-text)]" />
 									<span>{t('common.copied')}</span>
 								{:else}
 									<Copy size={13} />
 									<span>{t('common.copy')}</span>
 								{/if}
-							</button>
+							</Button>
 						</div>
-						<div class="command-prefix-box">
-							<div class="command-prefix-header font-mono">
-								<span class="binary-path font-mono">{currentBinaryPath}</span>
+						<div
+							class="flex flex-col border border-[var(--border-color)] rounded-xl overflow-hidden bg-[var(--bg-primary)]"
+						>
+							<div
+								class="bg-[var(--bg-hover)] px-3 py-2 text-xs border-b border-[var(--border-color)] flex items-center gap-2"
+							>
+								<span class="text-[var(--primary)] font-bold">{currentBinaryPath}</span>
 							</div>
 							<textarea
 								id="custom-text"
@@ -648,7 +662,8 @@
 									}
 								}}
 								placeholder="--model /path/to/model.gguf --ctx-size 4096 --n-gpu-layers 99"
-								class="textarea-control font-mono command-textarea"></textarea>
+								class="w-full bg-transparent p-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] font-mono outline-none resize-y border-0 leading-relaxed"
+							></textarea>
 						</div>
 					</div>
 				{/if}
@@ -656,13 +671,16 @@
 		{/if}
 
 		<!-- Actions -->
-		<div class="form-actions-row">
-			<button type="button" class="app-btn app-btn-secondary app-btn-md" onclick={onCancel}>
+		<div
+			class="flex items-center justify-end gap-3 pt-3 mt-3 border-t border-[var(--border-color)]"
+		>
+			<Button variant="secondary" size="md" onclick={onCancel}>
 				{t('common.cancel')}
-			</button>
-			<button
+			</Button>
+			<Button
 				type="submit"
-				class="app-btn app-btn-primary app-btn-md"
+				variant="primary"
+				size="md"
 				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
 				title={installedRuntimes.length === 0
 					? t('models.noInstalledRuntimes')
@@ -670,303 +688,7 @@
 			>
 				<Save size={15} />
 				<span>{isSaving ? t('models.saving') : t('models.saveModel')}</span>
-			</button>
+			</Button>
 		</div>
 	</div>
 </form>
-
-<style>
-	.model-form-container {
-		display: flex;
-		flex-direction: column;
-		gap: 0.875rem;
-	}
-
-	.error-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: #ef4444;
-		padding: 0.6rem 0.75rem;
-		border-radius: 0.5rem;
-		font-size: 0.8rem;
-	}
-
-	.model-form-body {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-	}
-
-	.form-label {
-		font-size: 0.8rem;
-		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.required-star {
-		color: #ef4444;
-	}
-
-	.input-control,
-	.textarea-control {
-		width: 100%;
-		background: var(--bg-primary);
-		border: 1px solid var(--border-color);
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.75rem;
-		font-size: 0.825rem;
-		color: var(--text-primary);
-		outline: none;
-		box-sizing: border-box;
-		transition: border-color 0.15s ease;
-	}
-
-	.textarea-control {
-		resize: vertical;
-		line-height: 1.4;
-	}
-
-	.input-control:focus,
-	.textarea-control:focus {
-		border-color: var(--primary);
-	}
-
-	.input-control.has-error {
-		border-color: #ef4444;
-	}
-
-	.field-hint {
-		font-size: 0.725rem;
-		color: var(--text-muted);
-	}
-
-	.field-error-text {
-		font-size: 0.725rem;
-		color: #ef4444;
-	}
-
-	.flag-control-row {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		padding-bottom: 0.75rem;
-		border-bottom: 1px solid var(--border-color);
-	}
-
-	.flag-control-row:last-child {
-		padding-bottom: 0;
-		border-bottom: none;
-	}
-
-	.flag-card-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.flag-name {
-		font-size: 0.8rem;
-		font-weight: 700;
-		color: var(--primary);
-	}
-
-	.flag-label {
-		font-size: 0.775rem;
-		color: var(--text-secondary);
-	}
-
-	/* Info Tooltip */
-	.info-tooltip-container {
-		position: relative;
-		display: inline-flex;
-		align-items: center;
-	}
-
-	.info-icon-btn {
-		background: transparent;
-		border: none;
-		color: var(--text-muted);
-		padding: 0.15rem;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.25rem;
-		transition: color 0.12s ease;
-	}
-
-	.info-icon-btn:hover {
-		color: var(--primary);
-	}
-
-	.info-tooltip {
-		display: none;
-		position: absolute;
-		bottom: 125%;
-		left: 50%;
-		transform: translateX(-50%);
-		background: var(--bg-surface);
-		border: 1px solid var(--border-color);
-		color: var(--text-secondary);
-		padding: 0.4rem 0.6rem;
-		border-radius: 0.375rem;
-		font-size: 0.7rem;
-		white-space: normal;
-		max-width: 220px;
-		width: max-content;
-		z-index: 50;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		pointer-events: none;
-	}
-
-	.info-tooltip-container:hover .info-tooltip {
-		display: block;
-	}
-
-	.remove-flag-btn {
-		margin-left: auto;
-		background: transparent;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: 0.2rem;
-	}
-
-	.remove-flag-btn:hover {
-		color: #ef4444;
-	}
-
-	.flag-input-wrapper {
-		margin-top: 0.2rem;
-	}
-
-	.bool-checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.8rem;
-		color: var(--text-primary);
-		cursor: pointer;
-	}
-
-	.setting-checkbox {
-		accent-color: var(--primary);
-		width: 16px;
-		height: 16px;
-	}
-
-	.add-flag-row {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-	}
-
-	.add-flag-row :global(.relative) {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.add-flag-row button {
-		white-space: nowrap;
-		flex-shrink: 0;
-		min-width: max-content;
-	}
-
-	.custom-command-editor {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.command-editor-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.copy-cmd-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		background: transparent;
-		color: var(--text-muted);
-		border: 1px solid var(--border-color);
-		border-radius: 0.375rem;
-		padding: 0.25rem 0.55rem;
-		font-size: 0.75rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.copy-cmd-btn:hover {
-		color: var(--primary);
-		border-color: var(--primary);
-		background: var(--primary-light);
-	}
-
-	:global(.text-green) {
-		color: #10b981;
-	}
-
-	.command-prefix-box {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid var(--border-color);
-		border-radius: 0.5rem;
-		overflow: hidden;
-		background: var(--bg-primary);
-	}
-
-	.command-prefix-header {
-		background: var(--bg-hover);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.825rem;
-		border-bottom: 1px solid var(--border-color);
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.binary-path {
-		color: var(--primary);
-		font-weight: 700;
-	}
-
-	.command-textarea {
-		border: none !important;
-		border-radius: 0 !important;
-		background: transparent !important;
-		padding: 0.625rem 0.75rem;
-	}
-
-	.command-textarea:focus {
-		outline: none !important;
-		border-color: transparent !important;
-		box-shadow: none !important;
-	}
-
-	.form-actions-row {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 0.75rem;
-		margin-top: 0.75rem;
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--border-color);
-	}
-
-	.font-mono {
-		font-family: 'JetBrains Mono', monospace;
-	}
-</style>

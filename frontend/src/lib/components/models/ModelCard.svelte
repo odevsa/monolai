@@ -52,28 +52,27 @@
 
 					{#if !isIdDifferent}
 						<!-- Copy button directly beside title when ID equals displayName -->
-						<button
-							type="button"
-							class="inline-flex items-center justify-center p-1 rounded-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition-colors cursor-pointer bg-transparent border-0 shrink-0"
+						<Button
+							variant="ghost"
+							size="icon-xs"
 							onclick={() => onCopyId?.(model.id)}
 							title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+							ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
 						>
 							{#if isCopied}
-								<Check size={12} class="text-[var(--success)]" />
+								<Check size={12} class="text-[var(--success-text)]" />
 							{:else}
 								<Copy size={12} />
 							{/if}
-						</button>
+						</Button>
 					{/if}
 
 					{#if parsed.tags.length > 0}
 						<div class="flex items-center gap-1 flex-wrap">
 							{#each parsed.tags as tag}
-								<span
-									class="px-1.5 py-0.2 rounded text-[0.62rem] font-medium bg-[var(--primary-light)] text-[var(--primary)] border border-[var(--primary)]/20"
-								>
+								<Badge variant="primary" rounded="rounded-sm" class="text-[0.62rem] px-1.5 py-0.5">
 									{tag}
-								</span>
+								</Badge>
 							{/each}
 						</div>
 					{/if}
@@ -86,10 +85,11 @@
 						class="inline-flex items-center gap-1.5 text-[0.72rem] font-mono text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mt-1 max-w-full truncate text-left cursor-pointer group bg-transparent border-0 p-0"
 						onclick={() => onCopyId?.(model.id)}
 						title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+						aria-label={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
 					>
 						<span class="truncate">{model.id}</span>
 						{#if isCopied}
-							<Check size={11} class="text-[var(--success)] shrink-0" />
+							<Check size={11} class="text-[var(--success-text)] shrink-0" />
 						{:else}
 							<Copy
 								size={11}

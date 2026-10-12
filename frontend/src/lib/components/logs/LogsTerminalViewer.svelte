@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button, EmptyState } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { LogEntry } from '$lib/types/logs';
 	import { ChevronDown, RefreshCw, ScrollText } from '@lucide/svelte';
@@ -42,12 +43,12 @@
 				<span>{t('common.loading')}</span>
 			</div>
 		{:else if entries.length === 0}
-			<div
-				class="h-full min-h-[200px] flex flex-col items-center justify-center text-[var(--text-muted)] gap-2"
-			>
-				<ScrollText size={28} class="opacity-30" />
-				<p class="text-xs">{t('logs.noLogs')}</p>
-			</div>
+			<EmptyState
+				size="sm"
+				icon={ScrollText}
+				title={t('logs.noLogs')}
+				class="border-0 bg-transparent min-h-[200px]"
+			/>
 		{:else}
 			{#each entries as entry (entry.id)}
 				<LogsEntryRow {entry} {showModelTag} />
@@ -60,15 +61,16 @@
 		<div
 			class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto"
 		>
-			<button
-				type="button"
-				class="w-9 h-9 rounded-full bg-[var(--bg-surface)]/85 hover:bg-[var(--bg-hover)] backdrop-blur-md border border-[var(--border-color)]/80 text-[var(--text-primary)] flex items-center justify-center cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all"
+			<Button
+				variant="glass"
+				size="icon"
+				class="rounded-full shadow-md hover:scale-105 active:scale-95"
 				onclick={onScrollToBottom}
 				title={t('logs.scrollToBottom')}
-				aria-label={t('logs.scrollToBottom')}
+				ariaLabel={t('logs.scrollToBottom')}
 			>
 				<ChevronDown size={18} />
-			</button>
+			</Button>
 		</div>
 	{/if}
 </div>

@@ -17,6 +17,9 @@
 		id = '',
 		name = '',
 		autocomplete = 'off',
+		min = undefined,
+		max = undefined,
+		step = undefined,
 		oninput,
 		onchange,
 		onkeydown,
@@ -35,6 +38,9 @@
 		id?: string;
 		name?: string;
 		autocomplete?: HTMLInputAttributes['autocomplete'];
+		min?: number | string;
+		max?: number | string;
+		step?: number | string;
 		oninput?: (e: Event) => void;
 		onchange?: (e: Event) => void;
 		onkeydown?: (e: KeyboardEvent) => void;
@@ -88,6 +94,9 @@
 		{id}
 		{name}
 		{type}
+		{min}
+		{max}
+		{step}
 		bind:value
 		{placeholder}
 		{disabled}

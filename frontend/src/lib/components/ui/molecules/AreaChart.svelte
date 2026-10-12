@@ -1,19 +1,20 @@
 <script lang="ts">
 	import { MAX_CHART_POINTS } from '$lib';
+	import { t } from '$lib/i18n';
 	import { TriangleAlert } from '@lucide/svelte';
 
 	let {
 		data = [],
 		maxVal = 100,
 		maxPoints = MAX_CHART_POINTS,
-		color = '#38bdf8',
+		color = 'var(--primary)',
 		unit = '%',
 		title = '',
 		subtitle = '',
 		currentValue = 0,
 		icon: IconComponent = null,
 		unavailable = false,
-		unavailableMessage = 'Resource Not Available',
+		unavailableMessage = '',
 		temperature = null,
 		clock = null
 	}: {
@@ -131,10 +132,10 @@
 				class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--warning-light)] border border-[var(--warning-border)] text-[var(--warning-text)] text-xs font-semibold"
 			>
 				<TriangleAlert size={15} />
-				<span>{unavailableMessage}</span>
+				<span>{unavailableMessage || t('sysinfo.resourceUnavailable')}</span>
 			</div>
 			<p class="mt-3 m-0 text-xs text-[var(--text-muted)] max-w-[280px] leading-relaxed">
-				No hardware activity detected.
+				{t('sysinfo.noHardwareActivity')}
 			</p>
 		</div>
 	{:else}
@@ -147,7 +148,7 @@
 						<span
 							class="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-lg backdrop-blur-md shadow-xs"
 							style="background-color: {badgeBg}; color: {color}; border: 1px solid {badgeBorder};"
-							title="Operating Temperature"
+							title={t('sysinfo.operatingTemperature')}
 						>
 							{temperature.toFixed(1)}°C
 						</span>
@@ -156,7 +157,7 @@
 						<span
 							class="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-lg backdrop-blur-md shadow-xs"
 							style="background-color: {badgeBg}; color: {color}; border: 1px solid {badgeBorder};"
-							title="Operating Clock Frequency"
+							title={t('sysinfo.operatingClock')}
 						>
 							{clock}
 						</span>

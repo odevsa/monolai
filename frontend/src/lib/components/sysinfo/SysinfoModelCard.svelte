@@ -1,12 +1,11 @@
 <script lang="ts">
+	import { Badge, Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { getStatusType } from '$lib/runningModelsStore';
 	import type { RunningModelStatus } from '$lib/types/models';
 	import { formatUptime } from '$lib/utils/format';
 	import { parseModelDetails } from '$lib/utils/model';
 	import { Box, Boxes, CircleAlert, Clock, Cpu, Network, Power, RefreshCw } from '@lucide/svelte';
-	import Badge from '../ui/atoms/Badge.svelte';
-	import Button from '../ui/atoms/Button.svelte';
 
 	interface SysinfoModelCardProps {
 		model: RunningModelStatus;
@@ -147,7 +146,13 @@
 
 	<!-- Card Footer Action -->
 	<div class="flex items-center justify-end pt-1 border-t border-[var(--border-color)]">
-		<Button variant="danger" disabled={isUnloading} onclick={() => onUnload(model.model_id)}>
+		<Button
+			variant="danger"
+			disabled={isUnloading}
+			onclick={() => onUnload(model.model_id)}
+			title={t('sysinfo.unloadModelTitle', { model: modelDisplayName })}
+			ariaLabel={t('sysinfo.unloadModelTitle', { model: modelDisplayName })}
+		>
 			{#if isUnloading}
 				<RefreshCw size={13} class="animate-spin text-[var(--warning-text)]" />
 				<span>{t('sysinfo.statusLoading')}</span>

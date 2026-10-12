@@ -21,8 +21,14 @@
 		cpuTemp = null
 	}: SysinfoGpuChartsProps = $props();
 
-	let gpuTitle = $derived(isMultiGpu ? `GPU ${gpu.index} (${gpu.vendor})` : t('sysinfo.gpuTitle'));
-	let vramTitle = $derived(isMultiGpu ? `VRAM (GPU ${gpu.index})` : t('sysinfo.vramTitle'));
+	let gpuTitle = $derived(
+		isMultiGpu
+			? t('sysinfo.gpuIndexTitle', { index: gpu.index, vendor: gpu.vendor })
+			: t('sysinfo.gpuTitle')
+	);
+	let vramTitle = $derived(
+		isMultiGpu ? t('sysinfo.vramIndexTitle', { index: gpu.index }) : t('sysinfo.vramTitle')
+	);
 
 	let vramTotal = $derived(gpu.memory_total_bytes ?? 0);
 	let vramUsed = $derived(gpu.memory_used_bytes ?? 0);

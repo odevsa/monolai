@@ -110,7 +110,7 @@
 
 	{#if open}
 		<div
-			class="absolute top-[calc(100%+0.35rem)] left-0 right-0 z-50 p-1.5 rounded-xl shadow-2xl bg-[var(--bg-surface)] border border-[var(--border-color)]/80 max-h-[260px] overflow-y-auto overflow-x-hidden space-y-0.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+			class="absolute top-[calc(100%+0.35rem)] right-0 min-w-full sm:min-w-[200px] z-50 p-1.5 rounded-xl shadow-2xl bg-[var(--bg-surface)] border border-[var(--border-color)]/80 max-h-[260px] overflow-y-auto overflow-x-hidden space-y-0.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
 		>
 			{#if searchable}
 				<div class="relative px-2 py-1 mb-1 border-b border-[var(--border-color)]">

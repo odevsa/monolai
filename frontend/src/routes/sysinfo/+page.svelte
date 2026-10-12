@@ -5,7 +5,7 @@
 		SysinfoHostDetails,
 		SysinfoTelemetryGrid
 	} from '$lib/components/sysinfo';
-	import { Alert, PageHeader } from '$lib/components/ui';
+	import { Alert, Button, PageHeader } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import {
 		runningModelsState,
@@ -130,7 +130,7 @@
 </script>
 
 <svelte:head>
-	<title>Monolai - {t('sysinfo.pageTitle')}</title>
+	<title>{t('app.title')} - {t('sysinfo.pageTitle')}</title>
 </svelte:head>
 
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border">
@@ -146,13 +146,9 @@
 			<Alert variant="error" title={t('sysinfo.connectionFailure')}>
 				<div class="flex items-center justify-between gap-3">
 					<span>{error}</span>
-					<button
-						type="button"
-						class="px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] cursor-pointer text-[var(--text-primary)]"
-						onclick={reconnectMetricsStream}
-					>
+					<Button variant="secondary" size="sm" onclick={reconnectMetricsStream}>
 						{t('common.refresh')}
-					</button>
+					</Button>
 				</div>
 			</Alert>
 		{/if}

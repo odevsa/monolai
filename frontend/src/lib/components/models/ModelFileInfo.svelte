@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Badge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { ModelFileItem } from '$lib/types/models';
 	import { formatBytes } from '$lib/utils/format';
@@ -64,10 +65,8 @@
 				{fileDetails.sizeFormatted}
 			</span>
 		{/if}
-		<span
-			class="px-1.5 py-0.5 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]/50"
-		>
+		<Badge variant="muted" rounded="rounded-sm" class="text-[0.65rem] px-1.5 py-0.5 font-semibold">
 			{fileDetails.format}
-		</span>
+		</Badge>
 	</div>
 </div>

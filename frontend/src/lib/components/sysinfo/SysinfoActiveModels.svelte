@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button, EmptyState } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { RunningModelStatus } from '$lib/types/models';
 	import { Box, Power } from '@lucide/svelte';
@@ -25,36 +26,27 @@
 		</div>
 
 		{#if runningModels.length > 0}
-			<button
-				type="button"
-				class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--danger-text)] bg-[var(--danger-light)] border border-[var(--danger-border)] cursor-pointer transition-all hover:bg-[var(--danger-hover)] hover:text-[var(--text-primary)] active:scale-95"
+			<Button
+				variant="danger"
+				size="sm"
 				onclick={onUnloadAll}
 				title={t('sysinfo.unloadAllTitle')}
+				ariaLabel={t('sysinfo.unloadAllTitle')}
 			>
 				<Power size={13} />
 				<span>{t('sysinfo.unloadAll')}</span>
-			</button>
+			</Button>
 		{/if}
 	</div>
 
 	{#if runningModels.length === 0}
-		<div
-			class="flex flex-col stretch items-center gap-2 p-4 rounded-xl bg-[var(--bg-surface-hover)] border-0 text-[var(--text-muted)]"
-		>
-			<div
-				class="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]"
-			>
-				<Box size={16} />
-			</div>
-			<div>
-				<div class="text-xs text-center font-semibold text-[var(--text-primary)]">
-					{t('sysinfo.noModelsLoaded')}
-				</div>
-				<div class="text-[0.75rem] text-center text-[var(--text-muted)] max-w-md">
-					{t('sysinfo.noModelsLoadedDesc')}
-				</div>
-			</div>
-		</div>
+		<EmptyState
+			size="sm"
+			icon={Box}
+			title={t('sysinfo.noModelsLoaded')}
+			description={t('sysinfo.noModelsLoadedDesc')}
+			class="border-0 bg-[var(--bg-surface-hover)]"
+		/>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
 			{#each runningModels as model (model.model_id)}

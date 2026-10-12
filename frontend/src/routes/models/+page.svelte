@@ -98,7 +98,7 @@
 			availableFiles = filesRes || [];
 			runtimeManifests = manifestsRes || [];
 		} catch (e: any) {
-			error = e.message || 'Failed to load models data from server';
+			error = e.message || t('models.errorLoading');
 			console.error('Error loading models data:', e);
 		} finally {
 			isLoadingData = false;
@@ -199,10 +199,14 @@
 			await loadAllModelsData(true);
 			refreshFeatures(true);
 		} catch (e: any) {
-			await showAlert(e.message || 'Error deleting model', 'Error', 'danger');
+			await showAlert(e.message || t('models.deleteError'), t('common.error'), 'danger');
 		}
 	}
 </script>
+
+<svelte:head>
+	<title>{t('app.title')} - {t('models.pageTitle')}</title>
+</svelte:head>
 
 <div
 	bind:this={containerRef}

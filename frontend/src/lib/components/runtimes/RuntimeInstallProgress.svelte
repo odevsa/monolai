@@ -41,7 +41,10 @@
 		>
 			<span>
 				{#if progress.total_bytes > 0}
-					{formatBytes(progress.downloaded_bytes)} of {formatBytes(progress.total_bytes)}
+					{t('sysinfo.usedOf', {
+						used: formatBytes(progress.downloaded_bytes),
+						total: formatBytes(progress.total_bytes)
+					})}
 				{/if}
 			</span>
 			<span>
