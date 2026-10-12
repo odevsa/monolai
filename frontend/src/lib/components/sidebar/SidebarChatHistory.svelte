@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { FeatureGate } from '$lib/components/ui';
+	import { Button, EmptyState, FeatureGate, Input } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { chatsState } from '$lib/state';
@@ -65,40 +65,39 @@
 	}
 </script>
 
+{#snippet searchPrefix()}
+	<Search size={14} />
+{/snippet}
+
 <FeatureGate features={['chat']} showCard={false}>
 	<div class="flex flex-col gap-3">
 		<div class="flex items-center justify-between px-1">
 			<span class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-				Recent conversations
+				{t('navigation.recentConversations')}
 			</span>
-			<button
-				type="button"
-				class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
 				onclick={createNewChat}
-				title="New Chat"
-				aria-label="New Chat"
+				title={t('navigation.newChat')}
+				ariaLabel={t('navigation.newChat')}
 			>
 				<Plus size={15} />
-			</button>
+			</Button>
 		</div>
 
-		<div
-			class="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5"
-		>
-			<Search size={14} class="text-[var(--text-muted)] shrink-0" />
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Search conversations..."
-				class="w-full bg-transparent border-0 outline-none text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)]"
-			/>
-		</div>
+		<Input
+			size="sm"
+			variant="surface"
+			bind:value={searchQuery}
+			placeholder={t('navigation.searchConversations')}
+			prefix={searchPrefix}
+		/>
 
 		<div class="flex flex-col gap-1">
 			{#if filteredConversations.length === 0}
-				<div class="text-[0.775rem] text-[var(--text-muted)] p-2 text-center">
-					No conversations found
-				</div>
+				<EmptyState size="sm" title={t('navigation.noConversationsFound')} />
 			{:else}
 				{#each filteredConversations as chat (chat.id)}
 					<div
@@ -117,15 +116,16 @@
 						>
 							<span class="truncate block w-full">{chat.title}</span>
 						</a>
-						<button
-							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] p-1 mr-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--danger-text)]"
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							class="mr-1 text-[var(--text-muted)] opacity-100 md:opacity-0 group-hover:opacity-100 hover:text-[var(--danger-text)]"
 							onclick={(e) => deleteChat(chat.id, e)}
-							title="Delete chat"
-							aria-label="Delete chat"
+							title={t('navigation.deleteChat')}
+							ariaLabel={t('navigation.deleteChat')}
 						>
 							<Trash size={13} />
-						</button>
+						</Button>
 					</div>
 				{/each}
 			{/if}

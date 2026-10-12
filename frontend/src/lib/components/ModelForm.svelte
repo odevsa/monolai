@@ -286,7 +286,7 @@
 			});
 		}
 		if (opts.length === 0) {
-			return [{ value: '', label: 'No files found in models directory' }];
+			return [{ value: '', label: t('models.noFilesFound') }];
 		}
 		return opts;
 	}
@@ -337,10 +337,10 @@
 	function validateId(id: string): string | null {
 		const trimmed = id.trim();
 		if (!trimmed) {
-			return 'Model ID is required.';
+			return t('models.modelIdRequired');
 		}
 		if (/\s/.test(trimmed)) {
-			return 'Model ID cannot contain spaces (e.g. Qwen3.8:27b-q4-mtp).';
+			return t('models.modelIdNoSpaces');
 		}
 		return null;
 	}
@@ -354,19 +354,18 @@
 		}
 
 		if (installedRuntimes.length === 0) {
-			formError =
-				'No installed runtimes found. Please install a runtime in the Runtimes tab first.';
+			formError = t('models.noInstalledRuntimesFound');
 			return;
 		}
 
 		if (!formRuntime || !formRuntime.trim()) {
-			formError = 'Runtime Engine is required. Please select an installed runtime.';
+			formError = t('models.runtimeRequired');
 			return;
 		}
 
 		const isRuntimeInstalled = installedRuntimes.some((r) => r.id === formRuntime);
 		if (!isRuntimeInstalled) {
-			formError = `The selected runtime (${formRuntime}) is not installed. Please install it first.`;
+			formError = t('models.selectedRuntimeNotInstalled', { runtime: formRuntime });
 			return;
 		}
 
@@ -378,7 +377,7 @@
 				flags: formFlags
 			});
 		} catch (e: any) {
-			formError = e.message || 'Failed to save model';
+			formError = e.message || t('models.saveFailed');
 		} finally {
 			isSaving = false;
 		}
@@ -403,7 +402,7 @@
 		<!-- Model ID -->
 		<div class="form-group">
 			<label class="form-label" for="model-id">
-				Model ID <span class="required-star">*</span>
+				{t('models.modelId')} <span class="required-star">*</span>
 			</label>
 			<input
 				id="model-id"
@@ -418,35 +417,33 @@
 			{#if validateId(formId) && formId}
 				<span class="field-error-text">{validateId(formId)}</span>
 			{:else}
-				<span class="field-hint"
-					>Unique identifier string without spaces (e.g. Qwen3.8:27b-q4-mtp)</span
-				>
+				<span class="field-hint">{t('models.modelIdHint')}</span>
 			{/if}
 		</div>
 
 		<!-- Runtime Engine Select -->
 		<div class="form-group">
 			<label class="form-label" for="model-runtime">
-				Runtime Engine <span class="required-star">*</span>
+				{t('models.runtimeEngine')} <span class="required-star">*</span>
 			</label>
 			{#if installedRuntimeOptions.length > 0}
 				<Select
 					bind:value={formRuntime}
 					options={installedRuntimeOptions}
 					onchange={handleRuntimeChange}
-					placeholder="Select an installed runtime..."
-					ariaLabel="Runtime Engine"
+					placeholder={t('models.selectInstalledRuntime')}
+					ariaLabel={t('models.runtimeEngine')}
 				/>
 			{:else}
 				<div
 					class="p-3 text-xs rounded-xl bg-[var(--bg-primary)] border border-amber-500/30 text-amber-500 flex items-center justify-between gap-3"
 				>
-					<span>No installed runtimes found. Please install a runtime in the Runtimes tab.</span>
+					<span>{t('models.noInstalledRuntimesWarning')}</span>
 					<a
 						href="/runtimes"
 						class="app-btn app-btn-secondary app-btn-sm shrink-0 whitespace-nowrap !no-underline"
 					>
-						Runtimes
+						{t('navigation.runtimes')}
 					</a>
 				</div>
 			{/if}
@@ -499,7 +496,7 @@
 												<button
 													type="button"
 													class="info-icon-btn"
-													aria-label="Flag description"
+													aria-label={t('models.flagDescription')}
 													title={flagDef.description}
 												>
 													<Info size={13} />
@@ -514,7 +511,7 @@
 											type="button"
 											class="remove-flag-btn"
 											onclick={() => removeFlag(flagKey)}
-											title="Remove flag"
+											title={t('models.removeFlag')}
 										>
 											<Trash size={14} />
 										</button>
@@ -526,7 +523,7 @@
 												value={formFlags[flagKey] || ''}
 												options={getFileOptions(formFlags[flagKey] || '')}
 												onchange={(val: string) => handleFileSelect(flagKey, val)}
-												placeholder="Select model file..."
+												placeholder={t('models.selectModelFile')}
 												ariaLabel={flagDef.name || flagKey}
 											/>
 										{:else if flagDef?.type === 'enum' && flagDef.options}
@@ -537,7 +534,7 @@
 													formFlags[flagKey] = val;
 													updateFlags({ ...formFlags });
 												}}
-												placeholder="Select option..."
+												placeholder={t('models.selectOption')}
 												ariaLabel={flagDef.name || flagKey}
 											/>
 										{:else if flagDef?.type === 'bool'}
@@ -553,7 +550,7 @@
 													}}
 													class="setting-checkbox"
 												/>
-												<span>Enable flag</span>
+												<span>{t('models.enableFlag')}</span>
 											</label>
 										{:else if flagDef?.type === 'int' || flagDef?.type === 'float'}
 											<input
@@ -593,14 +590,14 @@
 								class="flex-1 min-w-0"
 								bind:value={selectedAddFlag}
 								options={[
-									{ value: '', label: 'Select an optional flag to add...' },
+									{ value: '', label: t('models.selectOptionalFlag') },
 									...unusedFlags.map((optFlag) => ({
 										value: optFlag.flag,
 										label: `${optFlag.flag} — ${optFlag.name || optFlag.description}`
 									}))
 								]}
-								placeholder="Select an optional flag to add..."
-								ariaLabel="Add Optional Flag"
+								placeholder={t('models.selectOptionalFlag')}
+								ariaLabel={t('models.addOptionalFlag')}
 							/>
 							<button
 								type="button"
@@ -609,7 +606,7 @@
 								onclick={addFlag}
 							>
 								<Plus size={15} />
-								<span>Add Flag</span>
+								<span>{t('models.addFlag')}</span>
 							</button>
 						</div>
 					{/if}
@@ -618,20 +615,20 @@
 					<div class="custom-command-editor font-mono">
 						<div class="command-editor-header">
 							<label class="form-label" for="custom-text">
-								Write raw CLI arguments directly. The runtime binary path cannot be modified here.
+								{t('models.rawCliHint')}
 							</label>
 							<button
 								type="button"
 								class="copy-cmd-btn"
 								onclick={copyFullCommand}
-								title="Copy full command line with binary path"
+								title={t('models.copyFullCommand')}
 							>
 								{#if isCopied}
 									<Check size={13} class="text-green" />
-									<span>Copied!</span>
+									<span>{t('common.copied')}</span>
 								{:else}
 									<Copy size={13} />
-									<span>Copy</span>
+									<span>{t('common.copy')}</span>
 								{/if}
 							</button>
 						</div>
@@ -661,18 +658,18 @@
 		<!-- Actions -->
 		<div class="form-actions-row">
 			<button type="button" class="app-btn app-btn-secondary app-btn-md" onclick={onCancel}>
-				Cancel
+				{t('common.cancel')}
 			</button>
 			<button
 				type="submit"
 				class="app-btn app-btn-primary app-btn-md"
 				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
 				title={installedRuntimes.length === 0
-					? 'Cannot save model without an installed runtime'
-					: 'Save Model'}
+					? t('models.noInstalledRuntimes')
+					: t('models.saveModel')}
 			>
 				<Save size={15} />
-				<span>{isSaving ? 'Saving...' : 'Save Model'}</span>
+				<span>{isSaving ? t('models.saving') : t('models.saveModel')}</span>
 			</button>
 		</div>
 	</div>

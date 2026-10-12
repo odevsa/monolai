@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ModelBadge } from '$lib/components/ui';
+	import { Button, EmptyState, ModelBadge, StatusDot } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import {
 		getStatusType,
@@ -35,25 +35,20 @@
 				{t('navigation.runningModels')}
 			</span>
 			{#if loadedModels.length > 0}
-				<button
-					type="button"
-					class="bg-transparent border-0 text-[var(--text-muted)] text-[0.7rem] cursor-pointer px-1 py-0.5 rounded transition-colors hover:text-[var(--danger-text)]"
+				<Button
+					variant="ghost"
+					size="xs"
+					class="text-[var(--text-muted)] text-[0.7rem] px-1 py-0.5 hover:text-[var(--danger-text)]"
 					onclick={unloadAllModels}
 					title={t('navigation.unloadAll')}
 				>
 					{t('navigation.unloadAll')}
-				</button>
+				</Button>
 			{/if}
 		</div>
 
 		{#if loadedModels.length === 0}
-			<div
-				class="bg-[var(--bg-surface)] border border-dashed border-[var(--border-color)] rounded-xl p-2.5"
-			>
-				<p class="text-[0.75rem] text-[var(--text-muted)] leading-snug m-0">
-					{t('navigation.noRunningModels')}
-				</p>
-			</div>
+			<EmptyState size="sm" title={t('navigation.noRunningModels')} />
 		{:else}
 			<div class="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto">
 				{#each loadedModels as model (model.model_id)}
@@ -64,18 +59,19 @@
 						class="flex items-center justify-between bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5 gap-2"
 					>
 						<div class="flex items-center gap-2 min-w-0">
-							<span
-								class="w-2 h-2 rounded-full shrink-0 {statusType === 'ready'
-									? 'bg-[var(--success)] shadow-[0_0_6px_var(--success)] animate-pulse'
+							<StatusDot
+								variant={statusType === 'ready'
+									? 'success'
 									: statusType === 'loading'
-										? 'bg-[var(--warning)] animate-pulse'
-										: 'bg-[var(--danger)]'}"
+										? 'warning'
+										: 'danger'}
+								pulse={statusType === 'ready' || statusType === 'loading'}
 								title={statusType === 'ready'
-									? 'Active'
+									? t('common.active')
 									: statusType === 'loading'
-										? 'Loading / Unloading...'
-										: 'Error'}
-							></span>
+										? t('sysinfo.statusLoading')
+										: t('common.error')}
+							/>
 							<ModelBadge
 								model={model.model_id}
 								variant="clean"
@@ -84,16 +80,17 @@
 							/>
 						</div>
 
-						<button
-							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-1 rounded-md flex items-center justify-center transition-colors shrink-0 hover:bg-[var(--danger-light)] hover:text-[var(--danger-text)] disabled:opacity-50 disabled:cursor-not-allowed"
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							class="text-[var(--text-muted)] hover:bg-[var(--danger-light)] hover:text-[var(--danger-text)] shrink-0"
 							disabled={isUnloading}
 							onclick={() => unloadModel(model.model_id)}
-							title="Unload model"
-							aria-label="Unload model"
+							title={t('navigation.unloadModel')}
+							ariaLabel={t('navigation.unloadModel')}
 						>
 							<Power size={13} />
-						</button>
+						</Button>
 					</div>
 				{/each}
 			</div>
@@ -103,11 +100,9 @@
 	{#if loadedModels.length > 0}
 		<div
 			class="flex items-center justify-center py-2"
-			title="{loadedModels.length} model(s) loaded"
+			title={t('navigation.modelsLoaded', { count: loadedModels.length })}
 		>
-			<span
-				class="w-2.5 h-2.5 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success)] animate-pulse"
-			></span>
+			<StatusDot variant="success" size="lg" pulse />
 		</div>
 	{/if}
 {/if}

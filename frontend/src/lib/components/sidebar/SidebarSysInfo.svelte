@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { HardwareMetricBar } from '$lib/components/ui';
+	import { t } from '$lib/i18n';
 	import { hostState } from '$lib/state';
 	import { formatBytes } from '$lib/utils/format';
 	import { Cpu, Gpu, HardDrive, Layers, MemoryStick, Monitor } from '@lucide/svelte';
@@ -13,7 +14,7 @@
 	let latestTick = $derived(hostState.latestTick);
 
 	let cpuUsage = $derived(latestTick?.cpu_usage ?? sysinfo?.cpu.usage ?? 0);
-	let cpuBrand = $derived(sysinfo?.cpu.brand || 'Host Processor');
+	let cpuBrand = $derived(sysinfo?.cpu.brand || t('sysinfo.hostProcessor'));
 
 	let ramPercentage = $derived(latestTick?.ram_percentage ?? sysinfo?.ram.percentage ?? 0);
 	let ramTotal = $derived(latestTick?.ram_total_bytes ?? sysinfo?.ram.total_bytes ?? 0);
@@ -73,21 +74,27 @@
 
 <div class="flex flex-col gap-3">
 	<div class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider px-1">
-		System Status
+		{t('navigation.systemStatus')}
 	</div>
 
 	<div
 		class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-3.5"
 	>
 		<!-- CPU Status -->
-		<HardwareMetricBar label="CPU" detail={cpuBrand} value={cpuUsage} color="#9845e7" icon={Cpu} />
+		<HardwareMetricBar
+			label="CPU"
+			detail={cpuBrand}
+			value={cpuUsage}
+			color="var(--chart-cpu)"
+			icon={Cpu}
+		/>
 
 		<!-- RAM Status -->
 		<HardwareMetricBar
 			label="RAM"
 			detail={formatBytes(ramTotal)}
 			value={ramPercentage}
-			color="#c875ff"
+			color="var(--chart-ram)"
 			icon={MemoryStick}
 		/>
 
@@ -95,7 +102,7 @@
 		{#if gpusList.length > 0}
 			{#each gpusList as gpu (gpu.index)}
 				{@const gpuLabel = gpu.is_dedicated ? 'GPU' : 'Video'}
-				{@const gpuColor = gpu.is_dedicated ? '#00a971' : '#10b981'}
+				{@const gpuColor = gpu.is_dedicated ? 'var(--chart-gpu)' : 'var(--chart-gpu-shared)'}
 				<HardwareMetricBar
 					label={gpusList.length > 1 ? `${gpuLabel} ${gpu.index}` : gpuLabel}
 					detail={gpu.name}
@@ -112,17 +119,17 @@
 				label="VRAM"
 				detail={formatBytes(totalVramBytes)}
 				value={vramPercentage}
-				color="#30d9a1"
+				color="var(--chart-vram)"
 				icon={Layers}
 			/>
 		{/if}
 
 		<!-- Storage (Disk) Status -->
 		<HardwareMetricBar
-			label="Disk"
+			label={t('common.disk')}
 			detail={formatBytes(storageTotal)}
 			value={storagePercentage}
-			color="#3b82f6"
+			color="var(--chart-disk)"
 			icon={HardDrive}
 		/>
 	</div>

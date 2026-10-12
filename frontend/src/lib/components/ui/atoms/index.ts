@@ -7,5 +7,6 @@ export { default as Label } from './Label.svelte';
 export { default as Logo } from './Logo.svelte';
 export { default as ProgressBar } from './ProgressBar.svelte';
 export { default as Spinner } from './Spinner.svelte';
+export { default as StatusDot } from './StatusDot.svelte';
 export { default as Text } from './Text.svelte';
 export { default as Textarea } from './Textarea.svelte';

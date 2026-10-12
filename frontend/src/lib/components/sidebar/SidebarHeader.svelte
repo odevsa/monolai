@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Logo } from '$lib/components/ui';
+	import { Button, Logo } from '$lib/components/ui';
+	import { t } from '$lib/i18n';
 	import { PanelLeftClose, PanelLeftOpen, X } from '@lucide/svelte';
 
 	interface SidebarHeaderProps {
@@ -19,15 +20,16 @@
 			<Logo size={26} />
 		</a>
 
-		<button
-			type="button"
-			class="hidden md:flex items-center justify-center w-8 h-8 bg-transparent border-0 rounded-lg text-[var(--text-muted)] cursor-pointer transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+		<Button
+			variant="ghost"
+			size="icon"
+			class="hidden md:flex text-[var(--text-muted)]"
 			onclick={onToggleCollapse}
-			aria-label="Collapse sidebar"
-			title="Collapse sidebar"
+			ariaLabel={t('navigation.collapseSidebar')}
+			title={t('navigation.collapseSidebar')}
 		>
 			<PanelLeftClose size={19} />
-		</button>
+		</Button>
 	{:else}
 		<button
 			type="button"
@@ -35,8 +37,8 @@
 			onclick={onToggleCollapse}
 			onmouseenter={() => (isLogoHovered = true)}
 			onmouseleave={() => (isLogoHovered = false)}
-			aria-label="Open Sidebar"
-			title="Open Sidebar"
+			aria-label={t('navigation.openSidebar')}
+			title={t('navigation.openSidebar')}
 		>
 			{#if isLogoHovered}
 				<PanelLeftOpen size={21} class="text-[var(--text-primary)]" />
@@ -47,12 +49,13 @@
 	{/if}
 
 	<!-- Mobile Close Button -->
-	<button
-		type="button"
-		class="flex md:hidden items-center justify-center w-8 h-8 bg-transparent border-0 rounded-md text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+	<Button
+		variant="ghost"
+		size="icon"
+		class="flex md:hidden text-[var(--text-muted)]"
 		onclick={onCloseMobile}
-		aria-label="Close menu"
+		ariaLabel={t('navigation.closeMenu')}
 	>
 		<X size={18} />
-	</button>
+	</Button>
 </div>

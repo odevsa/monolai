@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { FeatureGate } from '$lib/components/ui';
+	import { Button, EmptyState, FeatureGate, Input } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { imageGalleryState } from '$lib/state';
@@ -57,6 +57,10 @@
 	}
 </script>
 
+{#snippet searchPrefix()}
+	<Search size={14} />
+{/snippet}
+
 <FeatureGate features={['image-generation']} showCard={false}>
 	<div class="flex flex-col gap-3">
 		<div class="flex items-center justify-between px-1">
@@ -64,35 +68,35 @@
 				{t('image.sessionHistory')}
 			</span>
 			{#if imageGalleryState.history.length > 0}
-				<button
-					type="button"
-					class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-0.5 rounded flex items-center justify-center transition-colors hover:text-[var(--danger-text)] hover:bg-[var(--bg-hover)]"
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
 					onclick={clearImageHistory}
 					title={t('image.clearHistory')}
-					aria-label={t('image.clearHistory')}
+					ariaLabel={t('image.clearHistory')}
 				>
 					<Trash size={13} />
-				</button>
+				</Button>
 			{/if}
 		</div>
 
-		<div
-			class="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5"
-		>
-			<Search size={14} class="text-[var(--text-muted)] shrink-0" />
-			<input
-				type="text"
-				bind:value={imageSearchQuery}
-				placeholder={t('image.searchPrompts')}
-				class="w-full bg-transparent border-0 outline-none text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)]"
-			/>
-		</div>
+		<Input
+			size="sm"
+			variant="surface"
+			bind:value={imageSearchQuery}
+			placeholder={t('image.searchPrompts')}
+			prefix={searchPrefix}
+		/>
 
 		<div class="flex flex-col gap-1">
 			{#if filteredImages.length === 0}
-				<div class="text-[0.775rem] text-[var(--text-muted)] p-2 text-center">
-					{imageGalleryState.history.length === 0 ? t('image.noImagesFound') : 'No images found'}
-				</div>
+				<EmptyState
+					size="sm"
+					title={imageGalleryState.history.length === 0
+						? t('image.noImagesFound')
+						: t('navigation.noImagesFound')}
+				/>
 			{:else}
 				{#each filteredImages as item (item.id)}
 					<div
@@ -131,15 +135,16 @@
 							</div>
 						</button>
 
-						<button
-							type="button"
-							class="bg-transparent border-0 text-[var(--text-muted)] p-1 rounded-md cursor-pointer flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--danger-text)] shrink-0"
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							class="text-[var(--text-muted)] opacity-100 md:opacity-0 group-hover:opacity-100 hover:text-[var(--danger-text)] shrink-0"
 							onclick={(e) => deleteSingleImage(item.id, e)}
 							title={t('image.deleteImage')}
-							aria-label={t('image.deleteImage')}
+							ariaLabel={t('image.deleteImage')}
 						>
 							<Trash size={13} />
-						</button>
+						</Button>
 					</div>
 				{/each}
 			{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
@@ -6,6 +7,8 @@
 	let {
 		value = $bindable(''),
 		type = 'text',
+		size = 'md',
+		variant = 'default',
 		placeholder = '',
 		disabled = false,
 		error = false,
@@ -22,6 +25,8 @@
 	}: {
 		value?: string | number;
 		type?: string;
+		size?: 'sm' | 'md' | 'lg';
+		variant?: 'default' | 'surface' | 'ghost';
 		placeholder?: string;
 		disabled?: boolean;
 		error?: boolean;
@@ -37,20 +42,44 @@
 		suffix?: Snippet;
 	} = $props();
 
+	const variantClasses = {
+		default: 'bg-[var(--bg-primary)] border-[var(--border-color)]',
+		surface: 'bg-[var(--bg-surface)] border-[var(--border-color)]',
+		ghost: 'bg-transparent border-transparent'
+	};
+
+	const sizeClasses = {
+		sm: 'py-1.5 px-2.5 text-xs',
+		md: 'py-2 px-3 text-xs',
+		lg: 'py-2.5 px-3.5 text-sm'
+	};
+
+	const prefixPadClasses = {
+		sm: 'pl-2.5',
+		md: 'pl-3',
+		lg: 'pl-3.5'
+	};
+
 	function handleClear() {
 		value = '';
 	}
 </script>
 
 <div
-	class="relative flex items-center w-full rounded-lg bg-[var(--bg-primary)] border transition-all duration-150 {error
+	class="relative flex items-center w-full rounded-lg border transition-all duration-150 {variantClasses[
+		variant
+	]} {error
 		? 'border-[var(--danger)] focus-within:ring-2 focus-within:ring-[var(--danger-focus)]'
-		: 'border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:ring-1 focus-within:ring-[var(--primary)]/40'} {disabled
+		: 'focus-within:border-[var(--primary)] focus-within:ring-1 focus-within:ring-[var(--primary)]/40'} {disabled
 		? 'opacity-50 cursor-not-allowed pointer-events-none'
 		: ''} {className}"
 >
 	{#if prefix}
-		<div class="flex items-center pl-3 text-[var(--text-muted)] pointer-events-none shrink-0">
+		<div
+			class="flex items-center {prefixPadClasses[
+				size
+			]} text-[var(--text-muted)] pointer-events-none shrink-0"
+		>
 			{@render prefix()}
 		</div>
 	{/if}
@@ -66,7 +95,9 @@
 		{oninput}
 		{onchange}
 		{onkeydown}
-		class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] text-xs font-normal py-2 px-3 border-0 outline-none select-text min-w-0"
+		class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] font-normal border-0 outline-none select-text min-w-0 {prefix
+			? 'pl-1.5'
+			: ''} {sizeClasses[size]}"
 	/>
 
 	{#if clearable && value && !disabled}
@@ -74,7 +105,7 @@
 			type="button"
 			class="pr-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1"
 			onclick={handleClear}
-			aria-label="Clear input"
+			aria-label={t('common.clear')}
 		>
 			<X size={14} />
 		</button>

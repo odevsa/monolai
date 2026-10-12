@@ -15,7 +15,7 @@
 		detail = null,
 		value = 0,
 		formattedValue,
-		color = '#9845e7',
+		color = 'var(--primary)',
 		icon: Icon
 	}: HardwareMetricBarProps = $props();
 
@@ -39,7 +39,7 @@
 		{/if}
 	</div>
 	<div class="flex items-center gap-2">
-		<div class="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+		<div class="h-1.5 flex-1 rounded-full bg-[var(--progress-bg)] overflow-hidden">
 			<div
 				class="h-full rounded-full transition-all duration-500"
 				style="background-color: {color}; width: {widthPercent}%"
