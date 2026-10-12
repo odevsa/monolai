@@ -1,4 +1,7 @@
 {
+	"app": {
+		"title": "Monolai"
+	},
 	"common": {
 		"save": "Guardar",
 		"saved": "Guardado",
@@ -128,7 +131,34 @@
 		"scrollToBottom": "Desplazarse al final",
 		"promptHistoryHint": "Usa las flechas Arriba/Abajo para navegar por el historial",
 		"interrupted": "Generación interrumpida",
-		"cancelledByUser": "Detenido por el usuario"
+		"cancelledByUser": "Detenido por el usuario",
+		"selectModelPrompt": "Por favor selecciona un modelo antes de enviar un mensaje.",
+		"errorGeneratingResponse": "Error al generar la respuesta: {{error}}",
+		"context": "Contexto",
+		"contextUsage": "Uso del contexto",
+		"contextTooltip": "Ventana de contexto: {{percent}}% usado ({{used}} / {{max}})",
+		"percentUsed": "{{percent}}% usado",
+		"remainingTokens": "{{count}} restantes",
+		"tokenUsageDetails": "Detalles del uso de tokens",
+		"acrossAllTurns": "EN TODOS LOS TURNOS",
+		"promptTokensEvaluated": "Tokens de prompt evaluados",
+		"tok": "tok",
+		"reusedFromKv": "reutilizados de la caché KV",
+		"tokensGenerated": "Tokens generados",
+		"thisTurnKv": "ESTE TURNO · CACHÉ KV",
+		"prompt": "Prompt",
+		"freshAndCached": "{{fresh}} nuevos + {{cached}} en caché",
+		"generated": "Generados",
+		"kvCacheTotal": "Total en caché KV",
+		"avgSpeed": "Velocidad media",
+		"reasoningPreset": {
+			"default": { "label": "Predeterminado", "desc": "Por defecto del modelo" },
+			"off": { "label": "Desactivado", "desc": "" },
+			"low": { "label": "Bajo", "desc": "Máx 512 tokens" },
+			"medium": { "label": "Medio", "desc": "Máx 2,048 tokens" },
+			"high": { "label": "Alto", "desc": "Máx 8,192 tokens" },
+			"max": { "label": "Máximo", "desc": "Ilimitado" }
+		}
 	},
 	"image": {
 		"pageTitle": "Generación de Imágenes",
@@ -231,6 +261,7 @@
 		]
 	},
 	"models": {
+		"title": "Modelos",
 		"pageTitle": "Gestión de Modelos",
 		"pageSubtitle": "Registra, configura parámetros y supervisa instancias de modelos locales",
 		"addModel": "Añadir Modelo",

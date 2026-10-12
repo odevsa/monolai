@@ -1,4 +1,7 @@
 {
+	"app": {
+		"title": "Monolai"
+	},
 	"common": {
 		"save": "Save",
 		"saved": "Saved",
@@ -128,7 +131,34 @@
 		"scrollToBottom": "Scroll to bottom",
 		"promptHistoryHint": "Use Up/Down arrows to navigate prompt history",
 		"interrupted": "Generation interrupted",
-		"cancelledByUser": "Stopped by user"
+		"cancelledByUser": "Stopped by user",
+		"selectModelPrompt": "Please select a model before sending a message.",
+		"errorGeneratingResponse": "Error generating response: {{error}}",
+		"context": "Context",
+		"contextUsage": "Context usage",
+		"contextTooltip": "Context window: {{percent}}% used ({{used}} / {{max}})",
+		"percentUsed": "{{percent}}% used",
+		"remainingTokens": "{{count}} remaining",
+		"tokenUsageDetails": "Token usage details",
+		"acrossAllTurns": "ACROSS ALL TURNS",
+		"promptTokensEvaluated": "Prompt tokens evaluated",
+		"tok": "tok",
+		"reusedFromKv": "reused from KV cache",
+		"tokensGenerated": "Tokens generated",
+		"thisTurnKv": "THIS TURN · KV CACHE",
+		"prompt": "Prompt",
+		"freshAndCached": "{{fresh}} fresh + {{cached}} cached",
+		"generated": "Generated",
+		"kvCacheTotal": "KV cache total",
+		"avgSpeed": "Avg speed",
+		"reasoningPreset": {
+			"default": { "label": "Default", "desc": "Model default" },
+			"off": { "label": "Off", "desc": "" },
+			"low": { "label": "Low", "desc": "Max 512 tokens" },
+			"medium": { "label": "Medium", "desc": "Max 2,048 tokens" },
+			"high": { "label": "High", "desc": "Max 8,192 tokens" },
+			"max": { "label": "Max", "desc": "Unlimited" }
+		}
 	},
 	"image": {
 		"pageTitle": "Image Generation",
@@ -231,6 +261,7 @@
 		]
 	},
 	"models": {
+		"title": "Models",
 		"pageTitle": "Models Management",
 		"pageSubtitle": "Register, configure parameters, and monitor local model instances",
 		"addModel": "Add Model",

@@ -827,9 +827,10 @@
 			} else {
 				console.error('Chat error:', err);
 				finalStatus = 'ERROR';
+				const errText = t('chat.errorGeneratingResponse', { error: err.message || '' });
 				accumulatedContent = accumulatedContent
-					? `${accumulatedContent}\n\n⚠️ **Error:** ${err.message}`
-					: `⚠️ **Error generating response:** ${err.message}`;
+					? `${accumulatedContent}\n\n⚠️ ${errText}`
+					: `⚠️ ${errText}`;
 
 				messages = messages.map((msg) => {
 					if (msg.id === assistantMsgId) {

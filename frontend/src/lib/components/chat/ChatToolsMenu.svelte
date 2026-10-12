@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { REASONING_PRESETS, type ReasoningPreset } from '$lib/utils/context';
 	import { Check, ChevronRight, Lightbulb, Plus, Trash } from '@lucide/svelte';
@@ -60,17 +61,18 @@
 </script>
 
 <div class="relative inline-flex items-center" bind:this={toolsWrapper}>
-	<button
-		type="button"
-		class="w-8 h-8 rounded-full border border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-secondary)] flex items-center justify-center cursor-pointer transition-all duration-150 p-0 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] hover:border-[var(--border-hover)] {toolsMenuOpen
-			? 'text-[var(--text-primary)] bg-[var(--bg-surface-hover)] border-[var(--border-hover)]'
+	<Button
+		variant="secondary"
+		size="icon"
+		class="!rounded-full {toolsMenuOpen
+			? '!text-[var(--text-primary)] !bg-[var(--bg-surface-hover)] !border-[var(--border-hover)]'
 			: ''}"
 		onclick={toggleToolsMenu}
-		aria-label={t('chat.toolsAndAttachments')}
+		ariaLabel={t('chat.toolsAndAttachments')}
 		title={t('chat.toolsAndAttachments')}
 	>
 		<Plus size={18} />
-	</button>
+	</Button>
 
 	{#if toolsMenuOpen}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -118,9 +120,9 @@
 						<span>{t('chat.reasoning')}</span>
 					</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[0.7rem] text-[var(--text-muted)]"
-							>{currentReasoningPreset.label}</span
-						>
+						<span class="text-[0.7rem] text-[var(--text-muted)]">
+							{t(`chat.reasoningPreset.${currentReasoningPreset.id}.label`)}
+						</span>
 						<ChevronRight
 							size={14}
 							class="transition-transform duration-150 {reasoningMenuOpen ? 'rotate-90' : ''}"
@@ -156,10 +158,14 @@
 											<Check size={14} />
 										{/if}
 									</span>
-									<span class="text-[0.8rem]">{preset.label}</span>
+									<span class="text-[0.8rem]">
+										{t(`chat.reasoningPreset.${preset.id}.label`)}
+									</span>
 								</div>
 								{#if preset.desc}
-									<span class="text-[0.68rem] text-[var(--text-muted)]">{preset.desc}</span>
+									<span class="text-[0.68rem] text-[var(--text-muted)]">
+										{t(`chat.reasoningPreset.${preset.id}.desc`)}
+									</span>
 								{/if}
 							</button>
 						{/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ContextIndicator } from '$lib/components/ui';
+	import { Button, ContextIndicator } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { PreparedContext, ReasoningPreset } from '$lib/utils/context';
 	import { ArrowUp, ChevronDown, Square } from '@lucide/svelte';
@@ -154,15 +154,16 @@
 	style:right="{scrollbarWidth}px"
 >
 	{#if showScrollButton}
-		<button
-			type="button"
-			class="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] cursor-pointer mb-3 pointer-events-auto transition-all duration-150 shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:text-[var(--text-primary)] hover:-translate-y-0.5 backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60"
+		<Button
+			variant="glass"
+			size="icon"
+			class="!w-9 !h-9 !rounded-full mb-3 pointer-events-auto shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:-translate-y-0.5"
 			onclick={onScrollToBottom}
 			title={t('chat.scrollToBottom')}
-			aria-label={t('chat.scrollToBottom')}
+			ariaLabel={t('chat.scrollToBottom')}
 		>
 			<ChevronDown size={18} />
-		</button>
+		</Button>
 	{/if}
 
 	<div
@@ -200,26 +201,28 @@
 
 				<!-- Send / Stop Message Button -->
 				{#if isGenerating}
-					<button
-						type="button"
-						class="w-8 h-8 rounded-full border-0 bg-[var(--primary)] text-white flex items-center justify-center cursor-pointer transition-all duration-150 p-0 hover:not-disabled:bg-[var(--primary-hover)] hover:not-disabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+					<Button
+						variant="primary"
+						size="icon"
+						class="!rounded-full hover:not-disabled:scale-105"
 						onclick={onStopGeneration}
-						aria-label={t('chat.stopGeneration')}
+						ariaLabel={t('chat.stopGeneration')}
 						title={t('chat.stopGeneration')}
 					>
 						<Square size={13} fill="currentColor" />
-					</button>
+					</Button>
 				{:else}
-					<button
-						type="button"
-						class="w-8 h-8 rounded-full border-0 bg-[var(--primary)] text-white flex items-center justify-center cursor-pointer transition-all duration-150 p-0 hover:not-disabled:bg-[var(--primary-hover)] hover:not-disabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+					<Button
+						variant="primary"
+						size="icon"
+						class="!rounded-full hover:not-disabled:scale-105"
 						disabled={!inputMessage.trim()}
 						onclick={onSendMessage}
-						aria-label={t('chat.sendMessage')}
+						ariaLabel={t('chat.sendMessage')}
 						title={t('chat.sendMessage')}
 					>
 						<ArrowUp size={18} />
-					</button>
+					</Button>
 				{/if}
 			</div>
 		</div>

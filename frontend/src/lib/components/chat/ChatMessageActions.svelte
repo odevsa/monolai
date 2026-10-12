@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { Copy, RotateCw, Trash } from '@lucide/svelte';
 
@@ -18,35 +19,38 @@
 		? 'justify-end'
 		: ''}"
 >
-	<button
-		type="button"
-		class="flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-transparent text-[var(--text-muted)] cursor-pointer transition-all duration-150 p-0 hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
+	<Button
+		variant="ghost"
+		size="icon-sm"
+		class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
 		title={t('chat.copyTooltip')}
-		aria-label={t('chat.copyTooltip')}
+		ariaLabel={t('chat.copyTooltip')}
 		onclick={onCopy}
 	>
 		<Copy size={14} />
-	</button>
+	</Button>
 
 	{#if role === 'assistant' && onRetry}
-		<button
-			type="button"
-			class="flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-transparent text-[var(--text-muted)] cursor-pointer transition-all duration-150 p-0 hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
+		<Button
+			variant="ghost"
+			size="icon-sm"
+			class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
 			title={t('chat.retryTooltip')}
-			aria-label={t('chat.retryTooltip')}
+			ariaLabel={t('chat.retryTooltip')}
 			onclick={onRetry}
 		>
 			<RotateCw size={14} />
-		</button>
+		</Button>
 	{/if}
 
-	<button
-		type="button"
-		class="flex items-center justify-center w-6 h-6 rounded-md bg-transparent border border-transparent text-[var(--text-muted)] cursor-pointer transition-all duration-150 p-0 hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
+	<Button
+		variant="ghost"
+		size="icon-sm"
+		class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
 		title={t('chat.deleteTooltip')}
-		aria-label={t('chat.deleteTooltip')}
+		ariaLabel={t('chat.deleteTooltip')}
 		onclick={onDelete}
 	>
 		<Trash size={14} />
-	</button>
+	</Button>
 </div>
