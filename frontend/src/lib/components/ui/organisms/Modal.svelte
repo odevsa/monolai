@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 
@@ -101,7 +102,7 @@
 						type="button"
 						class="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors border-0 bg-transparent cursor-pointer"
 						onclick={handleClose}
-						aria-label="Close dialog"
+						aria-label={t('common.close')}
 					>
 						<X size={16} />
 					</button>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 	import { confirmState } from '$lib/state/confirm.svelte';
 	import { Info, Trash, TriangleAlert, X } from '@lucide/svelte';
 	import { tick } from 'svelte';
@@ -73,7 +74,7 @@
 					type="button"
 					class="bg-transparent border-0 text-[var(--text-muted)] cursor-pointer p-1 rounded-md flex items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
 					onclick={handleCancel}
-					aria-label="Close"
+					aria-label={t('common.close')}
 				>
 					<X size={16} />
 				</button>
@@ -87,21 +88,21 @@
 			<div class="flex items-center justify-end gap-2.5 mt-2">
 				{#if !current.isAlert}
 					<Button variant="secondary" size="md" onclick={handleCancel}>
-						{current.cancelText || 'Cancel'}
+						{current.cancelText || t('common.cancel')}
 					</Button>
 				{/if}
 				<button
 					type="button"
 					bind:this={confirmBtnRef}
-					class="border-0 px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-150 text-white {current.variant ===
+					class="border-0 px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-150 {current.variant ===
 					'danger'
-						? 'bg-red-500 hover:bg-red-600'
+						? 'bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white'
 						: current.variant === 'warning'
-							? 'bg-amber-500 hover:bg-amber-600'
-							: 'bg-[var(--primary)] hover:bg-[var(--primary-hover)]'}"
+							? 'bg-[var(--warning)] hover:bg-[var(--warning-hover)] text-white'
+							: 'bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--primary-text)]'}"
 					onclick={handleConfirm}
 				>
-					{current.confirmText || 'Confirm'}
+					{current.confirmText || t('common.confirm')}
 				</button>
 			</div>
 		</div>
