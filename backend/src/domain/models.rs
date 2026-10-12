@@ -12,6 +12,7 @@ pub struct ModelRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CreateModelPayload {
+    #[serde(default)]
     pub id: String,
     pub runtime: String,
     #[serde(default)]

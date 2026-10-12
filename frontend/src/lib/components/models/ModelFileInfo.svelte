@@ -45,7 +45,7 @@
 </script>
 
 <div
-	class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-hover)] border border-[var(--border-color)]/50"
+	class="flex items-center justify-between gap-2 text-xs py-2 px-2.5 rounded-lg bg-[var(--bg-hover)]"
 >
 	<div
 		class="flex items-center gap-1.5 min-w-0 font-mono {isMissing
@@ -65,7 +65,7 @@
 			</span>
 		{/if}
 		<span
-			class="px-1.5 py-0.2 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]/50"
+			class="px-1.5 py-0.5 rounded text-[0.65rem] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)]/50"
 		>
 			{fileDetails.format}
 		</span>

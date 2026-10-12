@@ -267,8 +267,7 @@ pub async fn load_model_process(
         Err(e) => return Err(fail_with(e)),
     };
 
-    let parsed_flags: HashMap<String, String> =
-        serde_json::from_str(&model_record.flags).unwrap_or_default();
+    let parsed_flags = crate::infrastructure::scanner::parse_flags_map(&model_record.flags);
 
     let mut cmd = Command::new(&binary_path);
     let mut port_injected = false;

@@ -90,16 +90,71 @@ export function parseModelDetails(input: string | string[] | undefined | null): 
 }
 
 /**
- * Extracts the primary model file path (-m or --model) from a model record or flags JSON string.
+ * Safely parses flags into a Record<string, string>, handling double or triple JSON encoded strings.
  */
-export function getMainModelFilePath(flagsOrModel: string | { flags?: string }): string {
-	try {
-		const rawFlags = typeof flagsOrModel === 'string' ? flagsOrModel : flagsOrModel?.flags || '{}';
-		const parsed = JSON.parse(rawFlags);
-		return parsed['-m'] || parsed['--model'] || '';
-	} catch {
-		return '';
+export function parseFlags(flagsInput: any): Record<string, string> {
+	if (!flagsInput) return {};
+	let val = flagsInput;
+	if (typeof val === 'object' && val !== null && 'flags' in val) {
+		val = val.flags;
 	}
+	while (typeof val === 'string') {
+		const trimmed = val.trim();
+		if (!trimmed) return {};
+		try {
+			val = JSON.parse(trimmed);
+		} catch {
+			break;
+		}
+	}
+	if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+		return val as Record<string, string>;
+	}
+	return {};
+}
+
+/**
+ * Extracts the primary model file path (-m or --model) from a model record, flags JSON string, or flags object.
+ */
+export function getMainModelFilePath(flagsOrModel: any): string {
+	if (!flagsOrModel) return '';
+	const obj = parseFlags(flagsOrModel);
+	if (Object.keys(obj).length === 0) return '';
+
+	const primaryKeys = [
+		'--model',
+		'-m',
+		'--weights',
+		'-w',
+		'--model-path',
+		'--checkpoint',
+		'model',
+		'm'
+	];
+
+	for (const key of primaryKeys) {
+		const val = obj[key];
+		if (typeof val === 'string' && val.trim()) {
+			return val.trim();
+		}
+	}
+
+	for (const val of Object.values(obj)) {
+		if (typeof val === 'string') {
+			const lower = val.toLowerCase().trim();
+			if (
+				lower.endsWith('.gguf') ||
+				lower.endsWith('.safetensors') ||
+				lower.endsWith('.bin') ||
+				lower.endsWith('.pt') ||
+				lower.endsWith('.onnx')
+			) {
+				return val.trim();
+			}
+		}
+	}
+
+	return '';
 }
 
 /**

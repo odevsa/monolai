@@ -6,6 +6,7 @@
 		flagsToCustomText,
 		getFilePath,
 		getFileRelativePath,
+		parseFlags,
 		resolveFullPath
 	} from '$lib/utils/model';
 	import {
@@ -21,7 +22,8 @@
 		Trash
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
-	import { Select } from '$lib/components/ui';
+	import { Select, Tabs } from '$lib/components/ui';
+	import { t } from '$lib/i18n';
 
 	interface RuntimeItem {
 		id: string;
@@ -124,11 +126,7 @@
 
 	let initialFlags: Record<string, string> = untrack(() => {
 		if (editingModel?.flags) {
-			try {
-				return JSON.parse(editingModel.flags);
-			} catch {
-				return {};
-			}
+			return parseFlags(editingModel.flags);
 		}
 		return {};
 	});
@@ -181,8 +179,8 @@
 		}
 	}
 
-	let unusedFlags = $derived(() => {
-		if (!currentManifest) return [];
+	let unusedFlags = $derived.by(() => {
+		if (!currentManifest || !formFlags || typeof formFlags !== 'object') return [];
 		return currentManifest.flags.filter((f) => !(f.flag in formFlags));
 	});
 
@@ -344,7 +342,7 @@
 	async function handleSubmit() {
 		formError = null;
 		const idError = validateId(formId);
-		if (idError && !isEditingExisting) {
+		if (idError) {
 			formError = idError;
 			return;
 		}
@@ -402,13 +400,10 @@
 				oninput={() => {
 					hasUserEditedId = true;
 				}}
-				disabled={isEditingExisting}
 				placeholder="e.g. Qwen3.8:27b-q4-mtp"
-				class="input-control {validateId(formId) && !isEditingExisting && formId
-					? 'has-error'
-					: ''}"
+				class="input-control {validateId(formId) && formId ? 'has-error' : ''}"
 			/>
-			{#if validateId(formId) && !isEditingExisting && formId}
+			{#if validateId(formId) && formId}
 				<span class="field-error-text">{validateId(formId)}</span>
 			{:else}
 				<span class="field-hint"
@@ -446,203 +441,204 @@
 		</div>
 
 		<!-- Sub-Tabs: Form Flags vs Custom Text -->
-		<div class="flags-section">
-			{#if currentManifest}
-				<div class="flags-subtabs-header">
-					<div class="subtabs-buttons">
-						<button
-							type="button"
-							class="subtab-btn {activeFormTab === 'flags' ? 'active' : ''}"
-							onclick={() => (activeFormTab = 'flags')}
-						>
-							<SlidersVertical size={14} />
-							<span>Form</span>
-						</button>
-
-						<button
-							type="button"
-							class="subtab-btn {activeFormTab === 'custom' ? 'active' : ''}"
-							onclick={() => (activeFormTab = 'custom')}
-						>
-							<Terminal size={14} />
-							<span>Command</span>
-						</button>
-					</div>
-
+		{#if currentManifest}
+			<Tabs
+				surface="dark"
+				bind:value={activeFormTab}
+				title={t('models.executionFlags')}
+				subtitle={t('models.flagsSubtitle')}
+				items={[
+					{ id: 'flags', label: t('models.formTab'), icon: SlidersVertical },
+					{ id: 'custom', label: t('models.commandTab'), icon: Terminal }
+				]}
+				class="mt-1"
+				cardClass="p-4 sm:p-5 flex flex-col gap-4"
+			>
+				{#snippet action()}
 					{#if activeFormTab === 'flags'}
 						<button
 							type="button"
 							class="app-btn app-btn-secondary app-btn-sm"
 							onclick={resetDefaultFlags}
-							title="Reset to default flags"
+							title={t('models.resetDefaults')}
 						>
 							<RotateCcw size={13} />
-							<span>Reset Defaults</span>
+							<span>{t('models.resetDefaults')}</span>
 						</button>
 					{/if}
-				</div>
-			{/if}
+				{/snippet}
 
-			{#if currentManifest && activeFormTab === 'flags'}
-				<!-- Structured Form Flags View (Single Elevated Card Container) -->
-				{#if Object.keys(formFlags).length > 0}
-					<div class="flags-active-container">
-						{#each Object.keys(formFlags) as flagKey}
-							{@const flagDef = currentManifest?.flags.find((f) => f.flag === flagKey)}
-							<div class="flag-control-row">
-								<div class="flag-card-header">
-									<span class="flag-name font-mono">{flagKey}</span>
-									{#if flagDef?.name}
-										<span class="flag-label">{flagDef.name}</span>
-									{/if}
+				{#if activeFormTab === 'flags'}
+					<!-- Structured Form Flags View -->
+					{#if Object.keys(formFlags).length > 0}
+						<div class="flex flex-col gap-3">
+							{#each Object.keys(formFlags) as flagKey}
+								{@const flagDef = currentManifest?.flags.find((f) => f.flag === flagKey)}
+								<div class="flag-control-row">
+									<div class="flag-card-header">
+										<span class="flag-name font-mono">{flagKey}</span>
+										{#if flagDef?.name}
+											<span class="flag-label">{flagDef.name}</span>
+										{/if}
 
-									<!-- Info Tooltip Button -->
-									{#if flagDef?.description}
-										<div class="info-tooltip-container">
-											<button
-												type="button"
-												class="info-icon-btn"
-												aria-label="Flag description"
-												title={flagDef.description}
-											>
-												<Info size={13} />
-											</button>
-											<div class="info-tooltip">
-												{flagDef.description}
+										<!-- Info Tooltip Button -->
+										{#if flagDef?.description}
+											<div class="info-tooltip-container">
+												<button
+													type="button"
+													class="info-icon-btn"
+													aria-label="Flag description"
+													title={flagDef.description}
+												>
+													<Info size={13} />
+												</button>
+												<div class="info-tooltip">
+													{flagDef.description}
+												</div>
 											</div>
-										</div>
-									{/if}
+										{/if}
 
-									<button
-										type="button"
-										class="remove-flag-btn"
-										onclick={() => removeFlag(flagKey)}
-										title="Remove flag"
-									>
-										<Trash size={14} />
-									</button>
-								</div>
+										<button
+											type="button"
+											class="remove-flag-btn"
+											onclick={() => removeFlag(flagKey)}
+											title="Remove flag"
+										>
+											<Trash size={14} />
+										</button>
+									</div>
 
-								<div class="flag-input-wrapper">
-									{#if flagDef?.type === 'file'}
-										<Select
-											bind:value={formFlags[flagKey]}
-											options={getFileOptions(formFlags[flagKey])}
-											onchange={(val: string) => handleFileSelect(flagKey, val)}
-											placeholder="Select model file..."
-											ariaLabel={flagDef.name || flagKey}
-										/>
-									{:else if flagDef?.type === 'enum' && flagDef.options}
-										<Select
-											bind:value={formFlags[flagKey]}
-											options={flagDef.options.map((opt) => ({ value: opt, label: opt }))}
-											onchange={(val: string) => {
-												formFlags[flagKey] = val;
-												updateFlags({ ...formFlags });
-											}}
-											placeholder="Select option..."
-											ariaLabel={flagDef.name || flagKey}
-										/>
-									{:else if flagDef?.type === 'bool'}
-										<label class="bool-checkbox-label">
+									<div class="flag-input-wrapper">
+										{#if flagDef?.type === 'file'}
+											<Select
+												value={formFlags[flagKey] || ''}
+												options={getFileOptions(formFlags[flagKey] || '')}
+												onchange={(val: string) => handleFileSelect(flagKey, val)}
+												placeholder="Select model file..."
+												ariaLabel={flagDef.name || flagKey}
+											/>
+										{:else if flagDef?.type === 'enum' && flagDef.options}
+											<Select
+												value={formFlags[flagKey] || ''}
+												options={flagDef.options.map((opt) => ({ value: opt, label: opt }))}
+												onchange={(val: string) => {
+													formFlags[flagKey] = val;
+													updateFlags({ ...formFlags });
+												}}
+												placeholder="Select option..."
+												ariaLabel={flagDef.name || flagKey}
+											/>
+										{:else if flagDef?.type === 'bool'}
+											<label class="bool-checkbox-label">
+												<input
+													type="checkbox"
+													checked={formFlags[flagKey] === 'true'}
+													onchange={(e) => {
+														updateFlags({
+															...formFlags,
+															[flagKey]: (e.target as HTMLInputElement).checked ? 'true' : 'false'
+														});
+													}}
+													class="setting-checkbox"
+												/>
+												<span>Enable flag</span>
+											</label>
+										{:else if flagDef?.type === 'int' || flagDef?.type === 'float'}
 											<input
-												type="checkbox"
-												checked={formFlags[flagKey] === 'true'}
-												onchange={(e) => {
+												type="number"
+												value={formFlags[flagKey] || ''}
+												oninput={(e) => {
 													updateFlags({
 														...formFlags,
-														[flagKey]: (e.target as HTMLInputElement).checked ? 'true' : 'false'
+														[flagKey]: (e.target as HTMLInputElement).value
 													});
 												}}
-												class="setting-checkbox"
+												class="input-control"
 											/>
-											<span>Enable flag</span>
-										</label>
-									{:else if flagDef?.type === 'int' || flagDef?.type === 'float'}
-										<input
-											type="number"
-											bind:value={formFlags[flagKey]}
-											oninput={() => updateFlags({ ...formFlags })}
-											class="input-control"
-										/>
-									{:else}
-										<input
-											type="text"
-											bind:value={formFlags[flagKey]}
-											oninput={() => updateFlags({ ...formFlags })}
-											class="input-control"
-										/>
-									{/if}
+										{:else}
+											<input
+												type="text"
+												value={formFlags[flagKey] || ''}
+												oninput={(e) => {
+													updateFlags({
+														...formFlags,
+														[flagKey]: (e.target as HTMLInputElement).value
+													});
+												}}
+												class="input-control"
+											/>
+										{/if}
+									</div>
 								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-
-				<!-- Add Optional Flag -->
-				{#if unusedFlags().length > 0}
-					<div class="add-flag-row">
-						<Select
-							class="flex-1 min-w-0"
-							bind:value={selectedAddFlag}
-							options={[
-								{ value: '', label: 'Select an optional flag to add...' },
-								...unusedFlags().map((optFlag) => ({
-									value: optFlag.flag,
-									label: `${optFlag.flag} — ${optFlag.name || optFlag.description}`
-								}))
-							]}
-							placeholder="Select an optional flag to add..."
-							ariaLabel="Add Optional Flag"
-						/>
-						<button
-							type="button"
-							class="app-btn app-btn-secondary app-btn-sm"
-							disabled={!selectedAddFlag}
-							onclick={addFlag}
-						>
-							<Plus size={15} />
-							<span>Add Flag</span>
-						</button>
-					</div>
-				{/if}
-			{:else}
-				<!-- Custom Raw Command Text Editor -->
-				<div class="custom-command-editor font-mono">
-					<div class="command-editor-header">
-						<label class="form-label" for="custom-text">
-							Write raw CLI arguments directly. The runtime binary path cannot be modified here.
-						</label>
-						<button
-							type="button"
-							class="copy-cmd-btn"
-							onclick={copyFullCommand}
-							title="Copy full command line with binary path"
-						>
-							{#if isCopied}
-								<Check size={13} class="text-green" />
-								<span>Copied!</span>
-							{:else}
-								<Copy size={13} />
-								<span>Copy</span>
-							{/if}
-						</button>
-					</div>
-					<div class="command-prefix-box">
-						<div class="command-prefix-header font-mono">
-							<span class="binary-path font-mono">{currentBinaryPath}</span>
+							{/each}
 						</div>
-						<textarea
-							id="custom-text"
-							rows="6"
-							value={customText}
-							oninput={(e) => handleCustomTextChange((e.target as HTMLTextAreaElement).value)}
-							placeholder="--model /path/to/model.gguf --ctx-size 4096 --n-gpu-layers 99"
-							class="textarea-control font-mono command-textarea"></textarea>
+					{/if}
+
+					<!-- Add Optional Flag -->
+					{#if unusedFlags.length > 0}
+						<div class="add-flag-row">
+							<Select
+								class="flex-1 min-w-0"
+								bind:value={selectedAddFlag}
+								options={[
+									{ value: '', label: 'Select an optional flag to add...' },
+									...unusedFlags.map((optFlag) => ({
+										value: optFlag.flag,
+										label: `${optFlag.flag} — ${optFlag.name || optFlag.description}`
+									}))
+								]}
+								placeholder="Select an optional flag to add..."
+								ariaLabel="Add Optional Flag"
+							/>
+							<button
+								type="button"
+								class="app-btn app-btn-secondary app-btn-sm"
+								disabled={!selectedAddFlag}
+								onclick={addFlag}
+							>
+								<Plus size={15} />
+								<span>Add Flag</span>
+							</button>
+						</div>
+					{/if}
+				{:else}
+					<!-- Custom Raw Command Text Editor -->
+					<div class="custom-command-editor font-mono">
+						<div class="command-editor-header">
+							<label class="form-label" for="custom-text">
+								Write raw CLI arguments directly. The runtime binary path cannot be modified here.
+							</label>
+							<button
+								type="button"
+								class="copy-cmd-btn"
+								onclick={copyFullCommand}
+								title="Copy full command line with binary path"
+							>
+								{#if isCopied}
+									<Check size={13} class="text-green" />
+									<span>Copied!</span>
+								{:else}
+									<Copy size={13} />
+									<span>Copy</span>
+								{/if}
+							</button>
+						</div>
+						<div class="command-prefix-box">
+							<div class="command-prefix-header font-mono">
+								<span class="binary-path font-mono">{currentBinaryPath}</span>
+							</div>
+							<textarea
+								id="custom-text"
+								rows="6"
+								value={customText}
+								oninput={(e) => handleCustomTextChange((e.target as HTMLTextAreaElement).value)}
+								placeholder="--model /path/to/model.gguf --ctx-size 4096 --n-gpu-layers 99"
+								class="textarea-control font-mono command-textarea"></textarea>
+						</div>
 					</div>
-				</div>
-			{/if}
-		</div>
+				{/if}
+			</Tabs>
+		{/if}
 
 		<!-- Actions -->
 		<div class="form-actions-row">
@@ -742,73 +738,6 @@
 	.field-error-text {
 		font-size: 0.725rem;
 		color: #ef4444;
-	}
-
-	/* Flags Section & Subtabs */
-	.flags-section {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		margin-top: 0.25rem;
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--border-color);
-	}
-
-	.flags-subtabs-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.subtabs-buttons {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		background: var(--bg-primary);
-		padding: 0.25rem;
-		border-radius: 0.5rem;
-		border: 1px solid var(--border-color);
-	}
-
-	.subtab-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		padding: 0.4rem 0.95rem;
-		font-size: 0.8rem;
-		font-weight: 500;
-		color: var(--text-secondary);
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: 0.375rem;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.subtab-btn:hover {
-		color: var(--text-primary);
-		background: var(--bg-hover);
-	}
-
-	.subtab-btn.active {
-		color: var(--primary);
-		background: var(--bg-surface);
-		border-color: var(--border-color);
-		font-weight: 600;
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-	}
-
-	/* Single Card Container holding all active flags */
-	.flags-active-container {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-color);
-		border-radius: 0.75rem;
-		padding: 0.875rem 1rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.875rem;
-		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
 	}
 
 	.flag-control-row {

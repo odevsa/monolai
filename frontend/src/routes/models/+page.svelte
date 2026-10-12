@@ -10,7 +10,7 @@
 	import type { ModelFileItem, ModelRecord, RunningModelStatus } from '$lib/types/models';
 	import type { Runtime, RuntimeManifest } from '$lib/types/runtimes';
 	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { getMainModelFilePath } from '$lib/utils/model';
+	import { getMainModelFilePath, parseFlags } from '$lib/utils/model';
 	import { ArrowLeft, Box, Plus, Search } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -161,16 +161,20 @@
 		flags: Record<string, string>;
 	}) {
 		const isExisting = !!editingModel;
-		if (isExisting) {
-			await modelsApi.update(payload.id, {
+		const flagsObj = parseFlags(payload.flags);
+		const flagsStr = JSON.stringify(flagsObj);
+
+		if (isExisting && editingModel) {
+			await modelsApi.update(editingModel.id, {
+				id: payload.id,
 				runtime: payload.runtime,
-				flags: JSON.stringify(payload.flags)
+				flags: flagsObj
 			});
 		} else {
 			await modelsApi.create({
 				id: payload.id,
 				runtime: payload.runtime,
-				flags: JSON.stringify(payload.flags)
+				flags: flagsObj
 			});
 		}
 

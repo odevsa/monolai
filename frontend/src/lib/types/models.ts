@@ -30,10 +30,11 @@ export type RunningModelStateType = 'ready' | 'loading' | 'error' | 'idle';
 export interface CreateModelPayload {
 	id: string;
 	runtime: string;
-	flags: string;
+	flags: Record<string, string> | string;
 }
 
 export interface UpdateModelPayload {
+	id?: string;
 	runtime?: string;
-	flags?: string;
+	flags?: Record<string, string> | string;
 }

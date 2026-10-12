@@ -61,16 +61,42 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
     models
 }
 
+pub fn parse_flags_map(flags_str: &str) -> std::collections::HashMap<String, String> {
+    let mut val: serde_json::Value = match serde_json::from_str(flags_str) {
+        Ok(v) => v,
+        Err(_) => return std::collections::HashMap::new(),
+    };
+    while let serde_json::Value::String(inner_str) = &val {
+        if let Ok(inner) = serde_json::from_str(inner_str) {
+            val = inner;
+        } else {
+            break;
+        }
+    }
+    match serde_json::from_value(val) {
+        Ok(m) => m,
+        Err(_) => std::collections::HashMap::new(),
+    }
+}
+
 pub fn check_model_file_exists<P: AsRef<Path>>(
     models_dir: P,
     flags_json: &str,
 ) -> (bool, Option<String>) {
     let models_dir = models_dir.as_ref();
 
-    let flags_map: serde_json::Value = match serde_json::from_str(flags_json) {
+    let mut flags_map: serde_json::Value = match serde_json::from_str(flags_json) {
         Ok(v) => v,
         Err(_) => return (false, None),
     };
+
+    while let serde_json::Value::String(inner_str) = &flags_map {
+        if let Ok(inner_val) = serde_json::from_str(inner_str) {
+            flags_map = inner_val;
+        } else {
+            break;
+        }
+    }
 
     let obj = match flags_map.as_object() {
         Some(o) => o,

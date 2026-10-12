@@ -117,6 +117,23 @@ impl ModelService {
             )));
         }
 
+        let target_id = payload.id.trim();
+        let target_id = if target_id.is_empty() {
+            id.to_string()
+        } else {
+            if target_id.contains(' ') || target_id.contains('\t') || target_id.contains('\n') {
+                return Err(AppError::bad_request("Model ID cannot contain whitespace."));
+            }
+            if target_id != id && self.repo.get_by_id(target_id).await?.is_some() {
+                return Err(AppError::conflict(format!(
+                    "A model with ID '{}' already exists.",
+                    target_id
+                )));
+            }
+            target_id.to_string()
+        };
+        payload.id = target_id.clone();
+
         let runtime = payload.runtime.trim().to_string();
         if runtime.is_empty() {
             return Err(AppError::bad_request("Runtime engine cannot be empty."));
@@ -128,10 +145,31 @@ impl ModelService {
         let (exists, _) = check_model_file_exists(&models_dir, &model.flags);
         model.file_exists = exists;
 
+        if target_id != id {
+            let mut running_map = self.process_manager.running.lock().await;
+            if let Some(mut rm) = running_map.remove(id) {
+                rm.model_id = target_id.clone();
+                running_map.insert(target_id.clone(), rm);
+            }
+            drop(running_map);
+            let mut disk_records =
+                crate::infrastructure::process::read_processes_json(&self.process_manager.db_dir);
+            if let Some(mut rec) = disk_records.remove(id) {
+                rec.model_id = target_id.clone();
+                disk_records.insert(target_id.clone(), rec);
+                crate::infrastructure::process::write_processes_json(
+                    &self.process_manager.db_dir,
+                    &disk_records,
+                );
+            }
+            self.process_manager.notify_state_changed().await;
+        }
+
         tracing::info!(
             target: "monolai",
-            "Model '{}' configuration updated successfully",
-            id
+            "Model '{}' (updated ID '{}') configuration updated successfully",
+            id,
+            model.id
         );
 
         Ok(model)

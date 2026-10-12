@@ -255,7 +255,12 @@
 		"runningPort": "Running :{{port}}",
 		"noFileConfigured": "No file configured",
 		"copyId": "Copy identifier",
-		"copyIdSuccess": "Model identifier copied to clipboard"
+		"copyIdSuccess": "Model identifier copied to clipboard",
+		"formTab": "Form",
+		"commandTab": "Command",
+		"executionFlags": "Execution Flags",
+		"flagsSubtitle": "Configure runtime parameters using structured form fields or direct command line arguments.",
+		"resetDefaults": "Reset Defaults"
 	},
 	"runtimes": {
 		"pageTitle": "Runtimes Management",
@@ -403,7 +408,12 @@
 		"checkConfigBtn": "Check Configuration",
 		"saveAndStartBtn": "Save and Initialize",
 		"detectedHardware": "Detected Hardware",
-		"recommended": "Recommended"
+		"recommended": "Recommended",
+		"interactiveSetup": "Interactive Setup",
+		"manualConfiguration": "Manual Configuration",
+		"monolaiSetup": "Monolai Setup",
+		"setupDescStorage": "Configure storage paths and acceleration to start running local AI models.",
+		"setupDescHardware": "Select your target hardware acceleration to start running local AI models."
 	},
 	"logs": {
 		"title": "Logs",

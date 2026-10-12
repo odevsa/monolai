@@ -7,6 +7,18 @@ pub struct ModelRepository {
     pool: SqlitePool,
 }
 
+fn normalize_flags(flags: &serde_json::Value) -> String {
+    let mut val = flags.clone();
+    while let serde_json::Value::String(s) = &val {
+        if let Ok(inner) = serde_json::from_str(s) {
+            val = inner;
+        } else {
+            break;
+        }
+    }
+    val.to_string()
+}
+
 impl ModelRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
@@ -32,7 +44,7 @@ impl ModelRepository {
     }
 
     pub async fn insert(&self, payload: &CreateModelPayload) -> AppResult<ModelRecord> {
-        let flags_str = payload.flags.to_string();
+        let flags_str = normalize_flags(&payload.flags);
 
         sqlx::query("INSERT INTO models (id, runtime, flags) VALUES (?1, ?2, ?3)")
             .bind(&payload.id)
@@ -50,9 +62,10 @@ impl ModelRepository {
     }
 
     pub async fn update(&self, id: &str, payload: &CreateModelPayload) -> AppResult<ModelRecord> {
-        let flags_str = payload.flags.to_string();
+        let flags_str = normalize_flags(&payload.flags);
 
-        sqlx::query("UPDATE models SET runtime = ?1, flags = ?2 WHERE id = ?3")
+        sqlx::query("UPDATE models SET id = ?1, runtime = ?2, flags = ?3 WHERE id = ?4")
+            .bind(&payload.id)
             .bind(&payload.runtime)
             .bind(&flags_str)
             .bind(id)
@@ -60,7 +73,7 @@ impl ModelRepository {
             .await?;
 
         let model = self
-            .get_by_id(id)
+            .get_by_id(&payload.id)
             .await?
             .ok_or_else(|| sqlx::Error::RowNotFound)?;
 

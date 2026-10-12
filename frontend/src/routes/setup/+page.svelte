@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { configApi, hostApi } from '$lib/api';
-	import { CodeBlock } from '$lib/components/ui';
+	import { CodeBlock, PageHeader, Tabs } from '$lib/components/ui';
+	import { t } from '$lib/i18n';
 	import type { ConfigStatus, HardwareReport } from '$lib/types/config';
 	import { copyToClipboard as copyClipboardUtil } from '$lib/utils/clipboard';
 	import {
@@ -21,7 +22,7 @@
 	} from '@lucide/svelte';
 	import { getContext, onMount } from 'svelte';
 
-	let activeTab = $state<'wizard' | 'manual'>('wizard');
+	let activeTab = $state<string>('wizard');
 	let configStatus = $state<ConfigStatus | null>(null);
 	let hardwareReport = $state<HardwareReport | null>(null);
 	let loading = $state(true);
@@ -210,7 +211,7 @@
 
 <!-- Full page wrapper with natural page scroll (no scroll inside the card) -->
 <div
-	class="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 box-border bg-[var(--bg-primary)]"
+	class="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 bg-[var(--bg-primary)]"
 >
 	{#if loading && !configStatus}
 		<div
@@ -222,76 +223,40 @@
 			<p class="m-0 text-xs">Checking system configuration...</p>
 		</div>
 	{:else if configStatus}
-		<!-- Generous, card with natural height (no inner scrollbar) -->
-		<div
-			class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl max-w-[700px] w-full shadow-2xl flex flex-col my-auto"
-		>
-			<!-- Header -->
-			<header class="p-6 pb-5 border-b border-[var(--border-color)] flex flex-col gap-4">
-				<div class="flex items-center justify-between gap-4">
-					<div class="flex items-center gap-3.5">
-						<div
-							class="w-11 h-11 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center shrink-0"
-						>
-							<Sparkles size={22} />
-						</div>
-						<div>
-							<h1 class="m-0 text-lg font-bold text-[var(--text-primary)]">
-								{isStorageConfigured ? 'Hardware Acceleration' : 'Monolai Setup'}
-							</h1>
-							<p class="m-0 text-xs text-[var(--text-muted)] mt-0.5">
-								{isStorageConfigured
-									? 'Select your target hardware acceleration to start running local AI models.'
-									: 'Configure storage paths and acceleration to start running local AI models.'}
-							</p>
-						</div>
-					</div>
+		<div class="max-w-[700px] w-full flex flex-col my-auto">
+			<Tabs
+				bind:value={activeTab}
+				items={!isStorageConfigured
+					? [
+							{ id: 'wizard', label: t('setup.interactiveSetup'), icon: Wand },
+							{ id: 'manual', label: t('setup.manualConfiguration'), icon: FileCode }
+						]
+					: []}
+				cardClass="p-6 flex flex-col gap-5 shadow-2xl"
+			>
+				{#snippet header()}
+					<div class="flex items-center justify-between gap-4">
+						<PageHeader
+							title={t('setup.monolaiSetup')}
+							subtitle={t('setup.setupDescStorage')}
+							icon={Sparkles}
+						/>
 
-					<button
-						onclick={fetchConfigData}
-						disabled={rechecking}
-						class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-white/5 hover:bg-white/10 text-xs text-[var(--text-secondary)] font-medium transition cursor-pointer"
-						title="Recheck configuration status"
-					>
-						<RefreshCw size={12} class={rechecking ? 'animate-spin' : ''} />
-						<span>Refresh</span>
-					</button>
-				</div>
-
-				{#if !isStorageConfigured}
-					<!-- Setup Tabs -->
-					<div
-						class="flex items-center gap-1.5 p-1 rounded-xl bg-black/20 border border-[var(--border-color)]"
-					>
 						<button
-							onclick={() => (activeTab = 'wizard')}
-							class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
-							'wizard'
-								? 'bg-[var(--primary)] text-white shadow-sm'
-								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
+							onclick={fetchConfigData}
+							disabled={rechecking}
+							class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-xs text-[var(--text-secondary)] font-medium transition cursor-pointer"
+							title={t('settings.refreshConfig')}
 						>
-							<Wand size={14} />
-							<span>Interactive Setup</span>
-						</button>
-						<button
-							onclick={() => (activeTab = 'manual')}
-							class="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer {activeTab ===
-							'manual'
-								? 'bg-[var(--primary)] text-white shadow-sm'
-								: 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}"
-						>
-							<FileCode size={14} />
-							<span>Manual Configuration</span>
+							<RefreshCw size={12} class={rechecking ? 'animate-spin' : ''} />
+							<span>{t('common.refresh')}</span>
 						</button>
 					</div>
-				{/if}
-			</header>
+				{/snippet}
 
-			<!-- Content Area -->
-			<div class="p-6 flex flex-col gap-5">
 				{#if saveError}
 					<div
-						class="flex items-center gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs"
+						class="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--danger-light)] border border-[var(--danger-border)] text-[var(--danger-text)] text-xs"
 					>
 						<CircleAlert size={16} class="shrink-0" />
 						<span>{saveError}</span>
@@ -716,7 +681,7 @@
 						</div>
 					</div>
 				{/if}
-			</div>
+			</Tabs>
 		</div>
 	{/if}
 </div>

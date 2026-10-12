@@ -255,7 +255,12 @@
 		"runningPort": "En ejecución :{{port}}",
 		"noFileConfigured": "Ningún archivo configurado",
 		"copyId": "Copiar identificador",
-		"copyIdSuccess": "Identificador del modelo copiado al portapapeles"
+		"copyIdSuccess": "Identificador del modelo copiado al portapapeles",
+		"formTab": "Formulario",
+		"commandTab": "Comando",
+		"executionFlags": "Parámetros de Ejecución",
+		"flagsSubtitle": "Configure los parámetros del motor mediante campos estructurados o argumentos CLI directos.",
+		"resetDefaults": "Restablecer Valores"
 	},
 	"runtimes": {
 		"pageTitle": "Gestión de Runtimes",
@@ -403,7 +408,12 @@
 		"checkConfigBtn": "Verificar configuración",
 		"saveAndStartBtn": "Guardar e inicializar",
 		"detectedHardware": "Hardware detectado",
-		"recommended": "Recomendado"
+		"recommended": "Recomendado",
+		"interactiveSetup": "Configuración Interactiva",
+		"manualConfiguration": "Configuración Manual",
+		"monolaiSetup": "Configuración de Monolai",
+		"setupDescStorage": "Configure las rutas de almacenamiento y aceleración para iniciar modelos locales.",
+		"setupDescHardware": "Seleccione su aceleración de hardware para iniciar modelos locales."
 	},
 	"logs": {
 		"title": "Registros",
