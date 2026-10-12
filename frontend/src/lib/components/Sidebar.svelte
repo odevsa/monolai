@@ -60,7 +60,7 @@
 >
 	<SidebarHeader {isExpanded} onToggleCollapse={toggleCollapse} onCloseMobile={closeMobile} />
 
-	<SidebarNav {isExpanded} {currentPath} {onOpenSettings} onCloseMobile={closeMobile} />
+	<SidebarNav {isExpanded} {currentPath} onCloseMobile={closeMobile} />
 
 	<SidebarRunningModels {isExpanded} />
 
@@ -77,7 +77,5 @@
 		</div>
 	{/if}
 
-	{#if isExpanded}
-		<SidebarFooter />
-	{/if}
+	<SidebarFooter {isExpanded} {onOpenSettings} onCloseMobile={closeMobile} />
 </aside>

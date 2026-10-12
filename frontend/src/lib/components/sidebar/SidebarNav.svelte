@@ -7,19 +7,17 @@
 		Boxes,
 		Image as ImageIcon,
 		MessageSquare,
-		ScrollText,
-		Settings
+		ScrollText
 	} from '@lucide/svelte';
 	import SidebarNavLink from './SidebarNavLink.svelte';
 
 	interface SidebarNavProps {
 		isExpanded: boolean;
 		currentPath: string;
-		onOpenSettings: () => void;
 		onCloseMobile: () => void;
 	}
 
-	let { isExpanded, currentPath, onOpenSettings, onCloseMobile }: SidebarNavProps = $props();
+	let { isExpanded, currentPath, onCloseMobile }: SidebarNavProps = $props();
 
 	let isChatPage = $derived(
 		currentPath === '/chat' || currentPath === '/' || currentPath.startsWith('/chat')
@@ -43,11 +41,6 @@
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(new CustomEvent('monolai:nav-models'));
 		}
-	}
-
-	function handleSettingsClick() {
-		onOpenSettings();
-		onCloseMobile();
 	}
 </script>
 
@@ -90,8 +83,12 @@
 	/>
 </div>
 
-<!-- Secondary Actions (Runtimes, Models, Settings) -->
-<div class="px-3.5 py-3 border-t border-[var(--border-color)] flex flex-col gap-2">
+<!-- Secondary Actions (Runtimes, Models) -->
+<div
+	class="py-3 border-t border-[var(--border-color)] flex flex-col gap-2 {isExpanded
+		? 'px-3.5'
+		: 'px-2.5'}"
+>
 	<SidebarNavLink
 		href="/runtimes"
 		label={t('navigation.runtimes')}
@@ -108,13 +105,5 @@
 		isActive={isModelsPage}
 		{isExpanded}
 		onclick={handleModelsClick}
-	/>
-
-	<SidebarNavLink
-		label={t('navigation.settings')}
-		icon={Settings}
-		isActive={false}
-		{isExpanded}
-		onclick={handleSettingsClick}
 	/>
 </div>
