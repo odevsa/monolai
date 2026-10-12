@@ -37,7 +37,7 @@
 		<div class="flex flex-col gap-1.5">
 			<div class="flex items-center justify-between">
 				<label for="host-input" class="text-xs font-semibold text-[var(--text-secondary)]">
-					{t('setup.hostAddress')}
+					{t('common.host')}
 				</label>
 				{#if isDocker}
 					<Badge variant="info" rounded="rounded-sm">

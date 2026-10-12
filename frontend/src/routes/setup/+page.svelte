@@ -167,7 +167,7 @@
 							onclick={fetchConfigData}
 							disabled={rechecking}
 							loading={rechecking}
-							title={t('settings.refreshConfig')}
+							title={t('common.refresh')}
 						>
 							<RefreshCw size={12} class={rechecking ? 'animate-spin' : ''} />
 							<span>{t('common.refresh')}</span>

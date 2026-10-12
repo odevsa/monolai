@@ -18,8 +18,8 @@
 		variant="ghost"
 		size="icon-sm"
 		class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
-		title={t('chat.copyTooltip')}
-		ariaLabel={t('chat.copyTooltip')}
+		title={t('common.copy')}
+		ariaLabel={t('common.copy')}
 		onclick={onCopy}
 	>
 		<Copy size={14} />
@@ -42,8 +42,8 @@
 		variant="ghost"
 		size="icon-sm"
 		class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
-		title={t('chat.deleteTooltip')}
-		ariaLabel={t('chat.deleteTooltip')}
+		title={t('common.delete')}
+		ariaLabel={t('common.delete')}
 		onclick={onDelete}
 	>
 		<Trash size={14} />

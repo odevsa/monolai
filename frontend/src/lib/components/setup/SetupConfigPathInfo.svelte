@@ -39,14 +39,14 @@
 		size="sm"
 		onclick={handleCopy}
 		class="shrink-0 ml-2 text-[11px]"
-		title={t('setup.copy')}
+		title={t('common.copy')}
 	>
 		{#if copied}
 			<Check size={12} class="text-[var(--success-text)]" />
 			<span>{t('setup.copied')}</span>
 		{:else}
 			<Copy size={12} />
-			<span>{t('setup.copy')}</span>
+			<span>{t('common.copy')}</span>
 		{/if}
 	</Button>
 </div>

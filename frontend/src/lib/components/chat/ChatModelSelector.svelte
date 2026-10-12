@@ -48,13 +48,13 @@
 		type="button"
 		class="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-full bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] text-xs cursor-pointer transition-all duration-150 hover:bg-[var(--bg-surface-hover)] hover:border-[var(--border-hover)] hover:text-[var(--text-primary)]"
 		onclick={toggleMenu}
-		aria-label={t('chat.selectModel')}
+		aria-label={t('common.selectModel')}
 	>
 		{#if selectedModel}
 			<ModelBadge model={selectedModel} variant="inline" />
 		{:else}
 			<Box size={14} class="text-[var(--text-muted)]" />
-			<span class="text-[var(--text-secondary)] font-medium">{t('chat.selectModel')}</span>
+			<span class="text-[var(--text-secondary)] font-medium">{t('common.selectModel')}</span>
 		{/if}
 	</button>
 
@@ -71,11 +71,11 @@
 			<div
 				class="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--text-muted)] pt-1.5 px-2.5 pb-1"
 			>
-				{t('chat.selectActiveModel')}
+				{t('common.selectActiveModel')}
 			</div>
 			{#if models.length === 0}
 				<div class="text-xs text-[var(--text-muted)] p-2.5 text-center">
-					{t('chat.noChatModelsRegistered')}
+					{t('common.noModelsRegistered')}
 				</div>
 			{:else}
 				<div class="flex flex-col gap-0.5 max-h-[220px] overflow-y-auto">

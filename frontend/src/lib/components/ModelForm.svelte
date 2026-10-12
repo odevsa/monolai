@@ -615,7 +615,7 @@
 								class="shrink-0 whitespace-nowrap"
 							>
 								<Plus size={15} />
-								<span>{t('models.addFlag')}</span>
+								<span>{t('common.add')}</span>
 							</Button>
 						</div>
 					{/if}
@@ -682,12 +682,10 @@
 				variant="primary"
 				size="md"
 				disabled={isSaving || installedRuntimes.length === 0 || !formRuntime}
-				title={installedRuntimes.length === 0
-					? t('models.noInstalledRuntimes')
-					: t('models.saveModel')}
+				title={installedRuntimes.length === 0 ? t('models.noInstalledRuntimes') : t('common.save')}
 			>
 				<Save size={15} />
-				<span>{isSaving ? t('models.saving') : t('models.saveModel')}</span>
+				<span>{isSaving ? t('models.saving') : t('common.save')}</span>
 			</Button>
 		</div>
 	</div>

@@ -54,7 +54,7 @@
 					<SlidersVertical size={20} class="text-[var(--primary)] shrink-0" />
 					<div>
 						<h3 class="m-0 text-base sm:text-lg font-bold text-[var(--text-primary)] leading-none">
-							{t('settings.title')}
+							{t('navigation.settings')}
 						</h3>
 					</div>
 				</div>
@@ -63,8 +63,8 @@
 					variant="ghost"
 					size="icon-sm"
 					onclick={close}
-					title={t('settings.closeSettings')}
-					ariaLabel={t('settings.closeSettings')}
+					title={t('common.close')}
+					ariaLabel={t('common.close')}
 				>
 					<X size={18} />
 				</Button>
@@ -97,7 +97,7 @@
 						onclick={() => (activeTab = 'chat')}
 					>
 						<MessageSquare size={16} />
-						<span>{t('settings.chatTab')}</span>
+						<span>{t('navigation.chat')}</span>
 					</button>
 
 					<button

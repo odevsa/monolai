@@ -40,9 +40,9 @@
 					size="xs"
 					class="text-[var(--text-muted)] text-[0.7rem] px-1 py-0.5 hover:text-[var(--danger-text)]"
 					onclick={unloadAllModels}
-					title={t('navigation.unloadAll')}
+					title={t('common.unloadAll')}
 				>
-					{t('navigation.unloadAll')}
+					{t('common.unloadAll')}
 				</Button>
 			{/if}
 		</div>
@@ -86,8 +86,8 @@
 							class="text-[var(--text-muted)] hover:bg-[var(--danger-light)] hover:text-[var(--danger-text)] shrink-0"
 							disabled={isUnloading}
 							onclick={() => unloadModel(model.model_id)}
-							title={t('navigation.unloadModel')}
-							ariaLabel={t('navigation.unloadModel')}
+							title={t('common.unload')}
+							ariaLabel={t('common.unload')}
 						>
 							<Power size={13} />
 						</Button>

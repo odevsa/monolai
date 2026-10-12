@@ -22,10 +22,10 @@
 
 	let statusLabel = $derived(
 		statusType === 'ready'
-			? t('sysinfo.statusReady')
+			? t('common.ready')
 			: statusType === 'loading'
 				? t('sysinfo.statusLoading')
-				: t('sysinfo.statusError')
+				: t('common.error')
 	);
 </script>
 
@@ -113,7 +113,7 @@
 				class="flex items-center gap-1 text-[0.65rem] uppercase font-semibold text-[var(--text-muted)] tracking-wider"
 			>
 				<Network size={11} class="text-[var(--text-muted)]" />
-				<span>{t('sysinfo.tablePort')}</span>
+				<span>{t('common.port')}</span>
 			</span>
 			<span class="text-xs font-mono font-bold text-[var(--text-primary)] mt-1">
 				{model.port > 0 ? `:${model.port}` : '—'}
@@ -158,7 +158,7 @@
 				<span>{t('sysinfo.statusLoading')}</span>
 			{:else}
 				<Power size={13} />
-				<span>{t('models.unloadModel')}</span>
+				<span>{t('common.unload')}</span>
 			{/if}
 		</Button>
 	</div>

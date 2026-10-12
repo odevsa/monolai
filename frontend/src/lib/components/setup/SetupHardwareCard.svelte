@@ -41,7 +41,7 @@
 		<div class="flex items-center gap-1">
 			{#if isRecommended}
 				<Badge variant="success" rounded="rounded-sm">
-					{t('setup.recommended')}
+					{t('common.recommended')}
 				</Badge>
 			{:else if isSupported}
 				<Badge variant="muted" rounded="rounded-sm">

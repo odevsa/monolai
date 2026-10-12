@@ -78,8 +78,8 @@
 				size="icon"
 				class="rounded-full shadow-md hover:scale-105 active:scale-95"
 				onclick={onScrollToBottom}
-				title={t('logs.scrollToBottom')}
-				ariaLabel={t('logs.scrollToBottom')}
+				title={t('common.scrollToBottom')}
+				ariaLabel={t('common.scrollToBottom')}
 			>
 				<ChevronDown size={18} />
 			</Button>

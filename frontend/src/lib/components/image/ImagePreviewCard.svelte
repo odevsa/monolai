@@ -48,8 +48,8 @@
 						variant="secondary"
 						size="icon-sm"
 						onclick={onDownload}
-						title={t('image.downloadImage')}
-						ariaLabel={t('image.downloadImage')}
+						title={t('common.download')}
+						ariaLabel={t('common.download')}
 					>
 						<Download size={13} />
 					</Button>
@@ -68,8 +68,8 @@
 						variant="secondary"
 						size="icon-sm"
 						onclick={onCopy}
-						title={t('image.copyImage')}
-						ariaLabel={t('image.copyImage')}
+						title={t('common.copy')}
+						ariaLabel={t('common.copy')}
 					>
 						{#if copiedImage}
 							<Check size={13} class="text-[var(--success-text)]" />

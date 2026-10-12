@@ -52,14 +52,14 @@
 				size="sm"
 				onclick={() => handleCopy(configStatus.expected_path, 'path')}
 				class="shrink-0 ml-2"
-				title={t('setup.copy')}
+				title={t('common.copy')}
 			>
 				{#if copiedPath}
 					<Check size={12} class="text-[var(--success-text)]" />
 					<span>{t('setup.copied')}</span>
 				{:else}
 					<Copy size={12} />
-					<span>{t('setup.copy')}</span>
+					<span>{t('common.copy')}</span>
 				{/if}
 			</Button>
 		</div>
@@ -85,14 +85,14 @@
 					size="sm"
 					onclick={() => handleCopy(configStatus.cli_command_example || '', 'cli')}
 					class="shrink-0 ml-2"
-					title={t('setup.copy')}
+					title={t('common.copy')}
 				>
 					{#if copiedCli}
 						<Check size={12} class="text-[var(--success-text)]" />
 						<span>{t('setup.copied')}</span>
 					{:else}
 						<Copy size={12} />
-						<span>{t('setup.copy')}</span>
+						<span>{t('common.copy')}</span>
 					{/if}
 				</Button>
 			</div>

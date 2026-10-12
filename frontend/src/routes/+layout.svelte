@@ -214,7 +214,7 @@
 														e.preventDefault();
 														closeChatTab(tab.id);
 													}}
-													title={t('chat.closeTab')}
+													title={t('common.close')}
 												>
 													<X size={13} />
 												</button>
@@ -226,7 +226,7 @@
 										type="button"
 										class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 pointer-events-auto hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shrink-0"
 										onclick={addChatTab}
-										title={t('chat.newTab')}
+										title={t('common.new')}
 									>
 										<Plus size={16} />
 									</button>
@@ -242,8 +242,8 @@
 									type="button"
 									class="flex items-center justify-center w-7 h-7 bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 text-[var(--text-muted)] cursor-pointer rounded-lg transition-all duration-150 shrink-0 hover:text-red-500 hover:bg-red-500/15 hover:border-red-500/30"
 									onclick={() => deleteActiveChat(activeChatIdFromUrl)}
-									title={t('chat.deleteChat')}
-									aria-label={t('chat.deleteChat')}
+									title={t('common.delete')}
+									aria-label={t('common.delete')}
 								>
 									<Trash size={15} />
 								</button>
@@ -314,7 +314,7 @@
 								class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg pointer-events-auto transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] cursor-pointer"
 								onclick={() => headerState.runtimesRefreshFn?.()}
 								disabled={headerState.runtimesRefreshing}
-								title={t('runtimes.refreshList')}
+								title={t('common.refresh')}
 							>
 								<RefreshCw
 									size={13}

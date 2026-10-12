@@ -64,8 +64,8 @@
 						variant="ghost"
 						size="icon-sm"
 						onclick={onClose}
-						title={t('image.closeModal')}
-						ariaLabel={t('image.closeModal')}
+						title={t('common.close')}
+						ariaLabel={t('common.close')}
 					>
 						<X size={16} />
 					</Button>

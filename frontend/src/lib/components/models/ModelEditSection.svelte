@@ -35,7 +35,7 @@
 		</div>
 		<div>
 			<h3 class="m-0 text-base font-bold text-[var(--text-primary)]">
-				{editingModel ? `${t('models.editModel')}: ${editingModel.id}` : t('models.addModel')}
+				{editingModel ? `${t('models.editModel')}: ${editingModel.id}` : t('common.add')}
 			</h3>
 			<p class="m-0 text-xs text-[var(--text-muted)] mt-0.5">
 				{t('models.formSubtitle')}

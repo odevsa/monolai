@@ -217,7 +217,7 @@
 			{#if !isEditingModel}
 				<Button variant="primary" size="md" onclick={startAddModel}>
 					<Plus size={15} />
-					<span>{t('models.addModel')}</span>
+					<span>{t('common.add')}</span>
 				</Button>
 			{:else}
 				<Button variant="secondary" size="md" onclick={cancelEdit}>
@@ -228,7 +228,7 @@
 		</PageHeader>
 
 		{#if error}
-			<Alert variant="error" title={t('models.connectionFailure')}>
+			<Alert variant="error" title={t('common.connectionFailure')}>
 				<div class="flex items-center justify-between gap-3">
 					<span>{error}</span>
 					<Button variant="secondary" size="sm" onclick={() => loadAllModelsData()}>
@@ -273,7 +273,7 @@
 					{#snippet actions()}
 						<Button variant="primary" onclick={startAddModel}>
 							<Plus size={15} />
-							<span>{t('models.addModel')}</span>
+							<span>{t('common.add')}</span>
 						</Button>
 					{/snippet}
 				</EmptyState>
@@ -292,7 +292,7 @@
 								selectedStatusFilter = 'all';
 							}}
 						>
-							{t('models.clearFilters')}
+							{t('common.clear')}
 						</Button>
 					{/snippet}
 				</EmptyState>

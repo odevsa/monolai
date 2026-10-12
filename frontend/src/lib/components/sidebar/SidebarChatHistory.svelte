@@ -80,8 +80,8 @@
 				size="icon-sm"
 				class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
 				onclick={createNewChat}
-				title={t('navigation.newChat')}
-				ariaLabel={t('navigation.newChat')}
+				title={t('common.new')}
+				ariaLabel={t('common.new')}
 			>
 				<Plus size={15} />
 			</Button>
@@ -121,8 +121,8 @@
 							size="icon-sm"
 							class="mr-1 text-[var(--text-muted)] opacity-100 md:opacity-0 group-hover:opacity-100 hover:text-[var(--danger-text)]"
 							onclick={(e) => deleteChat(chat.id, e)}
-							title={t('navigation.deleteChat')}
-							ariaLabel={t('navigation.deleteChat')}
+							title={t('common.delete')}
+							ariaLabel={t('common.delete')}
 						>
 							<Trash size={13} />
 						</Button>

@@ -30,7 +30,7 @@
 		>
 			<Zap size={15} class="text-[var(--primary)]" />
 			<span>
-				{t(isStorageConfigured ? 'setup.hardwareLabel' : 'setup.stepHardware')}
+				{t(isStorageConfigured ? 'common.hardwareAcceleration' : 'setup.stepHardware')}
 			</span>
 		</span>
 		{#if hardwareReport}

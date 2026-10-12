@@ -202,13 +202,13 @@
 		<!-- Group 2: Server & Environment -->
 		<div class="relative z-20">
 			<SettingGroup title={t('settings.groupServer')}>
-				<SettingRow icon={Network} title={t('settings.host')} subtitle="0.0.0.0 / 127.0.0.1">
+				<SettingRow icon={Network} title={t('common.host')} subtitle="0.0.0.0 / 127.0.0.1">
 					<div class="w-32 sm:w-40">
 						<Input bind:value={host} placeholder="0.0.0.0" />
 					</div>
 				</SettingRow>
 
-				<SettingRow icon={Radio} title={t('settings.port')} subtitle="TCP port">
+				<SettingRow icon={Radio} title={t('common.port')} subtitle="TCP port">
 					<div class="w-24 sm:w-28">
 						<Input type="number" bind:value={port} min="1" max="65535" placeholder="8080" />
 					</div>
@@ -320,7 +320,7 @@
 				<span>{t('common.saved')}</span>
 			{:else}
 				<Save size={14} />
-				<span>{t('settings.saveGeneral')}</span>
+				<span>{t('common.save')}</span>
 			{/if}
 		</Button>
 	</div>

@@ -32,8 +32,8 @@
 		e.stopPropagation();
 		e.preventDefault();
 		const confirmed = await askConfirm(
-			t('image.deleteImage') + '?',
-			t('image.deleteImage'),
+			t('common.delete') + '?',
+			t('common.delete'),
 			'danger',
 			t('common.delete'),
 			t('common.cancel')
@@ -73,8 +73,8 @@
 					size="icon-sm"
 					class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
 					onclick={clearImageHistory}
-					title={t('image.clearHistory')}
-					ariaLabel={t('image.clearHistory')}
+					title={t('common.clear')}
+					ariaLabel={t('common.clear')}
 				>
 					<Trash size={13} />
 				</Button>
@@ -95,7 +95,7 @@
 					size="sm"
 					title={imageGalleryState.history.length === 0
 						? t('image.noImagesFound')
-						: t('navigation.noImagesFound')}
+						: t('image.noImagesFound')}
 				/>
 			{:else}
 				{#each filteredImages as item (item.id)}
@@ -140,8 +140,8 @@
 							size="icon-sm"
 							class="text-[var(--text-muted)] opacity-100 md:opacity-0 group-hover:opacity-100 hover:text-[var(--danger-text)] shrink-0"
 							onclick={(e) => deleteSingleImage(item.id, e)}
-							title={t('image.deleteImage')}
-							ariaLabel={t('image.deleteImage')}
+							title={t('common.delete')}
+							ariaLabel={t('common.delete')}
 						>
 							<Trash size={13} />
 						</Button>

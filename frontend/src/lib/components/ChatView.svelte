@@ -475,7 +475,7 @@
 		}
 
 		if (!selectedModel) {
-			await showAlert(t('chat.selectModelPrompt'), t('models.title'), 'warning');
+			await showAlert(t('chat.selectModelPrompt'), t('navigation.models'), 'warning');
 			return;
 		}
 

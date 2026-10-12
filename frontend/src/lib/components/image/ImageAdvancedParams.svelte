@@ -101,11 +101,11 @@
 								onclick={() => {
 									seed = '';
 								}}
-								title={t('image.clearSeed')}
-								aria-label={t('image.clearSeed')}
+								title={t('common.clear')}
+								aria-label={t('common.clear')}
 								{disabled}
 							>
-								{t('image.clearSeed')}
+								{t('common.clear')}
 							</button>
 						{/if}
 					</div>

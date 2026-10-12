@@ -80,7 +80,7 @@
 				</h3>
 			</div>
 			{#if isModelRunning}
-				<Badge variant="success" pulse>{t('image.active')}</Badge>
+				<Badge variant="success" pulse>{t('common.active')}</Badge>
 			{/if}
 		</div>
 
@@ -94,9 +94,9 @@
 				bind:value={selectedModel}
 				{models}
 				onopen={onLoadModels}
-				placeholder={t('image.selectModelPlaceholder')}
-				label={t('image.selectActiveModel')}
-				emptyText={t('image.noModelsRegistered')}
+				placeholder={t('common.selectModel')}
+				label={t('common.selectActiveModel')}
+				emptyText={t('common.noModelsRegistered')}
 			/>
 		</div>
 
@@ -105,7 +105,7 @@
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
 					<label for="image-prompt" class="text-xs font-semibold text-[var(--text-secondary)]">
-						{t('image.promptLabel')}
+						{t('common.prompt')}
 					</label>
 					<span class="text-[11px] text-[var(--text-muted)]">{t('image.ctrlEnterHint')}</span>
 				</div>

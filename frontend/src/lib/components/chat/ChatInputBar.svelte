@@ -159,8 +159,8 @@
 			size="icon"
 			class="!w-9 !h-9 !rounded-full mb-3 pointer-events-auto shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:-translate-y-0.5"
 			onclick={onScrollToBottom}
-			title={t('chat.scrollToBottom')}
-			ariaLabel={t('chat.scrollToBottom')}
+			title={t('common.scrollToBottom')}
+			ariaLabel={t('common.scrollToBottom')}
 		>
 			<ChevronDown size={18} />
 		</Button>

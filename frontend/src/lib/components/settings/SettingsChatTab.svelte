@@ -81,7 +81,7 @@
 				{#snippet actionSnippet()}
 					<Button variant="ghost" size="xs" onclick={resetToDefault}>
 						<RotateCcw size={12} />
-						<span>{t('settings.resetDefault')}</span>
+						<span>{t('common.resetToDefault')}</span>
 					</Button>
 				{/snippet}
 
@@ -120,7 +120,7 @@
 				<span>{t('common.saved')}</span>
 			{:else}
 				<Save size={14} />
-				<span>{t('settings.saveChat')}</span>
+				<span>{t('common.save')}</span>
 			{/if}
 		</Button>
 	</div>

@@ -218,7 +218,7 @@
 							{t('chat.thisTurnKv')}
 						</div>
 						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-muted)]">{t('chat.prompt')}</span>
+							<span class="text-[var(--text-muted)]">{t('common.prompt')}</span>
 							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
 								>{details.thisTurnPrompt} {t('chat.tok')}</span
 							>

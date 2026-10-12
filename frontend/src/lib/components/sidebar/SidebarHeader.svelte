@@ -54,7 +54,7 @@
 		size="icon"
 		class="flex md:hidden text-[var(--text-muted)]"
 		onclick={onCloseMobile}
-		ariaLabel={t('navigation.closeMenu')}
+		ariaLabel={t('common.close')}
 	>
 		<X size={18} />
 	</Button>

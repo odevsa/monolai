@@ -143,7 +143,7 @@
 		/>
 
 		{#if error}
-			<Alert variant="error" title={t('sysinfo.connectionFailure')}>
+			<Alert variant="error" title={t('common.connectionFailure')}>
 				<div class="flex items-center justify-between gap-3">
 					<span>{error}</span>
 					<Button variant="secondary" size="sm" onclick={reconnectMetricsStream}>

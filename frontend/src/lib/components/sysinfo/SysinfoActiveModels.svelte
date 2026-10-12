@@ -34,7 +34,7 @@
 				ariaLabel={t('sysinfo.unloadAllTitle')}
 			>
 				<Power size={13} />
-				<span>{t('sysinfo.unloadAll')}</span>
+				<span>{t('common.unloadAll')}</span>
 			</Button>
 		{/if}
 	</div>

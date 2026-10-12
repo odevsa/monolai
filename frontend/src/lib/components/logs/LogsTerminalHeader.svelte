@@ -87,8 +87,8 @@
 			variant="ghost"
 			size="icon"
 			onclick={onDownload}
-			title={t('logs.downloadLogs')}
-			ariaLabel={t('logs.downloadLogs')}
+			title={t('common.download')}
+			ariaLabel={t('common.download')}
 			class="w-7 h-7 text-[var(--text-muted)]"
 		>
 			<Download size={15} />
@@ -99,8 +99,8 @@
 			variant="ghost"
 			size="icon"
 			onclick={onClear}
-			title={t('logs.clearLogs')}
-			ariaLabel={t('logs.clearLogs')}
+			title={t('common.clear')}
+			ariaLabel={t('common.clear')}
 			class="w-7 h-7 text-[var(--text-muted)] hover:text-[var(--danger-text)] hover:bg-[var(--danger-light)]"
 		>
 			<Trash size={15} />

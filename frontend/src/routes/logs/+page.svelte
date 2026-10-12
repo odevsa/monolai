@@ -202,7 +202,7 @@
 	async function handleClearLogs() {
 		const confirmed = await askConfirm(
 			t('logs.confirmClear'),
-			t('logs.clearLogs'),
+			t('common.clear'),
 			'danger',
 			t('common.clear'),
 			t('common.cancel')
@@ -252,14 +252,14 @@
 </script>
 
 <svelte:head>
-	<title>{t('app.title')} - {t('logs.title')}</title>
+	<title>{t('app.title')} - {t('navigation.logs')}</title>
 </svelte:head>
 
 <div
 	class="w-full h-full min-h-full px-4 sm:px-8 py-5 md:py-6 pt-16 md:pt-16 max-w-7xl mx-auto box-border flex flex-col gap-4"
 >
 	<!-- Header -->
-	<PageHeader title={t('logs.title')} subtitle={t('logs.subtitle')} icon={ScrollText} />
+	<PageHeader title={t('navigation.logs')} subtitle={t('logs.subtitle')} icon={ScrollText} />
 
 	<!-- Filters Bar -->
 	<LogsFilterBar

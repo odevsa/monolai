@@ -39,7 +39,7 @@
 				onclick={onResetModels}
 				class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
 			>
-				{t('setup.resetToDefault')}
+				{t('common.resetToDefault')}
 			</button>
 		</div>
 		<Input
@@ -67,7 +67,7 @@
 				onclick={onResetRuntimes}
 				class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] transition cursor-pointer bg-transparent border-0 p-0"
 			>
-				{t('setup.resetToDefault')}
+				{t('common.resetToDefault')}
 			</button>
 		</div>
 		<Input
