@@ -204,7 +204,6 @@ pub fn show_settings_screen(
             {
                 let _ = autostart::set_autostart_app(config.gui.autostart_app, config.gui.minimize_on_start);
                 let _ = config.save();
-                supervisor.notify_config(config.clone());
                 feedback.saved = Some(Instant::now());
             }
 

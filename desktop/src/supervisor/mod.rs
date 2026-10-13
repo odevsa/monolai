@@ -48,10 +48,6 @@ impl SupervisorHandle {
         });
     }
 
-    pub fn notify_config(&self, config: GuiConfig) {
-        let _ = self.command_tx.send(UiCommand::NotifyBackendConfig(config));
-    }
-
     pub fn shutdown(&self) {
         let _ = self.command_tx.send(UiCommand::Shutdown);
     }

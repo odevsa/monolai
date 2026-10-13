@@ -11,7 +11,6 @@ pub enum UiCommand {
         flag: String,
         config: Option<GuiConfig>,
     },
-    NotifyBackendConfig(GuiConfig),
     Shutdown,
 }
 
@@ -23,7 +22,6 @@ pub enum SupervisorEvent {
         flag: String,
         result: Result<String, String>,
     },
-    ConfigNotificationResult(Result<(), String>),
     AlertMessage(String),
 }
 

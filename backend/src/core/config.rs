@@ -2,6 +2,40 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GuiPreferences {
+    #[serde(default = "default_true")]
+    pub minimize_on_start: bool,
+    #[serde(default = "default_true")]
+    pub autostart_server: bool,
+    #[serde(default = "default_true")]
+    pub autostart_app: bool,
+}
+
+impl Default for GuiPreferences {
+    fn default() -> Self {
+        Self {
+            minimize_on_start: true,
+            autostart_server: true,
+            autostart_app: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FullConfigDto {
+    pub models: String,
+    pub runtimes: String,
+    pub host: String,
+    pub port: u16,
+    #[serde(default)]
+    pub gui: GuiPreferences,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppConfig {
     pub models: Option<String>,
@@ -151,7 +185,7 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     p.to_path_buf()
 }
 
-pub const CONFIG_TEMPLATE: &str = include_str!("../../../config.example.yaml");
+pub const CONFIG_TEMPLATE: &str = include_str!("../../config.yaml");
 
 pub fn render_config_template(
     config_path: &str,
@@ -573,6 +607,79 @@ pub fn save_config(
     })?;
 
     Ok(())
+}
+
+pub fn init_config(explicit_path: Option<&str>, force: bool) -> Result<PathBuf, String> {
+    let target_path = if let Some(p) = explicit_path {
+        expand_tilde(p)
+    } else {
+        get_default_config_path()
+    };
+
+    if target_path.exists() && !force {
+        return Ok(target_path);
+    }
+
+    let default_models = get_default_models_dir().to_string_lossy().to_string();
+    let default_runtimes = get_default_runtimes_dir().to_string_lossy().to_string();
+    save_config(
+        explicit_path,
+        &default_models,
+        &default_runtimes,
+        Some("0.0.0.0"),
+        Some(8080),
+        Some((true, true, true)),
+    )?;
+    Ok(target_path)
+}
+
+pub fn get_full_config(explicit_path: Option<&str>) -> (FullConfigDto, PathBuf) {
+    let target_path = if let Some(p) = explicit_path {
+        expand_tilde(p)
+    } else {
+        get_default_config_path()
+    };
+
+    if !target_path.exists() {
+        let _ = init_config(explicit_path, false);
+    }
+
+    let (app_config, status) = load_config(explicit_path);
+
+    let models = app_config
+        .models
+        .or(status.models_dir)
+        .unwrap_or_else(|| get_default_models_dir().to_string_lossy().to_string());
+    let runtimes = app_config
+        .runtimes
+        .or(status.runtimes_dir)
+        .unwrap_or_else(|| get_default_runtimes_dir().to_string_lossy().to_string());
+    let host = app_config.host.unwrap_or(status.host);
+    let port = app_config.port.unwrap_or(status.port);
+
+    let gui = if let Ok(contents) = fs::read_to_string(&target_path) {
+        #[derive(Deserialize)]
+        struct YamlGui {
+            gui: Option<GuiPreferences>,
+        }
+        serde_yaml::from_str::<YamlGui>(&contents)
+            .ok()
+            .and_then(|y| y.gui)
+            .unwrap_or_default()
+    } else {
+        GuiPreferences::default()
+    };
+
+    (
+        FullConfigDto {
+            models,
+            runtimes,
+            host,
+            port,
+            gui,
+        },
+        target_path,
+    )
 }
 
 #[cfg(test)]

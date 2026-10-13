@@ -7,9 +7,10 @@ mod routes;
 mod services;
 mod state;
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use core::config::{
-    expand_tilde, get_default_config_path, get_default_db_path, load_config, PathResolver,
+    expand_tilde, get_default_config_path, get_default_db_path, load_config, FullConfigDto,
+    GuiPreferences, PathResolver,
 };
 use infrastructure::db::{init_db, ChatRepository, ModelRepository, SettingRepository};
 use infrastructure::downloader::RuntimeInstallerManager;
@@ -34,13 +35,16 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Path to config YAML file (-c or --config)
-    #[arg(short = 'c', long = "config")]
+    #[arg(short = 'c', long = "config", global = true)]
     config: Option<String>,
 
     /// Path to models folder
-    #[arg(default_value = "~/models")]
-    models_folder: String,
+    #[arg(long = "models")]
+    models_folder: Option<String>,
 
     /// Listen address (e.g. 0.0.0.0:8080)
     #[arg(short, long)]
@@ -69,6 +73,146 @@ struct Cli {
     /// Factory reset: delete database, process cache, and configuration
     #[arg(long = "factory-reset")]
     factory_reset: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Manage configuration file
+    Config(ConfigArgs),
+}
+
+#[derive(Args, Debug)]
+struct ConfigArgs {
+    #[command(subcommand)]
+    action: ConfigAction,
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigAction {
+    /// Show current configuration
+    Show(ConfigShowArgs),
+    /// Initialize configuration file with defaults
+    Init(ConfigInitArgs),
+    /// Update configuration values
+    Set(ConfigSetArgs),
+}
+
+#[derive(Args, Debug)]
+struct ConfigShowArgs {
+    /// Output configuration in JSON format
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct ConfigInitArgs {
+    /// Force overwrite if configuration file already exists
+    #[arg(short, long)]
+    force: bool,
+}
+
+#[derive(Args, Debug)]
+struct ConfigSetArgs {
+    /// Path to models directory
+    #[arg(long)]
+    models: Option<String>,
+
+    /// Path to runtimes directory
+    #[arg(long)]
+    runtimes: Option<String>,
+
+    /// Host address to bind
+    #[arg(long)]
+    host: Option<String>,
+
+    /// Port to listen on
+    #[arg(short, long)]
+    port: Option<u16>,
+
+    /// Minimize GUI to system tray on start
+    #[arg(long)]
+    minimize_on_start: Option<bool>,
+
+    /// Start backend server automatically when GUI launches
+    #[arg(long)]
+    autostart_server: Option<bool>,
+
+    /// Start GUI app automatically on system login
+    #[arg(long)]
+    autostart_app: Option<bool>,
+
+    /// Output updated configuration in JSON format
+    #[arg(long)]
+    json: bool,
+}
+
+fn handle_config_command(config_path: Option<&str>, args: ConfigArgs) {
+    match args.action {
+        ConfigAction::Show(show_args) => {
+            let (full_cfg, path) = core::config::get_full_config(config_path);
+            if show_args.json {
+                let json = serde_json::to_string_pretty(&full_cfg).unwrap_or_else(|_| "{}".to_string());
+                println!("{}", json);
+            } else {
+                let yaml = serde_yaml::to_string(&full_cfg).unwrap_or_default();
+                println!("# Configuration path: {}", path.display());
+                print!("{}", yaml);
+            }
+        }
+        ConfigAction::Init(init_args) => {
+            match core::config::init_config(config_path, init_args.force) {
+                Ok(path) => println!("Configuration initialized successfully at {}", path.display()),
+                Err(e) => {
+                    eprintln!("Error initializing configuration: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        ConfigAction::Set(set_args) => {
+            let (current, target_path) = core::config::get_full_config(config_path);
+
+            let models = set_args.models.unwrap_or(current.models);
+            let runtimes = set_args.runtimes.unwrap_or(current.runtimes);
+            let host = set_args.host.unwrap_or(current.host);
+            let port = set_args.port.unwrap_or(current.port);
+
+            let min_start = set_args.minimize_on_start.unwrap_or(current.gui.minimize_on_start);
+            let auto_srv = set_args.autostart_server.unwrap_or(current.gui.autostart_server);
+            let auto_app = set_args.autostart_app.unwrap_or(current.gui.autostart_app);
+
+            match core::config::save_config(
+                config_path,
+                &models,
+                &runtimes,
+                Some(&host),
+                Some(port),
+                Some((min_start, auto_srv, auto_app)),
+            ) {
+                Ok(()) => {
+                    let updated = FullConfigDto {
+                        models,
+                        runtimes,
+                        host,
+                        port,
+                        gui: GuiPreferences {
+                            minimize_on_start: min_start,
+                            autostart_server: auto_srv,
+                            autostart_app: auto_app,
+                        },
+                    };
+                    if set_args.json {
+                        println!("{}", serde_json::to_string_pretty(&updated).unwrap_or_default());
+                    } else {
+                        println!("Configuration saved successfully at {}", target_path.display());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error saving configuration: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
 }
 
 struct TracingLogChannelLayer {
@@ -116,6 +260,15 @@ where
 async fn main() {
     let cli = Cli::parse();
 
+    if let Some(cmd) = cli.command {
+        match cmd {
+            Commands::Config(config_args) => {
+                handle_config_command(cli.config.as_deref(), config_args);
+                std::process::exit(0);
+            }
+        }
+    }
+
     if cli.factory_reset {
         handle_factory_reset(cli.db.as_deref(), cli.config.as_deref());
         std::process::exit(0);
@@ -157,7 +310,7 @@ async fn main() {
     let path_resolver = PathResolver::new(
         &app_config,
         cli.config.as_deref(),
-        Some(&cli.models_folder),
+        cli.models_folder.as_deref(),
         cli.runtimes_folder.as_deref(),
         cli.db.as_deref(),
     );

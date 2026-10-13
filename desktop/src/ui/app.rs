@@ -228,10 +228,6 @@ impl DesktopApp {
                         }
                     }
                 }
-                SupervisorEvent::ConfigNotificationResult(Err(err)) => {
-                    eprintln!("Failed to notify backend of config change: {}", err);
-                }
-                SupervisorEvent::ConfigNotificationResult(Ok(())) => {}
             }
         }
     }

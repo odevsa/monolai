@@ -1,6 +1,5 @@
 use std::net::TcpListener;
 use std::time::Duration;
-use crate::core::config::GuiConfig;
 
 /// Verifies whether the specified host and port are available for binding.
 pub fn check_port_available(host: &str, port: u16) -> Result<(), String> {
@@ -31,31 +30,4 @@ pub fn probe_health(port: u16, timeout: Duration) -> bool {
         });
 
     matches!(resp, Ok(r) if r.status() == 200)
-}
-
-/// Dispatches a configuration update notification to the running backend via HTTP API.
-pub fn notify_backend_config(port: u16, config: &GuiConfig) -> Result<(), String> {
-    let payload = serde_json::json!({
-        "models": config.models.trim(),
-        "runtimes": config.runtimes.trim(),
-        "host": config.host.trim(),
-        "port": config.port,
-        "gui": {
-            "minimize_on_start": config.gui.minimize_on_start,
-            "autostart_server": config.gui.autostart_server,
-            "autostart_app": config.gui.autostart_app,
-        }
-    });
-
-    let body = serde_json::to_string(&payload)
-        .map_err(|e| format!("Failed to serialize config payload: {}", e))?;
-
-    let url = format!("http://127.0.0.1:{}/api/config/setup", port);
-    ureq::post(&url)
-        .set("Content-Type", "application/json")
-        .timeout(Duration::from_millis(800))
-        .send_string(&body)
-        .map_err(|e| format!("Backend HTTP notification error: {}", e))?;
-
-    Ok(())
 }

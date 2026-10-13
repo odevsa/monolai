@@ -78,9 +78,6 @@ impl SupervisorWorker {
                 Ok(UiCommand::RunMaintenance { flag, config }) => {
                     self.handle_maintenance(&flag, config.as_ref());
                 }
-                Ok(UiCommand::NotifyBackendConfig(config)) => {
-                    self.handle_notify_config(config);
-                }
                 Ok(UiCommand::Shutdown) => {
                     self.handle_stop();
                     break;
@@ -249,15 +246,5 @@ impl SupervisorWorker {
                 self.handle_start(cfg);
             }
         }
-    }
-
-    fn handle_notify_config(&mut self, config: GuiConfig) {
-        let result = if let ServerStatus::Running { port, .. } = self.status {
-            health::notify_backend_config(port, &config)
-        } else {
-            Ok(())
-        };
-
-        self.emit_event(SupervisorEvent::ConfigNotificationResult(result));
     }
 }
