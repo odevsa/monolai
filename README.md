@@ -47,14 +47,14 @@
 - **OpenAI-Compatible API**: Drop-in `/v1/chat/completions`, `/v1/images/generations`, `/v1/embeddings`, and `/v1/models` endpoints compatible with standard SDKs and tools (OpenAI SDK, LangChain, Cursor, Continue).
 - **Web UI**: Modern SvelteKit 5 dashboard with real-time hardware telemetry (CPU, RAM, GPU/VRAM, disk storage) via SSE, persistent chat history, and image gallery.
 - **Log Management**: Built-in backend service logging and live frontend log viewer with service filtering, streaming, export, and diagnostics.
-- **Internationalization (i18n)**: Out-of-the-box multi-language support (English and Spanish, more languages to come).
+- **Internationalization (i18n)**: Out-of-the-box multi-language support for **9 languages**: English, Spanish (`es`), Portuguese (`pt-BR`), German (`de`), French (`fr`), Italian (`it`), Japanese (`ja`), Russian (`ru`), and Simplified Chinese (`zh-CN`).
 - **Native Desktop GUI**: Cross-platform desktop app (`monolai-gui`) built with egui 0.30, single-instance enforcement, system tray, and background daemon supervisor.
 - **OpenAPI Documentation**: Interactive Swagger UI at `/api/swagger`.
 - **Multi-platform**: Linux, macOS, Windows, and Docker.
 
 ## Themes
 
-Monolai features dynamic theme support tailored for different AI model and UI preferences:
+Monolai includes **11 curated themes** tailored for different aesthetics and environments (`dark`, `light`, `catppuccin`, `code`, `dracula`, `nord`, `tokyonight`, `monokai`, `cyberpunk`, `emerald`, and `sunset`):
 
 <div align="center">
   <img src="assets/theme-1.png" alt="Theme Preview 1" width="49%" />
@@ -102,11 +102,11 @@ On first launch, the configuration wizard guides you through:
   - linux/macOS (default): `~/.local/share/monolai/models`
   - windows (default): `%LOCALAPPDATA%\monolai\models`
 - **Runtimes Folder**: Where engine binaries will be installed
-  - linux/macOS (default): `~/.local/share/monolai/runtimes`
-  - windows (default): `%LOCALAPPDATA%\monolai\runtimes`
-- **Hardware Acceleration**: Select your acceleration target (`auto`, `cuda`, `rocm`, `vulkan`, or `cpu`).
+  - Linux / macOS (default): `~/.local/share/monolai/runtimes`
+  - Windows (default): `%LOCALAPPDATA%\monolai\runtimes`
+- **Network Configuration**: Bind host (e.g. `0.0.0.0`) and HTTP port (default: `8080`).
 
-Once saved, Monolai automatically writes `config.yaml` and is ready to load inference engines.
+Hardware acceleration (CUDA, ROCm, Vulkan, Metal, CPU) is auto-detected and recommend the best option for your hardware on the **Runtimes** page, but you can always choose another option.
 
 ### 2. Install Inference Runtimes
 
@@ -204,7 +204,7 @@ docker compose up -d
 
 ## Configuration
 
-Monolai uses `config.yaml` for storage paths and acceleration target preferences.
+Monolai uses `config.yaml` for storage paths, network configuration, and desktop GUI preferences.
 
 ### Default File Path
 
@@ -221,24 +221,26 @@ Monolai uses `config.yaml` for storage paths and acceleration target preferences
 models: ~/models
 runtimes: ~/.local/share/monolai/runtimes
 
-# Acceleration target: auto, cpu, cuda, rocm, vulkan, oneapi
-hardware: auto
-
-# Network configuration
+# Host address and HTTP port for the Monolai server
 host: 0.0.0.0
 port: 8080
+
+# Desktop GUI Preferences
+gui:
+  minimize_on_start: true
+  autostart_server: true
+  autostart_app: true
 ```
 
 ### Environment Variables
 
-| Variable       | Description                  | Default       |
-| :------------- | :--------------------------- | :------------ |
-| `MODELS_DIR`   | Models storage directory     | `~/models`    |
-| `RUNTIMES_DIR` | Runtime engines directory    | OS Data Dir   |
-| `DATA_DIR`     | Database / data directory    | OS Config Dir |
-| `HARDWARE`     | Acceleration target override | `auto`        |
-| `HOST`         | Server bind address          | `0.0.0.0`     |
-| `PORT`         | Server bind port             | `8080`        |
+| Variable                        | Description               | Default       |
+| :------------------------------ | :------------------------ | :------------ |
+| `MODELS_DIR`                    | Models storage directory  | `~/models`    |
+| `RUNTIMES_DIR`                  | Runtime engines directory | OS Data Dir   |
+| `MONOLAI_DATA_DIR` / `DATA_DIR` | Database / data directory | OS Config Dir |
+| `HOST`                          | Server bind address       | `0.0.0.0`     |
+| `PORT`                          | Server bind port          | `8080`        |
 
 ## API Usage
 
@@ -350,8 +352,10 @@ Tasks are managed using [`just`](https://github.com/casey/just) (a modern task r
 | `just check`           | Run type checks (SvelteKit) and compilation checks for Rust    |
 | `just test`            | Run backend unit and integration tests                         |
 | `just lint`            | Validate code formatting and style rules                       |
+| `just i18n-check`      | Check for missing translation keys in `en.json`                |
 | `just format`          | Auto-format code across the monorepo (Prettier and rustfmt)    |
 | `just build`           | Build default release bundle for host platform (`build-linux`) |
+| `just build-frontend`  | Build frontend into static web assets                          |
 | `just build-backend`   | Compile frontend and build release server binary (`monolai`)   |
 | `just build-desktop`   | Build release desktop binary (`monolai-gui`)                   |
 | `just build-linux`     | Build complete Linux release bundle (server + desktop GUI)     |
