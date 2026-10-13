@@ -19,12 +19,12 @@
 </script>
 
 <div
-	class="mt-auto shrink-0 border-t border-[var(--border-color)] {isExpanded
+	class="mt-auto shrink-0 {isExpanded
 		? 'p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] flex items-center justify-between'
 		: 'p-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom,0.75rem))] flex items-center justify-center'}"
 >
 	{#if isExpanded}
-		<span class="text-[0.725rem] text-[var(--text-muted)] select-none">v{APP_VERSION}</span>
+		<span class="text-[0.8rem] text-[var(--text-muted)] select-none">v{APP_VERSION}</span>
 		<Button
 			variant="ghost"
 			size="icon-sm"
@@ -33,7 +33,7 @@
 			title={t('navigation.settings')}
 			ariaLabel={t('navigation.settings')}
 		>
-			<Settings size={16} />
+			<Settings size={18} />
 		</Button>
 	{:else}
 		<button

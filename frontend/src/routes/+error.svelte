@@ -30,7 +30,7 @@
 
 		<a
 			href="/chat"
-			class="inline-flex items-center gap-2 bg-[var(--primary)] text-white no-underline px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 hover:bg-[var(--primary-hover)] hover:-translate-y-0.5"
+			class="inline-flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-text)] no-underline px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 hover:bg-[var(--primary-hover)] hover:-translate-y-0.5"
 		>
 			<Home size={16} />
 			<span>Return to Home</span>

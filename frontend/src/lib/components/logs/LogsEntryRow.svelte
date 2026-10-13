@@ -57,15 +57,15 @@
 	function getServiceBadgeClasses(runtime: string): string {
 		const s = runtime.toLowerCase();
 		if (s === 'monolai') {
-			return 'bg-[var(--primary-light)] text-[var(--primary)] border-[var(--primary-focus)]';
+			return 'bg-[var(--primary-light)]! text-[var(--primary)]! border-[var(--primary-focus)]!';
 		}
 		if (s.includes('llama')) {
-			return 'bg-[var(--success-light)] text-[var(--success-text)] border-[var(--success-border)]';
+			return 'bg-[var(--success-light)]! text-[var(--success-text)]! border-[var(--success-border)]!';
 		}
 		if (s.includes('sd') || s.includes('diffus') || s.includes('stable')) {
-			return 'bg-[var(--warning-light)] text-[var(--warning-text)] border-[var(--warning-border)]';
+			return 'bg-[var(--warning-light)]! text-[var(--warning-text)]! border-[var(--warning-border)]!';
 		}
-		return 'bg-[var(--info-light)] text-[var(--info-text)] border-[var(--info-border)]';
+		return 'bg-[var(--info-light)]! text-[var(--info-text)]! border-[var(--info-border)]!';
 	}
 
 	function formatTime(iso: string): string {
@@ -92,38 +92,42 @@
 </script>
 
 <div
-	class="flex items-baseline gap-2.5 hover:bg-[var(--bg-hover)] px-2 py-0.5 rounded transition-colors group min-w-0"
+	class="flex items-baseline gap-2 hover:bg-[var(--bg-hover)] px-2 py-0.5 rounded transition-colors group min-w-0"
 >
-	<!-- Timestamp -->
-	<span class="text-[var(--text-muted)] shrink-0 font-mono text-[10.5px] tabular-nums select-none">
-		{formattedTime}
-	</span>
-
-	<!-- Level Badge -->
-	<Badge variant={levelVariant} rounded="rounded-sm" class="text-[9.5px] px-1 py-0 uppercase">
-		{entry.level}
-	</Badge>
-
-	<!-- Runtime Service Pill -->
-	<span
-		class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold border {serviceClasses}"
-		title={info.runtime}
-	>
-		{info.runtime}
-	</span>
-
-	<!-- Optional Model Tag -->
-	{#if showModelTag && info.model}
-		<span
-			class="shrink-0 max-w-[180px] sm:max-w-[240px] truncate text-ellipsis whitespace-nowrap px-1.5 py-0.5 rounded text-[10px] font-mono border border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
-			title={info.model}
+	<div class="flex items-center gap-0.5">
+		<!-- Timestamp -->
+		<Badge
+			variant="muted"
+			rounded="rounded-sm"
+			class="text-[9.5px]! bg-[var(--text-primary)]/5! px-0.5! py-0!"
 		>
-			{info.model}
-		</span>
-	{/if}
+			{formattedTime}
+		</Badge>
+
+		<!-- Level Badge -->
+		<Badge variant={levelVariant} rounded="rounded-sm" class="text-[9.5px]! px-0.5! py-0!">
+			{entry.level}
+		</Badge>
+
+		<!-- Runtime Service Pill -->
+		<Badge rounded="rounded-sm" class="text-[9.5px]! px-0.5! py-0! {serviceClasses}">
+			{info.runtime}
+		</Badge>
+
+		<!-- Optional Model Tag -->
+		{#if showModelTag && info.model}
+			<Badge
+				variant="muted"
+				rounded="rounded-sm"
+				class="text-[9.5px]! bg-[var(--text-primary)]/5! px-0.5! py-0!"
+			>
+				{info.model}
+			</Badge>
+		{/if}
+	</div>
 
 	<!-- Log Content Message -->
-	<span class="flex-1 min-w-0 whitespace-pre-wrap break-all leading-normal {messageColor}">
+	<span class="flex-1 min-w-0 break-all leading-normal {messageColor}">
 		{entry.message}
 	</span>
 </div>

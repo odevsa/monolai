@@ -49,7 +49,7 @@
 		: 'bg-[var(--border-color)] hover:bg-[var(--border-hover)]'} {className}"
 >
 	<span
-		class="inline-block rounded-full bg-[var(--btn-text)] shadow-xs transform transition-transform duration-200 ease-in-out pointer-events-none {size ===
+		class="inline-block rounded-full bg-[var(--primary-text)] shadow-xs transform transition-transform duration-200 ease-in-out pointer-events-none {size ===
 		'sm'
 			? 'w-4 h-4'
 			: 'w-5 h-5'} {checked

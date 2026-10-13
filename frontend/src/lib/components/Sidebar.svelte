@@ -9,6 +9,7 @@
 		SidebarRunningModels,
 		SidebarSysInfo
 	} from './sidebar';
+	import Divider from './ui/atoms/Divider.svelte';
 
 	interface SidebarProps {
 		collapsed: boolean;
@@ -52,7 +53,7 @@
 {/if}
 
 <aside
-	class="flex flex-col shrink-0 z-100 overflow-hidden box-border transition-all duration-200 ease-in-out my-3 ml-3 rounded-2xl h-[calc(100vh-1.5rem)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:m-0 max-md:h-[100dvh] max-md:rounded-none max-md:w-[300px] max-md:max-w-[85vw] {mobileOpen
+	class="flex flex-col gap-1 shrink-0 z-100 overflow-hidden box-border transition-all duration-200 ease-in-out my-3 ml-3 rounded-2xl h-[calc(100vh-1.5rem)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:m-0 max-md:h-[100dvh] max-md:rounded-none max-md:w-[300px] max-md:max-w-[85vw] {mobileOpen
 		? 'max-md:translate-x-0'
 		: 'max-md:-translate-x-full'} {!isExpanded
 		? 'w-[64px] bg-transparent'
@@ -61,6 +62,10 @@
 	<SidebarHeader {isExpanded} onToggleCollapse={toggleCollapse} onCloseMobile={closeMobile} />
 
 	<SidebarNav {isExpanded} {currentPath} onCloseMobile={closeMobile} />
+
+	{#if isExpanded}
+		<Divider />
+	{/if}
 
 	<SidebarRunningModels {isExpanded} />
 
@@ -77,5 +82,8 @@
 		</div>
 	{/if}
 
+	{#if isExpanded}
+		<Divider />
+	{/if}
 	<SidebarFooter {isExpanded} {onOpenSettings} onCloseMobile={closeMobile} />
 </aside>

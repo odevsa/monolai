@@ -26,7 +26,7 @@
 		`flex items-center rounded-xl transition-all duration-150 box-border border-0 cursor-pointer ${
 			!isExpanded
 				? 'w-10 h-10 mx-auto justify-center'
-				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-medium'
+				: 'gap-3 w-full px-3.5 py-2.5 text-sm font-semibold'
 		} ${
 			isActive
 				? 'text-[var(--primary)] bg-[var(--primary-light)] font-semibold'

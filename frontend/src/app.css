@@ -276,7 +276,7 @@
 
 .app-btn-primary {
 	background-color: var(--primary);
-	color: #ffffff;
+	color: var(--primary-text);
 }
 
 .app-btn-primary:hover:not(:disabled) {

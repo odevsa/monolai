@@ -10,6 +10,7 @@
 		ScrollText
 	} from '@lucide/svelte';
 	import SidebarNavLink from './SidebarNavLink.svelte';
+	import Divider from '../ui/atoms/Divider.svelte';
 
 	interface SidebarNavProps {
 		isExpanded: boolean;
@@ -45,65 +46,64 @@
 </script>
 
 <!-- Top Action Navigation Items -->
-<div class="flex flex-col gap-1.5 p-2.5">
-	<SidebarNavLink
-		href="/chat"
-		label={t('navigation.chat')}
-		icon={MessageSquare}
-		isActive={isChatPage}
-		{isExpanded}
-		onclick={onCloseMobile}
-	/>
+<div class="flex flex-col gap-1">
+	<div class="flex flex-col gap-1 px-2">
+		<SidebarNavLink
+			href="/chat"
+			label={t('navigation.chat')}
+			icon={MessageSquare}
+			isActive={isChatPage}
+			{isExpanded}
+			onclick={onCloseMobile}
+		/>
 
-	<SidebarNavLink
-		href="/image"
-		label={t('navigation.image')}
-		icon={ImageIcon}
-		isActive={isImagePage}
-		{isExpanded}
-		onclick={onCloseMobile}
-	/>
+		<SidebarNavLink
+			href="/image"
+			label={t('navigation.image')}
+			icon={ImageIcon}
+			isActive={isImagePage}
+			{isExpanded}
+			onclick={onCloseMobile}
+		/>
 
-	<SidebarNavLink
-		href="/sysinfo"
-		label={t('navigation.sysinfo')}
-		icon={Activity}
-		isActive={isSysInfoPage}
-		{isExpanded}
-		onclick={onCloseMobile}
-	/>
+		<SidebarNavLink
+			href="/sysinfo"
+			label={t('navigation.sysinfo')}
+			icon={Activity}
+			isActive={isSysInfoPage}
+			{isExpanded}
+			onclick={onCloseMobile}
+		/>
 
-	<SidebarNavLink
-		href="/logs"
-		label={t('navigation.logs')}
-		icon={ScrollText}
-		isActive={isLogsPage}
-		{isExpanded}
-		onclick={onCloseMobile}
-	/>
-</div>
+		<SidebarNavLink
+			href="/logs"
+			label={t('navigation.logs')}
+			icon={ScrollText}
+			isActive={isLogsPage}
+			{isExpanded}
+			onclick={onCloseMobile}
+		/>
+	</div>
 
-<!-- Secondary Actions (Runtimes, Models) -->
-<div
-	class="py-3 border-t border-[var(--border-color)] flex flex-col gap-2 {isExpanded
-		? 'px-3.5'
-		: 'px-2.5'}"
->
-	<SidebarNavLink
-		href="/runtimes"
-		label={t('navigation.runtimes')}
-		icon={Boxes}
-		isActive={isRuntimesPage}
-		{isExpanded}
-		onclick={handleRuntimesClick}
-	/>
+	<Divider />
 
-	<SidebarNavLink
-		href="/models"
-		label={t('navigation.models')}
-		icon={Box}
-		isActive={isModelsPage}
-		{isExpanded}
-		onclick={handleModelsClick}
-	/>
+	<div class="flex flex-col gap-1 px-2">
+		<SidebarNavLink
+			href="/runtimes"
+			label={t('navigation.runtimes')}
+			icon={Boxes}
+			isActive={isRuntimesPage}
+			{isExpanded}
+			onclick={handleRuntimesClick}
+		/>
+
+		<SidebarNavLink
+			href="/models"
+			label={t('navigation.models')}
+			icon={Box}
+			isActive={isModelsPage}
+			{isExpanded}
+			onclick={handleModelsClick}
+		/>
+	</div>
 </div>

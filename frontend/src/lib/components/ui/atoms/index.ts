@@ -1,6 +1,7 @@
 export { default as Badge } from './Badge.svelte';
 export { default as Button } from './Button.svelte';
 export { default as DiagonalLabel } from './DiagonalLabel.svelte';
+export { default as Divider } from './Divider.svelte';
 export { default as Heading } from './Heading.svelte';
 export { default as Input } from './Input.svelte';
 export { default as Label } from './Label.svelte';

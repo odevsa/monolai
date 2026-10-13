@@ -4,6 +4,7 @@
 	--color-primary-hover: var(--primary-hover);
 	--color-primary-light: var(--primary-light);
 	--color-primary-focus: var(--primary-focus);
+	--color-primary-text: var(--primary-text);
 
 	/* Surfaces & Backgrounds */
 	--color-bg-primary: var(--bg-primary);
@@ -90,6 +91,7 @@
 		--primary-hover: #818cf8;
 		--primary-light: rgba(99, 102, 241, 0.12);
 		--primary-focus: rgba(99, 102, 241, 0.25);
+		--primary-text: #ffffff;
 
 		--bg-primary: #0a0a0c;
 		--bg-surface: #17171a;
@@ -186,6 +188,7 @@
 		--primary-hover: #4f46e5;
 		--primary-light: rgba(99, 102, 241, 0.1);
 		--primary-focus: rgba(99, 102, 241, 0.2);
+		--primary-text: #ffffff;
 
 		--bg-primary: #f4f4f6;
 		--bg-surface: #ffffff;
@@ -209,7 +212,7 @@
 
 		--btn-bg: #ffffff;
 		--btn-hover: #f3f4f6;
-		--btn-text: #111827;
+		--btn-text: #ffffff;
 
 		--logo-slash: #111827;
 
@@ -282,6 +285,7 @@
 		--primary-hover: #b4befe;
 		--primary-light: rgba(203, 166, 247, 0.15);
 		--primary-focus: rgba(203, 166, 247, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #181825;
 		--bg-surface: #1e1e2e;
@@ -378,6 +382,7 @@
 		--primary-hover: #0098ff;
 		--primary-light: rgba(0, 122, 204, 0.15);
 		--primary-focus: rgba(0, 122, 204, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #1e1e1e;
 		--bg-surface: #252526;
@@ -474,6 +479,7 @@
 		--primary-hover: #a876f5;
 		--primary-light: rgba(189, 147, 249, 0.15);
 		--primary-focus: rgba(189, 147, 249, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #1e1f29;
 		--bg-surface: #282a36;
@@ -570,6 +576,7 @@
 		--primary-hover: #81a1c1;
 		--primary-light: rgba(136, 192, 208, 0.15);
 		--primary-focus: rgba(136, 192, 208, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #242933;
 		--bg-surface: #2e3440;
@@ -666,6 +673,7 @@
 		--primary-hover: #2ac3de;
 		--primary-light: rgba(122, 162, 247, 0.15);
 		--primary-focus: rgba(122, 162, 247, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #1a1b26;
 		--bg-surface: #24283b;
@@ -762,6 +770,7 @@
 		--primary-hover: #ff6188;
 		--primary-light: rgba(255, 216, 102, 0.15);
 		--primary-focus: rgba(255, 216, 102, 0.3);
+		--primary-text: #221f22;
 
 		--bg-primary: #221f22;
 		--bg-surface: #2d2a2e;
@@ -858,6 +867,7 @@
 		--primary-hover: #eab308;
 		--primary-light: rgba(250, 204, 21, 0.15);
 		--primary-focus: rgba(250, 204, 21, 0.3);
+		--primary-text: #090712;
 
 		--bg-primary: #090712;
 		--bg-surface: #140f24;
@@ -954,6 +964,7 @@
 		--primary-hover: #059669;
 		--primary-light: rgba(16, 185, 129, 0.15);
 		--primary-focus: rgba(16, 185, 129, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #05140f;
 		--bg-surface: #0a2119;
@@ -1050,6 +1061,7 @@
 		--primary-hover: #ea580c;
 		--primary-light: rgba(249, 115, 22, 0.15);
 		--primary-focus: rgba(249, 115, 22, 0.3);
+		--primary-text: #ffffff;
 
 		--bg-primary: #0e0c1a;
 		--bg-surface: #18142c;

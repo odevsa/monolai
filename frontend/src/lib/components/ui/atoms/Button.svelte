@@ -28,7 +28,7 @@
 
 	const variantClasses = {
 		primary:
-			'bg-[var(--primary)] text-[var(--btn-text)] hover:bg-[var(--primary-hover)] border border-transparent shadow-sm',
+			'bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[var(--primary-hover)] border border-transparent shadow-sm',
 		secondary:
 			'bg-[var(--btn-bg)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--btn-hover)] hover:border-[var(--border-hover)]',
 		danger:
@@ -42,8 +42,8 @@
 	const sizeClasses = {
 		xs: 'px-2 py-0.5 text-[11px] rounded-md gap-1',
 		sm: 'px-2.5 py-1 text-xs rounded-lg gap-1.5',
-		md: 'px-3.5 py-1.5 text-xs font-medium rounded-lg gap-2',
-		lg: 'px-4 py-2.5 text-sm font-semibold rounded-xl gap-2.5',
+		md: 'px-3.5 py-1.5 text-xs rounded-lg gap-2',
+		lg: 'px-4 py-2.5 text-sm rounded-xl gap-2.5',
 		icon: 'w-8 h-8 p-0 rounded-lg flex items-center justify-center shrink-0',
 		'icon-sm': 'w-6 h-6 p-0 rounded-md flex items-center justify-center shrink-0',
 		'icon-xs': 'w-5 h-5 p-0 rounded flex items-center justify-center shrink-0'
@@ -53,7 +53,7 @@
 <button
 	{type}
 	disabled={disabled || loading}
-	class="inline-flex items-center justify-center transition-all duration-150 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none {variantClasses[
+	class="inline-flex items-center justify-center font-semibold transition-all duration-150 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none {variantClasses[
 		variant
 	]} {sizeClasses[size]} {className}"
 	{title}

@@ -29,7 +29,7 @@
 </script>
 
 {#if isExpanded}
-	<div class="px-3.5 py-3 border-t border-[var(--border-color)] flex flex-col gap-2">
+	<div class="px-3.5 py-3 flex flex-col gap-2">
 		<div class="flex items-center justify-between">
 			<span class="text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
 				{t('navigation.runningModels')}
