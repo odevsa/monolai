@@ -181,9 +181,7 @@
 			<div class="flex flex-col items-center justify-center text-center p-6 sm:p-10 mx-auto w-full">
 				<!-- Feature Icons: one icon for each required feature -->
 				{#if reqFeatures.length === 1}
-					<div
-						class="w-14 h-14 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center mb-4"
-					>
+					<div class="w-14 h-14 flex items-center justify-center mb-4">
 						{#snippet singleIcon()}
 							{@const Icon = getFeatureMeta(reqFeatures[0]).icon}
 							<Icon size={28} />
@@ -194,7 +192,7 @@
 					<div class="flex items-center justify-center gap-3 mb-4 flex-wrap">
 						{#each reqFeatures as feat}
 							<div
-								class="w-12 h-12 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center"
+								class="w-12 h-12 flex items-center justify-center"
 								title={getFeatureMeta(feat).label}
 							>
 								{#snippet multiIcon()}
@@ -255,10 +253,8 @@
 								class="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)]"
 							>
 								<div class="flex items-center gap-2.5 min-w-0">
-									<div
-										class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
-									>
-										<Boxes size={16} />
+									<div class="w-8 h-8 text-amber-500 flex items-center justify-center shrink-0">
+										<Boxes size={22} />
 									</div>
 									<div class="min-w-0">
 										<div class="text-xs font-semibold text-[var(--text-primary)]">
@@ -270,7 +266,6 @@
 									</div>
 								</div>
 								<a href="/runtimes" class="app-btn app-btn-secondary app-btn-sm shrink-0">
-									<Boxes size={13} />
 									<span>Runtimes</span>
 									<ChevronRight size={13} />
 								</a>
@@ -282,10 +277,8 @@
 								class="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)]"
 							>
 								<div class="flex items-center gap-2.5 min-w-0">
-									<div
-										class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
-									>
-										<Box size={16} />
+									<div class="w-8 h-8 text-amber-500 flex items-center justify-center shrink-0">
+										<Box size={22} />
 									</div>
 									<div class="min-w-0">
 										<div class="text-xs font-semibold text-[var(--text-primary)]">
@@ -297,7 +290,6 @@
 									</div>
 								</div>
 								<a href="/models" class="app-btn app-btn-secondary app-btn-sm shrink-0">
-									<Box size={13} />
 									<span>Models</span>
 									<ChevronRight size={13} />
 								</a>
