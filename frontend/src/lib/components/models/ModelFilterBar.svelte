@@ -47,6 +47,7 @@
 			options={statusFilterOptions}
 			placeholder={t('models.allStatuses')}
 			ariaLabel={t('models.filterByStatus')}
+			align="right"
 		/>
 	</div>
 </div>

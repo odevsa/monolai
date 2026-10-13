@@ -2,7 +2,6 @@
 	import { t } from '$lib/i18n';
 	import { formatTokenCount, type PreparedContext } from '$lib/utils/context';
 	import { ChevronDown, ChevronUp } from '@lucide/svelte';
-	import { tick } from 'svelte';
 
 	let {
 		contextInfo
@@ -14,41 +13,10 @@
 	let showDetails = $state(false);
 	let wrapperRef: HTMLDivElement | null = $state(null);
 	let popoverRef: HTMLDivElement | null = $state(null);
-	let desktopStyle = $state('');
-
-	function updatePlacement() {
-		if (typeof window === 'undefined' || !wrapperRef) return;
-
-		// On mobile (< 640px), let CSS handle fixed bottom card placement
-		if (window.innerWidth < 640) {
-			desktopStyle = '';
-			return;
-		}
-
-		// On desktop (>= 640px), center above the button and clamp to screen bounds
-		const triggerRect = wrapperRef.getBoundingClientRect();
-		const popoverWidth = 280;
-		const triggerCenter = triggerRect.left + triggerRect.width / 2;
-		let targetLeft = triggerCenter - popoverWidth / 2;
-		const padding = 16;
-
-		if (targetLeft + popoverWidth > window.innerWidth - padding) {
-			targetLeft = window.innerWidth - padding - popoverWidth;
-		}
-		if (targetLeft < padding) {
-			targetLeft = padding;
-		}
-
-		const relativeLeft = targetLeft - triggerRect.left;
-		desktopStyle = `left: ${relativeLeft}px; right: auto; width: ${popoverWidth}px; transform: none;`;
-	}
 
 	function togglePopover(e: MouseEvent) {
 		e.stopPropagation();
 		isOpen = !isOpen;
-		if (isOpen) {
-			tick().then(updatePlacement);
-		}
 	}
 
 	function toggleDetails(e: MouseEvent) {
@@ -66,15 +34,11 @@
 		if (typeof window !== 'undefined') {
 			if (isOpen) {
 				document.addEventListener('click', handleClickOutside);
-				window.addEventListener('resize', updatePlacement);
-				tick().then(updatePlacement);
 			} else {
 				document.removeEventListener('click', handleClickOutside);
-				window.removeEventListener('resize', updatePlacement);
 			}
 			return () => {
 				document.removeEventListener('click', handleClickOutside);
-				window.removeEventListener('resize', updatePlacement);
 			};
 		}
 	});
@@ -135,7 +99,6 @@
 			class="absolute bottom-[calc(100%+0.65rem)] left-1/2 -translate-x-1/2 right-auto bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3.5 w-[280px] max-h-[80vh] overflow-y-auto shadow-2xl z-60 flex flex-col gap-2 text-[var(--text-primary)] box-border max-sm:fixed max-sm:bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)] max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-w-[calc(100vw-2rem)] max-sm:translate-x-0 max-sm:rounded-2xl max-sm:max-h-[65vh]"
 			role="dialog"
 			bind:this={popoverRef}
-			style={desktopStyle}
 		>
 			<div class="flex items-center gap-1.5 text-xs">
 				<span class="font-semibold text-[var(--text-primary)]">{t('chat.context')}</span>
@@ -195,7 +158,7 @@
 							{t('chat.acrossAllTurns')}
 						</div>
 						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-muted)]">{t('chat.promptTokensEvaluated')}</span>
+							<span class="text-[var(--text-primary)]">{t('chat.promptTokensEvaluated')}</span>
 							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
 								>{details.allPromptEvaluated} {t('chat.tok')}</span
 							>
@@ -205,7 +168,7 @@
 							{t('chat.reusedFromKv')}
 						</div>
 						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-muted)]">{t('chat.tokensGenerated')}</span>
+							<span class="text-[var(--text-primary)]">{t('chat.tokensGenerated')}</span>
 							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
 								>{details.allTokensGenerated} {t('chat.tok')}</span
 							>
@@ -218,7 +181,7 @@
 							{t('chat.thisTurnKv')}
 						</div>
 						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-muted)]">{t('common.prompt')}</span>
+							<span class="text-[var(--text-primary)]">{t('common.prompt')}</span>
 							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
 								>{details.thisTurnPrompt} {t('chat.tok')}</span
 							>
@@ -230,7 +193,7 @@
 							})}
 						</div>
 						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-muted)]">{t('chat.generated')}</span>
+							<span class="text-[var(--text-primary)]">{t('chat.generated')}</span>
 							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
 								>{details.thisTurnGenerated} {t('chat.tok')}</span
 							>
@@ -238,7 +201,7 @@
 						<div
 							class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs mt-0.5"
 						>
-							<span class="font-medium text-[var(--text-primary)]">{t('chat.kvCacheTotal')}</span>
+							<span class="font-medium text-[var(--primary)]">{t('chat.kvCacheTotal')}</span>
 							<span class="font-semibold text-[var(--text-primary)] tabular-nums"
 								>{details.kvCacheTotal} {t('chat.tok')}</span
 							>

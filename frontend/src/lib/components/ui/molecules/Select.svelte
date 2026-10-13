@@ -16,6 +16,7 @@
 		placeholder = 'Select an option...',
 		searchable = false,
 		searchPlaceholder = 'Search...',
+		align = 'left',
 		class: className = '',
 		id = '',
 		ariaLabel = '',
@@ -27,6 +28,7 @@
 		placeholder?: string;
 		searchable?: boolean;
 		searchPlaceholder?: string;
+		align?: 'left' | 'right';
 		class?: string;
 		id?: string;
 		ariaLabel?: string;
@@ -85,7 +87,7 @@
 	});
 </script>
 
-<div class="relative {open ? 'z-40' : 'z-10'} {className}" bind:this={containerRef}>
+<div class="relative {open ? 'z-50' : 'z-10'} {className}" bind:this={containerRef}>
 	<button
 		{id}
 		type="button"
@@ -110,7 +112,9 @@
 
 	{#if open}
 		<div
-			class="absolute top-[calc(100%+0.35rem)] right-0 min-w-full sm:min-w-[200px] z-50 p-1.5 rounded-xl shadow-2xl bg-[var(--bg-surface)] border border-[var(--border-color)]/80 max-h-[260px] overflow-y-auto overflow-x-hidden space-y-0.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+			class="absolute top-[calc(100%+0.35rem)] {align === 'right'
+				? 'right-0'
+				: 'left-0'} w-full min-w-full z-50 p-1.5 rounded-xl shadow-2xl bg-[var(--bg-surface)] border border-[var(--border-color)]/80 max-h-[260px] overflow-y-auto overflow-x-hidden space-y-0.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
 		>
 			{#if searchable}
 				<div class="relative px-2 py-1 mb-1 border-b border-[var(--border-color)]">

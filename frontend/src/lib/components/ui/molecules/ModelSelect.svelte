@@ -15,6 +15,9 @@
 		emptyText = '',
 		disabled = false,
 		placement = 'bottom',
+		align = 'left',
+		variant = 'default',
+		showChevron = undefined,
 		id = undefined,
 		name = undefined,
 		class: className = '',
@@ -29,12 +32,17 @@
 		emptyText?: string;
 		disabled?: boolean;
 		placement?: 'bottom' | 'top';
+		align?: 'left' | 'right';
+		variant?: 'default' | 'pill';
+		showChevron?: boolean;
 		id?: string;
 		name?: string;
 		class?: string;
 		onchange?: (val: string) => void;
 		onopen?: () => void;
 	} = $props();
+
+	let resolvedShowChevron = $derived(showChevron !== undefined ? showChevron : variant !== 'pill');
 
 	let open = $state(false);
 	let containerRef = $state<HTMLDivElement | null>(null);
@@ -107,12 +115,12 @@
 	});
 </script>
 
-<div class="model-select-wrapper {className}" bind:this={containerRef}>
+<div class="model-select-wrapper variant-{variant} {className}" bind:this={containerRef}>
 	<button
 		{id}
 		{name}
 		type="button"
-		class="model-select-btn"
+		class="model-select-btn variant-{variant}"
 		class:open
 		onclick={toggleOpen}
 		{disabled}
@@ -121,21 +129,20 @@
 	>
 		<div class="model-select-value">
 			{#if value}
-				<ModelBadge model={value} variant="inline" />
+				<ModelBadge model={value} variant="inline" hideTagsOnMobile={variant === 'pill'} />
 			{:else}
 				<Box size={14} class="model-box-icon" />
 				<span class="model-placeholder-text">{resolvedPlaceholder}</span>
 			{/if}
 		</div>
 
-		<ChevronDown size={14} class="chevron-icon {open ? 'open' : ''}" />
+		{#if resolvedShowChevron}
+			<ChevronDown size={14} class="chevron-icon {open ? 'open' : ''}" />
+		{/if}
 	</button>
 
 	{#if open}
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="mobile-backdrop sm:hidden" onclick={() => (open = false)} role="presentation"></div>
-
-		<div class="popover-menu placement-{placement}">
+		<div class="popover-menu placement-{placement} align-{align} variant-{variant}">
 			<div class="menu-label">{resolvedLabel}</div>
 			{#if displayModels.length === 0}
 				<div class="empty-menu-text">{resolvedEmptyText}</div>
@@ -168,6 +175,14 @@
 		width: 100%;
 	}
 
+	.model-select-wrapper.variant-pill {
+		width: auto;
+		display: inline-flex;
+		align-items: center;
+		max-width: 100%;
+		min-width: 0;
+	}
+
 	.model-select-btn {
 		display: flex;
 		align-items: center;
@@ -188,6 +203,30 @@
 		text-align: left;
 		user-select: none;
 		overflow: hidden;
+	}
+
+	.model-select-btn.variant-pill {
+		height: auto;
+		width: auto;
+		max-width: 100%;
+		min-width: 0;
+		padding: 0.35rem 0.65rem;
+		border-radius: 9999px;
+		background: var(--bg-surface);
+		font-size: 0.75rem;
+		gap: 0.375rem;
+	}
+
+	.model-select-btn.variant-pill:hover:not(:disabled) {
+		background: var(--bg-surface-hover);
+		border-color: var(--border-hover);
+		color: var(--text-primary);
+	}
+
+	@media (max-width: 640px) {
+		.model-select-btn.variant-pill {
+			padding: 0.35rem 0.5rem;
+		}
 	}
 
 	.model-select-btn:hover:not(:disabled) {
@@ -250,15 +289,6 @@
 		transform: rotate(180deg);
 	}
 
-	.mobile-backdrop {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
-		-webkit-backdrop-filter: blur(2px);
-		backdrop-filter: blur(2px);
-		z-index: 55;
-	}
-
 	.popover-menu {
 		position: absolute;
 		left: 0;
@@ -289,6 +319,22 @@
 	.popover-menu.placement-top {
 		bottom: calc(100% + 0.35rem);
 		top: auto;
+	}
+
+	.popover-menu.align-right {
+		left: auto;
+		right: 0;
+		width: max-content;
+		min-width: 220px;
+		max-width: min(320px, calc(100vw - 2rem));
+	}
+
+	.popover-menu.align-left.variant-pill {
+		left: 0;
+		right: auto;
+		width: max-content;
+		min-width: 220px;
+		max-width: min(320px, calc(100vw - 2rem));
 	}
 
 	.menu-label {

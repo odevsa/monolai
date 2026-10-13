@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { Button, ContextIndicator } from '$lib/components/ui';
+	import { Button, ContextIndicator, ModelSelect } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { PreparedContext, ReasoningPreset } from '$lib/utils/context';
 	import { ArrowUp, ChevronDown, Square } from '@lucide/svelte';
 	import { tick } from 'svelte';
-	import ChatModelSelector from './ChatModelSelector.svelte';
 	import ChatToolsMenu from './ChatToolsMenu.svelte';
 
 	interface RegisteredModel {
@@ -182,8 +181,8 @@
 		></textarea>
 
 		<!-- Input Controls Row -->
-		<div class="flex items-center justify-between gap-2 mt-1">
-			<div class="flex items-center gap-2">
+		<div class="flex items-center justify-between gap-2 mt-1 min-w-0">
+			<div class="flex items-center gap-2 shrink-0">
 				<ChatToolsMenu
 					bind:selectedReasoning
 					promptHistoryCount={promptHistory.length}
@@ -192,38 +191,53 @@
 				/>
 			</div>
 
-			<div class="flex items-center gap-2 max-sm:gap-1.5">
+			<div class="flex items-center gap-2 max-sm:gap-1.5 min-w-0">
 				<!-- Context Indicator -->
-				<ContextIndicator {contextInfo} />
+				<div class="shrink-0 flex items-center">
+					<ContextIndicator {contextInfo} />
+				</div>
 
 				<!-- Model Selector Badge -->
-				<ChatModelSelector bind:selectedModel models={registeredChatModels} {onSelectModel} />
+				<ModelSelect
+					bind:value={selectedModel}
+					models={registeredChatModels}
+					placement="top"
+					align="right"
+					variant="pill"
+					class="shrink min-w-0 max-w-[130px] sm:max-w-[260px] md:max-w-[360px]"
+					onchange={onSelectModel}
+					placeholder={t('common.selectModel')}
+					label={t('common.selectActiveModel')}
+					emptyText={t('common.noModelsRegistered')}
+				/>
 
 				<!-- Send / Stop Message Button -->
-				{#if isGenerating}
-					<Button
-						variant="primary"
-						size="icon"
-						class="!rounded-full hover:not-disabled:scale-105"
-						onclick={onStopGeneration}
-						ariaLabel={t('chat.stopGeneration')}
-						title={t('chat.stopGeneration')}
-					>
-						<Square size={13} fill="currentColor" />
-					</Button>
-				{:else}
-					<Button
-						variant="primary"
-						size="icon"
-						class="!rounded-full hover:not-disabled:scale-105"
-						disabled={!inputMessage.trim()}
-						onclick={onSendMessage}
-						ariaLabel={t('chat.sendMessage')}
-						title={t('chat.sendMessage')}
-					>
-						<ArrowUp size={18} />
-					</Button>
-				{/if}
+				<div class="shrink-0 flex items-center">
+					{#if isGenerating}
+						<Button
+							variant="primary"
+							size="icon"
+							class="!rounded-full hover:not-disabled:scale-105"
+							onclick={onStopGeneration}
+							ariaLabel={t('chat.stopGeneration')}
+							title={t('chat.stopGeneration')}
+						>
+							<Square size={13} fill="currentColor" />
+						</Button>
+					{:else}
+						<Button
+							variant="primary"
+							size="icon"
+							class="!rounded-full hover:not-disabled:scale-105"
+							disabled={!inputMessage.trim()}
+							onclick={onSendMessage}
+							ariaLabel={t('chat.sendMessage')}
+							title={t('chat.sendMessage')}
+						>
+							<ArrowUp size={18} />
+						</Button>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>

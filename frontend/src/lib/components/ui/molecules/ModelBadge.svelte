@@ -7,12 +7,16 @@
 		showIcon = true,
 		iconSize = 14,
 		variant = 'badge',
+		hideTags = false,
+		hideTagsOnMobile = false,
 		class: className = ''
 	}: {
 		model: string | string[] | undefined | null;
 		showIcon?: boolean;
 		iconSize?: number;
 		variant?: 'badge' | 'inline' | 'clean' | 'badge-full' | 'full';
+		hideTags?: boolean;
+		hideTagsOnMobile?: boolean;
 		class?: string;
 	} = $props();
 
@@ -27,9 +31,11 @@
 
 		<span class="model-name-text" title={parsed.name}>{parsed.name}</span>
 
-		{#each parsed.tags as tag}
-			<span class="model-tag">{tag}</span>
-		{/each}
+		{#if !hideTags}
+			{#each parsed.tags as tag}
+				<span class="model-tag {hideTagsOnMobile ? 'max-sm:hidden' : ''}">{tag}</span>
+			{/each}
+		{/if}
 	</span>
 {/if}
 
@@ -90,6 +96,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		margin-right: auto;
+		min-width: 0;
 	}
 
 	.clean .model-name-text,

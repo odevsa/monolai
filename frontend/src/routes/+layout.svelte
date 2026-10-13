@@ -185,7 +185,7 @@
 			/>
 
 			<div
-				class="flex-1 h-full min-h-0 relative flex flex-col bg-[var(--bg-primary)] overflow-hidden"
+				class="flex-1 h-full min-h-0 relative flex flex-col bg-[var(--bg-primary)] overflow-hidden md:z-30"
 			>
 				<!-- Route-dependent Floating Header Container -->
 				<header
