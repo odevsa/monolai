@@ -154,13 +154,15 @@ Download your favorite models (`.gguf`, `.safetensors`, `.bin`, etc) and place t
 ## CLI
 
 ```text
-Usage: monolai [OPTIONS] [MODELS_FOLDER]
+Usage: monolai [OPTIONS] [COMMAND]
 
-Arguments:
-  [MODELS_FOLDER]  Path to models folder [default: ~/models]
+Commands:
+  config  Manage configuration file
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
   -c, --config <CONFIG>             Path to config YAML file (-c or --config)
+      --models <MODELS_FOLDER>      Path to models folder
   -l, --listen <LISTEN>             Listen address (e.g. 0.0.0.0:8080)
       --host <HOST>                 Host address to bind
   -p, --port <PORT>                 Port to bind
@@ -170,6 +172,34 @@ Options:
       --factory-reset               Factory reset: delete database, process cache, and configuration
   -h, --help                        Print help
   -V, --version                     Print version
+```
+
+### CLI Configuration Commands (`config`)
+
+Manage and inspect Monolai's configuration (`config.yaml`) directly from the terminal without manually editing files:
+
+```bash
+# Display the active configuration (YAML with file path header)
+monolai config show
+
+# Display configuration in formatted JSON
+monolai config show --json
+
+# Initialize a configuration file with default values (use --force to overwrite)
+monolai config init
+monolai config init --force
+
+# Update configuration properties
+monolai config set --models ~/models --runtimes ~/runtimes
+monolai config set --host 0.0.0.0 -p 8080
+monolai config set --minimize-on-start true --autostart-server true --autostart-app false
+
+# Output updated configuration in JSON format
+monolai config set --port 9090 --json
+
+# Use a custom config file path with any command
+monolai -c /path/to/custom-config.yaml config show
+monolai -c /path/to/custom-config.yaml config set -p 9090
 ```
 
 ## Docker
@@ -204,7 +234,7 @@ docker compose up -d
 
 ## Configuration
 
-Monolai uses `config.yaml` for storage paths, network configuration, and desktop GUI preferences.
+Monolai uses `config.yaml` for storage paths, network configuration, and desktop GUI preferences. You can inspect and update your settings directly using the [`monolai config`](#cli-configuration-commands-config) CLI commands, through the desktop GUI settings, or by editing the file manually.
 
 ### Default File Path
 
