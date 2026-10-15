@@ -33,8 +33,10 @@ COPY backend/ /app/backend/
 COPY --from=frontend-builder /app/frontend/build /app/frontend/build
 RUN cargo build --release
 
-FROM debian:bookworm-slim AS runtime
+FROM ubuntu:latest AS runtime
 WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

@@ -1,6 +1,7 @@
 services:
   monolai:
-    image: monolai:latest
+    # image: docker.io/odevsa/monolai:latest
+    image: monolai
     build:
       context: .
       dockerfile: docker

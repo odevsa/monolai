@@ -393,8 +393,6 @@ Tasks are managed using [`just`](https://github.com/casey/just) (a modern task r
 | `just build-macos`     | Build macOS release binaries and `.app` bundle                 |
 | `just build-all`       | Build all supported multi-platform release binaries            |
 | `just docker-build`    | Build local Docker image (`monolai:latest`)                    |
-| `just docker-up`       | Start containerized services with Docker Compose               |
-| `just docker-down`     | Stop containerized services with Docker Compose                |
 | `just icons`           | Generate all multi-resolution icons (PNG, ICO, ICNS)           |
 | `just clean`           | Remove build artifacts and temporary files                     |
 | `just version [x.y.z]` | Synchronize project version across manifests                   |

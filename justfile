@@ -143,21 +143,9 @@ build: build-linux
 # Build all supported multi-platform release binaries
 build-all: build-linux build-windows
 
-# ==============================================================================
-# Docker & Containers
-# ==============================================================================
-
 # Build local Docker image
-docker-build:
+build-docker:
     docker build -t monolai:latest -f docker/Dockerfile .
-
-# Start containerized services with Docker Compose
-docker-up:
-    docker compose up -d
-
-# Stop containerized services with Docker Compose
-docker-down:
-    docker compose down
 
 # ==============================================================================
 # Maintenance & Utilities
