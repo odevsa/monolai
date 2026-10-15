@@ -179,7 +179,7 @@ impl ProxyService {
                 Ok(running_status) => {
                     if running_status.state != ModelState::Ready || running_status.port == 0 {
                         return AppError::openai(
-                            StatusCode::CONFLICT,
+                            StatusCode::INTERNAL_SERVER_ERROR,
                             format!("Model '{}' is not loaded or ready", model_id),
                             "server_error",
                             "model_not_ready",
@@ -191,7 +191,7 @@ impl ProxyService {
                 }
                 Err(err) => {
                     return AppError::openai(
-                        StatusCode::CONFLICT,
+                        StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Failed to swap model '{}': {}", model_id, err),
                         "server_error",
                         "model_swap_failed",

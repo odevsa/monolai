@@ -44,8 +44,12 @@ class RunningModelsStateManager {
 	}
 
 	private updateState(data: RunningModelStatus[] | undefined | null) {
-		this.runningModels = data || [];
-		const currentIds = new Set((data || []).map((m) => m.model_id));
+		const activeModels = (data || []).filter((m) => {
+			const status = getStatusType(m.state);
+			return status === 'ready' || status === 'loading';
+		});
+		this.runningModels = activeModels;
+		const currentIds = new Set(activeModels.map((m) => m.model_id));
 		const updatedUnloading = new Set<string>();
 		for (const id of this.unloadingModelIds) {
 			if (currentIds.has(id)) {

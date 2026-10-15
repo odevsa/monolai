@@ -14,7 +14,8 @@ export function createOpenAIClient(): OpenAI {
 	return new OpenAI({
 		baseURL: getOpenAIBaseUrl(),
 		apiKey: 'monolai',
-		dangerouslyAllowBrowser: true
+		dangerouslyAllowBrowser: true,
+		maxRetries: 0
 	});
 }
 

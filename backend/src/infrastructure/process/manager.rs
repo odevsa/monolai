@@ -103,6 +103,7 @@ impl ProcessManager {
     pub async fn get_all_running_status(&self) -> Vec<RunningModelStatus> {
         let map = self.running.lock().await;
         map.values()
+            .filter(|m| !matches!(m.state, ModelState::Error(_) | ModelState::Idle))
             .map(|m| RunningModelStatus {
                 model_id: m.model_id.clone(),
                 runtime_id: m.runtime_id.clone(),
@@ -237,25 +238,13 @@ pub async fn load_model_process(
     pm.notify_state_changed().await;
 
     let fail_with = |err_msg: String| {
+        remove_active_process_from_json(&pm.db_dir, model_id);
         let pm_clone = pm.clone();
         let id_clone = model_id.to_string();
-        let runtime_clone = runtime_id.clone();
-        let err_clone = err_msg.clone();
         tokio::spawn(async move {
             {
                 let mut map = pm_clone.running.lock().await;
-                map.insert(
-                    id_clone.clone(),
-                    RunningModel {
-                        model_id: id_clone,
-                        runtime_id: runtime_clone,
-                        pid: 0,
-                        port: 0,
-                        state: ModelState::Error(err_clone),
-                        last_active: Instant::now(),
-                        child: None,
-                    },
-                );
+                map.remove(&id_clone);
             }
             pm_clone.notify_state_changed().await;
         });
@@ -321,8 +310,6 @@ pub async fn load_model_process(
         Some(id) => id,
         None => return Err(fail_with("Failed to retrieve child process PID".into())),
     };
-
-    save_active_process_to_json(&pm.db_dir, model_id, &runtime_id, pid, allocated_port);
 
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
@@ -447,21 +434,26 @@ pub async fn load_model_process(
     let mut is_ready = false;
 
     while start_time.elapsed() < Duration::from_secs(readiness_timeout_secs) {
-        {
+        let premature_status = {
             let mut child_guard = child_ref.lock().await;
-            if let Ok(Some(status)) = child_guard.try_wait() {
-                tokio::time::sleep(Duration::from_millis(150)).await;
+            child_guard.try_wait().ok().flatten()
+        };
+
+        if let Some(status) = premature_status {
+            tokio::time::sleep(Duration::from_millis(150)).await;
+            let detail = {
                 let logs = last_logs.lock().unwrap();
-                let detail = if logs.is_empty() {
+                if logs.is_empty() {
                     String::new()
                 } else {
                     format!(": {}", logs.join(" | "))
-                };
-                return Err(fail_with(format!(
-                    "Child process exited prematurely with status: {}{}",
-                    status, detail
-                )));
-            }
+                }
+            };
+            let _ = unload_model_process(pm, setting_repo, model_id).await;
+            return Err(AppError::internal(format!(
+                "Child process exited prematurely with status: {}{}",
+                status, detail
+            )));
         }
 
         let mut http_ready = false;
@@ -494,6 +486,49 @@ pub async fn load_model_process(
     }
 
     if is_ready {
+        save_active_process_to_json(&pm.db_dir, model_id, &runtime_id, pid, allocated_port);
+
+        let pm_watcher = pm.clone();
+        let model_id_watcher = model_id.to_string();
+        let child_watcher = child_ref.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let is_exited = {
+                    let mut guard = match child_watcher.try_lock() {
+                        Ok(g) => g,
+                        Err(_) => continue,
+                    };
+                    match guard.try_wait() {
+                        Ok(Some(_status)) => true,
+                        Ok(None) => false,
+                        Err(_) => true,
+                    }
+                };
+                if is_exited {
+                    tracing::warn!(
+                        "Model process for '{}' has exited unexpectedly. Cleaning up process cache and memory state...",
+                        model_id_watcher
+                    );
+                    remove_active_process_from_json(&pm_watcher.db_dir, &model_id_watcher);
+                    let removed = {
+                        let mut map = pm_watcher.running.lock().await;
+                        map.remove(&model_id_watcher).is_some()
+                    };
+                    if removed {
+                        pm_watcher.notify_state_changed().await;
+                    }
+                    break;
+                }
+                {
+                    let map = pm_watcher.running.lock().await;
+                    if !map.contains_key(&model_id_watcher) {
+                        break;
+                    }
+                }
+            }
+        });
+
         let status = {
             let mut map = pm.running.lock().await;
             if let Some(m) = map.get_mut(model_id) {
@@ -519,7 +554,7 @@ pub async fn load_model_process(
     }
 
     let _ = unload_model_process(pm, setting_repo, model_id).await;
-    Err(fail_with(format!(
+    Err(AppError::internal(format!(
         "Readiness check timed out after {}s for model '{}'",
         readiness_timeout_secs, model_id
     )))
@@ -606,8 +641,44 @@ pub async fn unload_all_model_processes(
 pub fn start_idle_auto_unload_loop(pm: ProcessManager, setting_repo: SettingRepository) {
     tokio::spawn(async move {
         loop {
-            tokio::time::sleep(Duration::from_secs(10)).await;
+            tokio::time::sleep(Duration::from_secs(5)).await;
 
+            // 1. Process liveness check for all tracked models
+            let dead_models: Vec<String> = {
+                let map = pm.running.lock().await;
+                let mut dead = Vec::new();
+                for (id, m) in map.iter() {
+                    let mut is_dead = false;
+                    if let Some(ref child_arc) = m.child {
+                        if let Ok(mut guard) = child_arc.try_lock() {
+                            if let Ok(Some(_)) = guard.try_wait() {
+                                is_dead = true;
+                            }
+                        }
+                    } else if m.pid > 0 {
+                        #[cfg(unix)]
+                        unsafe {
+                            if libc::kill(m.pid as i32, 0) != 0 {
+                                is_dead = true;
+                            }
+                        }
+                    }
+                    if is_dead {
+                        dead.push(id.clone());
+                    }
+                }
+                dead
+            };
+
+            for id in dead_models {
+                tracing::warn!(
+                    "Cleaning up dead/terminated model process '{}' from memory and processes.json",
+                    id
+                );
+                let _ = unload_model_process(&pm, &setting_repo, &id).await;
+            }
+
+            // 2. Idle timeout auto-unload
             let enabled: bool = setting_repo
                 .get_parsed("idle_auto_unload_enabled", true)
                 .await;
