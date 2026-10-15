@@ -1,9 +1,24 @@
 import { api } from './client';
 import type { ConfigStatus, SetupConfigPayload } from '$lib/types/config';
 
-export const configApi = {
-	getStatus: () => api.get<ConfigStatus>('/api/config/status'),
+let cachedStatus: ConfigStatus | null = null;
 
-	setup: (payload: SetupConfigPayload) =>
-		api.post<{ success: boolean; message?: string }>('/api/config/setup', payload)
+export const configApi = {
+	getStatus: async (force = false): Promise<ConfigStatus> => {
+		if (!force && cachedStatus) return cachedStatus;
+		const res = await api.get<ConfigStatus>('/api/config/status');
+		cachedStatus = res;
+		return res;
+	},
+
+	getCachedStatus: (): ConfigStatus | null => cachedStatus,
+
+	setup: async (payload: SetupConfigPayload) => {
+		const res = await api.post<{ success: boolean; message?: string }>(
+			'/api/config/setup',
+			payload
+		);
+		cachedStatus = null;
+		return res;
+	}
 };

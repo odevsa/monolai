@@ -36,6 +36,7 @@
 	let port = $state(8080);
 	let modelsDir = $state('');
 	let runtimesDir = $state('');
+	let isDocker = $state(configApi.getCachedStatus()?.is_docker ?? false);
 
 	// Settings state
 	let idleAutoUnload = $state(true);
@@ -76,6 +77,7 @@
 				port = cfgStatus.port ?? 8080;
 				modelsDir = cfgStatus.models_dir || '';
 				runtimesDir = cfgStatus.runtimes_dir || '';
+				isDocker = !!cfgStatus.is_docker;
 			}
 
 			if (appSettings) {
@@ -113,13 +115,15 @@
 		saveSuccess = false;
 
 		try {
-			// Save config.yaml
-			await configApi.setup({
-				host: host.trim() || '0.0.0.0',
-				port: Number(port) || 8080,
-				models: modelsDir.trim(),
-				runtimes: runtimesDir.trim()
-			});
+			// Save config.yaml only when not running inside Docker
+			if (!isDocker) {
+				await configApi.setup({
+					host: host.trim() || '0.0.0.0',
+					port: Number(port) || 8080,
+					models: modelsDir.trim(),
+					runtimes: runtimesDir.trim()
+				});
+			}
 
 			// Save settings in database
 			await settingsApi.updateAll({
@@ -199,38 +203,40 @@
 			</SettingGroup>
 		</div>
 
-		<!-- Group 2: Server & Environment -->
-		<div class="relative z-20">
-			<SettingGroup title={t('settings.groupServer')}>
-				<SettingRow icon={Network} title={t('common.host')} subtitle="0.0.0.0 / 127.0.0.1">
-					<div class="w-32 sm:w-40">
-						<Input bind:value={host} placeholder="0.0.0.0" />
-					</div>
-				</SettingRow>
+		<!-- Group 2: Server & Environment (Hidden in Docker) -->
+		{#if !isDocker}
+			<div class="relative z-20">
+				<SettingGroup title={t('settings.groupServer')}>
+					<SettingRow icon={Network} title={t('common.host')} subtitle="0.0.0.0 / 127.0.0.1">
+						<div class="w-32 sm:w-40">
+							<Input bind:value={host} placeholder="0.0.0.0" />
+						</div>
+					</SettingRow>
 
-				<SettingRow icon={Radio} title={t('common.port')} subtitle="TCP port">
-					<div class="w-24 sm:w-28">
-						<Input type="number" bind:value={port} min="1" max="65535" placeholder="8080" />
-					</div>
-				</SettingRow>
+					<SettingRow icon={Radio} title={t('common.port')} subtitle="TCP port">
+						<div class="w-24 sm:w-28">
+							<Input type="number" bind:value={port} min="1" max="65535" placeholder="8080" />
+						</div>
+					</SettingRow>
 
-				<SettingRow
-					icon={HardDrive}
-					title={t('settings.modelsDir')}
-					subtitle="GGUF / weights folder"
-				>
-					<div class="w-48 sm:w-64">
-						<Input bind:value={modelsDir} placeholder="e.g. ~/.local/share/monolai/models" />
-					</div>
-				</SettingRow>
+					<SettingRow
+						icon={HardDrive}
+						title={t('settings.modelsDir')}
+						subtitle="GGUF / weights folder"
+					>
+						<div class="w-48 sm:w-64">
+							<Input bind:value={modelsDir} placeholder="e.g. ~/.local/share/monolai/models" />
+						</div>
+					</SettingRow>
 
-				<SettingRow icon={Cpu} title={t('settings.runtimesDir')} subtitle="Binaries folder">
-					<div class="w-48 sm:w-64">
-						<Input bind:value={runtimesDir} placeholder="e.g. ~/.local/share/monolai/runtimes" />
-					</div>
-				</SettingRow>
-			</SettingGroup>
-		</div>
+					<SettingRow icon={Cpu} title={t('settings.runtimesDir')} subtitle="Binaries folder">
+						<div class="w-48 sm:w-64">
+							<Input bind:value={runtimesDir} placeholder="e.g. ~/.local/share/monolai/runtimes" />
+						</div>
+					</SettingRow>
+				</SettingGroup>
+			</div>
+		{/if}
 
 		<!-- Group 3: Process & Memory -->
 		<div class="relative z-10">
