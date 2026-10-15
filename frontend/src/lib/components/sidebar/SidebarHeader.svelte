@@ -20,32 +20,36 @@
 			<Logo size={26} />
 		</a>
 
-		<Button
-			variant="ghost"
-			size="icon"
-			class="hidden md:flex text-[var(--text-muted)]"
-			onclick={onToggleCollapse}
-			ariaLabel={t('navigation.collapseSidebar')}
-			title={t('navigation.collapseSidebar')}
-		>
-			<PanelLeftClose size={19} />
-		</Button>
+		<div class="hidden md:flex">
+			<Button
+				variant="ghost"
+				size="icon"
+				class=" text-[var(--text-muted)]"
+				onclick={onToggleCollapse}
+				ariaLabel={t('navigation.collapseSidebar')}
+				title={t('navigation.collapseSidebar')}
+			>
+				<PanelLeftClose size={19} />
+			</Button>
+		</div>
 	{:else}
-		<button
-			type="button"
-			class="hidden md:flex items-center justify-center w-10 h-10 mx-auto bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-xl text-[var(--text-secondary)] cursor-pointer transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shadow-xs"
-			onclick={onToggleCollapse}
-			onmouseenter={() => (isLogoHovered = true)}
-			onmouseleave={() => (isLogoHovered = false)}
-			aria-label={t('navigation.openSidebar')}
-			title={t('navigation.openSidebar')}
-		>
-			{#if isLogoHovered}
-				<PanelLeftOpen size={21} class="text-[var(--text-primary)]" />
-			{:else}
-				<Logo size={24} />
-			{/if}
-		</button>
+		<div class="hidden md:flex">
+			<button
+				type="button"
+				class="hidden md:flex items-center justify-center w-10 h-10 mx-auto bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-xl text-[var(--text-secondary)] cursor-pointer transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shadow-xs"
+				onclick={onToggleCollapse}
+				onmouseenter={() => (isLogoHovered = true)}
+				onmouseleave={() => (isLogoHovered = false)}
+				aria-label={t('navigation.openSidebar')}
+				title={t('navigation.openSidebar')}
+			>
+				{#if isLogoHovered}
+					<PanelLeftOpen size={21} class="text-[var(--text-primary)]" />
+				{:else}
+					<Logo size={24} />
+				{/if}
+			</button>
+		</div>
 	{/if}
 
 	<!-- Mobile Close Button -->
