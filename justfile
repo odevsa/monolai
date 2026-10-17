@@ -168,19 +168,23 @@ clean:
     cargo clean --manifest-path backend/Cargo.toml
     cargo clean --manifest-path desktop/Cargo.toml
 
-# Synchronize monorepo version across all manifests (e.g., just version 0.2.0)
+# Display current version or synchronize across manifests and packaging scripts (e.g., just version or just version 0.2.0)
 version new_version="":
     #!/usr/bin/env bash
-    mkdir -p frontend/build
     NEW_V="{{new_version}}"
     NEW_V="${NEW_V#v}"
     if [ -z "$NEW_V" ]; then
-        NEW_V=$(sed -n -E 's/^version = "([^"]+)"/\1/p' backend/Cargo.toml | head -n 1)
+        sed -n -E 's/^version = "([^"]+)"/\1/p' backend/Cargo.toml | head -n 1
+        exit 0
     fi
+    mkdir -p frontend/build
     sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" backend/Cargo.toml
     sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" desktop/Cargo.toml
     sed -i -E "0,/\"version\": \"[^\"]+\"/s//\"version\": \"$NEW_V\"/" frontend/package.json
     echo "export const APP_VERSION = '$NEW_V';" > frontend/src/lib/version.ts
+    if [ -f packaging/windows/monolai.nsi ]; then
+        sed -i -E 's/(!define VERSION ")[^"]*(")/\1'"$NEW_V"'\2/' packaging/windows/monolai.nsi
+    fi
     (cd backend && cargo check --quiet)
     (cd desktop && cargo check --quiet)
     printf "Version synchronized to %s\n" "$NEW_V"
