@@ -4,6 +4,45 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# Parse targets
+GEN_LINUX=false
+GEN_MACOS=false
+GEN_WINDOWS=false
+
+if [ "$#" -eq 0 ]; then
+  GEN_LINUX=true
+  GEN_MACOS=true
+  GEN_WINDOWS=true
+else
+  for arg in "$@"; do
+    case "$arg" in
+      --linux|-l)
+        GEN_LINUX=true
+        ;;
+      --macos|--mac|-m)
+        GEN_MACOS=true
+        ;;
+      --windows|--win|-w)
+        GEN_WINDOWS=true
+        ;;
+      --all|-a)
+        GEN_LINUX=true
+        GEN_MACOS=true
+        GEN_WINDOWS=true
+        ;;
+      -h|--help)
+        echo "Usage: $(basename "$0") [--linux] [--macos] [--windows] [--all]"
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $arg" >&2
+        echo "Usage: $(basename "$0") [--linux] [--macos] [--windows] [--all]" >&2
+        exit 1
+        ;;
+    esac
+  done
+fi
+
 SOURCE_SVG="${ROOT_DIR}/frontend/src/lib/assets/icon-dark.svg"
 
 # Target OS-specific asset directories inside packaging/
@@ -19,8 +58,26 @@ if [ ! -f "${SOURCE_SVG}" ]; then
   exit 1
 fi
 
-echo "==> Rendering icon resolutions from ${SOURCE_SVG}..."
-SIZES=(16 24 32 48 64 128 256 512 1024)
+# Determine required icon sizes based on targets
+SIZES=()
+for s in 16 24 32 48 64 128 256 512 1024; do
+  case "$s" in
+    1024)
+      if [ "$GEN_MACOS" = true ]; then SIZES+=("$s"); fi
+      ;;
+    512)
+      if [ "$GEN_LINUX" = true ] || [ "$GEN_MACOS" = true ]; then SIZES+=("$s"); fi
+      ;;
+    24|48)
+      if [ "$GEN_LINUX" = true ] || [ "$GEN_WINDOWS" = true ]; then SIZES+=("$s"); fi
+      ;;
+    *)
+      SIZES+=("$s")
+      ;;
+  esac
+done
+
+echo "==> Rendering icon resolutions (${SIZES[*]}) from ${SOURCE_SVG}..."
 
 for size in "${SIZES[@]}"; do
   out_png="${TMP_DIR}/icon-${size}.png"
@@ -41,61 +98,113 @@ done
 # =============================================================================
 # 1. Linux Assets (packaging/linux/assets)
 # =============================================================================
-echo "==> Generating Linux assets in packaging/linux/assets/..."
-HICOLOR_DIR="${LINUX_ASSETS}/icons/hicolor"
-mkdir -p "${HICOLOR_DIR}"
+if [ "$GEN_LINUX" = true ]; then
+  echo "==> Generating Linux assets in packaging/linux/assets/..."
+  HICOLOR_DIR="${LINUX_ASSETS}/icons/hicolor"
+  mkdir -p "${HICOLOR_DIR}"
 
-for size in 16 24 32 48 64 128 256 512; do
-  hicolor_target="${HICOLOR_DIR}/${size}x${size}/apps"
-  mkdir -p "${hicolor_target}"
-  cp "${TMP_DIR}/icon-${size}.png" "${hicolor_target}/monolai.png"
-done
+  for size in 16 24 32 48 64 128 256 512; do
+    hicolor_target="${HICOLOR_DIR}/${size}x${size}/apps"
+    mkdir -p "${hicolor_target}"
+    cp "${TMP_DIR}/icon-${size}.png" "${hicolor_target}/monolai.png"
+  done
 
-mkdir -p "${HICOLOR_DIR}/scalable/apps"
-cp "${SOURCE_SVG}" "${HICOLOR_DIR}/scalable/apps/monolai.svg"
-cp "${TMP_DIR}/icon-256.png" "${LINUX_ASSETS}/monolai.png"
+  mkdir -p "${HICOLOR_DIR}/scalable/apps"
+  cp "${SOURCE_SVG}" "${HICOLOR_DIR}/scalable/apps/monolai.svg"
+  cp "${TMP_DIR}/icon-256.png" "${LINUX_ASSETS}/monolai.png"
+fi
 
 # =============================================================================
 # 2. macOS Assets (packaging/macos/assets)
 # =============================================================================
-echo "==> Generating macOS assets in packaging/macos/assets/..."
-mkdir -p "${MACOS_ASSETS}"
-python3 "${SCRIPT_DIR}/make_icns.py" "${MACOS_ASSETS}/monolai.icns" \
-  "${TMP_DIR}/icon-16.png" \
-  "${TMP_DIR}/icon-32.png" \
-  "${TMP_DIR}/icon-64.png" \
-  "${TMP_DIR}/icon-128.png" \
-  "${TMP_DIR}/icon-256.png" \
-  "${TMP_DIR}/icon-512.png" \
-  "${TMP_DIR}/icon-1024.png"
+if [ "$GEN_MACOS" = true ]; then
+  echo "==> Generating macOS assets in packaging/macos/assets/..."
+  mkdir -p "${MACOS_ASSETS}"
+  python3 - "${MACOS_ASSETS}/monolai.icns" \
+    "${TMP_DIR}/icon-16.png" \
+    "${TMP_DIR}/icon-32.png" \
+    "${TMP_DIR}/icon-64.png" \
+    "${TMP_DIR}/icon-128.png" \
+    "${TMP_DIR}/icon-256.png" \
+    "${TMP_DIR}/icon-512.png" \
+    "${TMP_DIR}/icon-1024.png" << 'EOF'
+import struct
+import sys
+from pathlib import Path
+
+ICNS_TYPES = {
+    16: b'icp4',
+    32: b'icp5',
+    64: b'icp6',
+    128: b'ic07',
+    256: b'ic08',
+    512: b'ic09',
+    1024: b'ic10',
+}
+
+def create_icns(output_path, png_files):
+    chunks = []
+    for png_path in png_files:
+        p = Path(png_path)
+        if not p.exists():
+            continue
+        data = p.read_bytes()
+        if len(data) >= 24 and data[:8] == b'\x89PNG\r\n\x1a\n':
+            width, height = struct.unpack('>II', data[16:24])
+            if width == height and width in ICNS_TYPES:
+                chunk_type = ICNS_TYPES[width]
+                chunk_len = 8 + len(data)
+                chunks.append(chunk_type + struct.pack('>I', chunk_len) + data)
+
+    if not chunks:
+        raise ValueError("No matching square PNG files found for ICNS generation")
+
+    total_len = 8 + sum(len(c) for c in chunks)
+    header = b'icns' + struct.pack('>I', total_len)
+
+    with open(output_path, 'wb') as f:
+        f.write(header)
+        for chunk in chunks:
+            f.write(chunk)
+
+    print(f"Created ICNS: {output_path} ({len(chunks)} resolutions)")
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        sys.exit(1)
+    create_icns(sys.argv[1], sys.argv[2:])
+EOF
+fi
 
 # =============================================================================
 # 3. Windows Assets (packaging/windows/assets)
 # =============================================================================
-echo "==> Generating Windows assets in packaging/windows/assets/..."
-mkdir -p "${WINDOWS_ASSETS}"
-if command -v magick &>/dev/null; then
-  magick "${TMP_DIR}/icon-16.png" \
-         "${TMP_DIR}/icon-24.png" \
-         "${TMP_DIR}/icon-32.png" \
-         "${TMP_DIR}/icon-48.png" \
-         "${TMP_DIR}/icon-64.png" \
-         "${TMP_DIR}/icon-128.png" \
-         "${TMP_DIR}/icon-256.png" \
-         "${WINDOWS_ASSETS}/monolai.ico"
-elif command -v convert &>/dev/null; then
-  convert "${TMP_DIR}/icon-16.png" \
-          "${TMP_DIR}/icon-24.png" \
-          "${TMP_DIR}/icon-32.png" \
-          "${TMP_DIR}/icon-48.png" \
-          "${TMP_DIR}/icon-64.png" \
-          "${TMP_DIR}/icon-128.png" \
-          "${TMP_DIR}/icon-256.png" \
-          "${WINDOWS_ASSETS}/monolai.ico"
+if [ "$GEN_WINDOWS" = true ]; then
+  echo "==> Generating Windows assets in packaging/windows/assets/..."
+  mkdir -p "${WINDOWS_ASSETS}"
+  if command -v magick &>/dev/null; then
+    magick "${TMP_DIR}/icon-16.png" \
+           "${TMP_DIR}/icon-24.png" \
+           "${TMP_DIR}/icon-32.png" \
+           "${TMP_DIR}/icon-48.png" \
+           "${TMP_DIR}/icon-64.png" \
+           "${TMP_DIR}/icon-128.png" \
+           "${TMP_DIR}/icon-256.png" \
+           "${WINDOWS_ASSETS}/monolai.ico"
+  elif command -v convert &>/dev/null; then
+    convert "${TMP_DIR}/icon-16.png" \
+            "${TMP_DIR}/icon-24.png" \
+            "${TMP_DIR}/icon-32.png" \
+            "${TMP_DIR}/icon-48.png" \
+            "${TMP_DIR}/icon-64.png" \
+            "${TMP_DIR}/icon-128.png" \
+            "${TMP_DIR}/icon-256.png" \
+            "${WINDOWS_ASSETS}/monolai.ico"
+  fi
+
+  if [ -f "${WINDOWS_ASSETS}/monolai.ico" ]; then
+    cp "${WINDOWS_ASSETS}/monolai.ico" "${ROOT_DIR}/desktop/assets/monolai.ico"
+  fi
 fi
 
-if [ -f "${WINDOWS_ASSETS}/monolai.ico" ]; then
-  cp "${WINDOWS_ASSETS}/monolai.ico" "${ROOT_DIR}/desktop/assets/monolai.ico"
-fi
-
-echo "==> All OS-specific assets successfully generated in packaging/<os>/assets/!"
+echo "==> Done generating requested assets!"
