@@ -31,13 +31,19 @@ monolai/
    - Ensure clean compilation and test passes (`cargo check`, `cargo test`, `npm run check`, `npm run lint`) before finishing tasks.
 3. **No Hardcoded Secrets or Paths**:
    - Never hardcode absolute user paths (e.g., `/home/...` or `C:\Users\...`). Always use path resolvers or environment variables.
+4. **Ever use SSoT principle**:
+   - **Single Source of Truth**: Every piece of information should have a single, canonical source.
+   - **Avoid Duplication**: Don't store the same information in multiple places.
+   - **Traceability**: You should be able to trace any piece of information back to its source.
 
 ---
 
 ## 3. Backend Guidelines (`backend/`)
 
 ### 3.1 Strict Layered Architecture
+
 The backend is structured into four primary layers:
+
 1. **`core` & `domain`**:
    - Pure domain models, value objects, enums (`ModelState`, `GpuInfo`, `ChatRecord`), and centralized error handling (`AppError`).
    - Must NOT depend on HTTP frameworks (Axum), SQL queries, or system process calls.
@@ -55,6 +61,7 @@ The backend is structured into four primary layers:
    - OpenAPI specifications (`utoipa`) kept clean with DTO schemas.
 
 ### 3.2 Backend Concurrency & Code Standards
+
 - **Never block Tokio runtime worker threads**: Never use `std::sync::Mutex` across `.await` points or for long calculations. Use `tokio::sync::Mutex` or `tokio::sync::RwLock`.
 - **Standard UUIDs**: Always use the official `uuid` crate (`uuid::Uuid::new_v4()`). Homegrown pseudo-UUIDs are strictly forbidden.
 - **Resource Cleanliness**: Child processes must be tracked and cleaned up on shutdown or error. Background monitoring loops must use cached state to avoid tight database polling.
@@ -64,6 +71,7 @@ The backend is structured into four primary layers:
 ## 4. Frontend Guidelines (`frontend/`)
 
 ### 4.1 Modern Svelte 5 & TypeScript Architecture
+
 1. **Svelte 5 Runes**:
    - Always use Svelte 5 Runes: `$state`, `$derived`, `$props`, `$effect`.
    - Do NOT use legacy Svelte 3/4 reactivity (`let` assignments for reactive state, `$:` statements).
@@ -104,7 +112,9 @@ The backend is structured into four primary layers:
 ## 5. Desktop Guidelines (`desktop/`)
 
 ### 5.1 Strict Layered Desktop Architecture
+
 The desktop application (`monolai-gui`) is organized into decoupled layers communicating via thread-safe channels:
+
 1. **`core`**:
    - Pure domain models (`ServerStatus`), configuration serialization (`GuiConfig`, `config.yaml` synchronization), and thread-safe communication message types (`UiCommand`, `SupervisorEvent`, `TrayAction`).
    - Must NOT depend on GUI types (`egui`), HTTP network calls, or child process execution.
@@ -129,6 +139,7 @@ The desktop application (`monolai-gui`) is organized into decoupled layers commu
    - `app`: `DesktopApp` implementing `eframe::App`, consuming `SupervisorEvent`s via `poll_event()`.
 
 ### 5.2 Concurrency & Thread Inviolability
+
 1. **Zero I/O on GUI Thread**:
    - Never execute synchronous network requests (`ureq`), heavy process commands (`Command::output`), or file locks within the `eframe::App::update` rendering loop.
    - All server management actions, maintenance routines (`--clean-storage`, `--factory-reset`), and HTTP notifications must be delegated to the `SupervisorWorker` via `UiCommand`.
