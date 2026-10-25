@@ -1,4 +1,21 @@
-<div class="wrapper">
+<script lang="ts">
+	interface Props {
+		class?: string;
+		size?: number | string;
+		style?: string;
+		[key: string]: unknown;
+	}
+
+	let { class: className = '', size, style = '', ...restProps }: Props = $props();
+
+	let inlineStyle = $derived(
+		size != null
+			? `width: ${typeof size === 'number' ? `${size}px` : size}; ${style}`
+			: style || undefined
+	);
+</script>
+
+<div class="wrapper {className}" style={inlineStyle} {...restProps}>
 	<div class="circle"></div>
 	<div class="circle"></div>
 	<div class="circle"></div>
@@ -9,33 +26,34 @@
 
 <style>
 	.wrapper {
-		width: 40px;
-		height: 26px;
+		width: 30px;
+		aspect-ratio: 9/4;
 		position: relative;
 		z-index: 1;
+		container-type: inline-size;
 	}
 
 	.circle {
-		width: 7px;
-		height: 7px;
+		width: 17.5cqw;
+		height: 17.5cqw;
 		position: absolute;
 		border-radius: 50%;
 		background-color: var(--primary);
-		transform-origin: 50%;
+		transform-origin: center;
 		animation: circle7124 0.5s alternate infinite ease;
 		opacity: 0;
 	}
 
 	@keyframes circle7124 {
 		0% {
-			top: 10px;
-			height: 7px;
-			border-radius: 50px 50px 25px 25px;
+			top: 25cqw;
+			height: 17.5cqw;
+			border-radius: 50% 50% 25% 25%;
 			opacity: 1;
 		}
 
 		40% {
-			height: 8px;
+			height: 20cqw;
 			border-radius: 50%;
 			opacity: 1;
 		}
@@ -49,7 +67,6 @@
 	.circle:nth-child(2) {
 		left: 50%;
 		transform: translateX(-50%);
-		transform-origin: 50;
 		animation-delay: 0.2s;
 	}
 
@@ -60,15 +77,15 @@
 	}
 
 	.shadow {
-		width: 5px;
-		height: 1px;
+		width: 12.5cqw;
+		height: 2.5cqw;
 		border-radius: 50%;
 		background-color: rgba(0, 0, 0, 0.9);
 		position: absolute;
-		top: 15px;
+		top: 37.5cqw;
 		z-index: -1;
-		left: 0;
-		filter: blur(1px);
+		left: 2.5cqw;
+		filter: blur(2.5cqw);
 		animation: shadow046 0.5s alternate infinite ease;
 		opacity: 0;
 	}
@@ -91,7 +108,7 @@
 
 	.shadow:nth-child(5) {
 		left: auto;
-		right: 0%;
+		right: 2.5cqw;
 		animation-delay: 0.3s;
 	}
 </style>
