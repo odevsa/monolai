@@ -10,10 +10,20 @@
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
 	import { chatsState } from '$lib/state/chats.svelte';
+	import { downloadStore } from '$lib/state/downloads.svelte';
 	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
-	import { PanelLeftOpen, Plus, RefreshCw, Square, Trash, X } from '@lucide/svelte';
+	import { formatSpeed } from '$lib/utils/format';
+	import {
+		ArrowDownToLine,
+		PanelLeftOpen,
+		Plus,
+		RefreshCw,
+		Square,
+		Trash,
+		X
+	} from '@lucide/svelte';
 	import { onMount, setContext } from 'svelte';
 	import '../app.css';
 
@@ -78,6 +88,7 @@
 
 	onMount(async () => {
 		checkConfigStatus();
+		downloadStore.init();
 		try {
 			const settings = await settingsApi.getAll();
 			if (settings?.enable_log !== undefined) {
@@ -236,6 +247,19 @@
 					</div>
 
 					<div class="flex items-center gap-2 pointer-events-auto">
+						{#if downloadStore.hasActive}
+							<a
+								href="/models?tab=downloads"
+								class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] bg-[var(--primary-light)] border border-[var(--primary)]/30 rounded-lg backdrop-blur-md transition-all hover:bg-[var(--primary-hover)]/20 no-underline shadow-xs"
+								title="{downloadStore.activeCount} active download(s)"
+							>
+								<ArrowDownToLine size={13} class="animate-bounce" />
+								<span>{downloadStore.activeCount}</span>
+								<span class="text-[10px] opacity-80 font-mono hidden sm:inline"
+									>({formatSpeed(downloadStore.totalSpeedBytesSec)})</span
+								>
+							</a>
+						{/if}
 						{#if isChatPage && activeChatIdFromUrl}
 							<FeatureGate features={['chat']} showCard={false}>
 								<button

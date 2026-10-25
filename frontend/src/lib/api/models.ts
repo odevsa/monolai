@@ -3,11 +3,13 @@ import { listModels } from './openai';
 import { runtimesApi } from './runtimes';
 import type {
 	ModelRecord,
+	ModelPreset,
 	ModelFileItem,
 	RunningModelStatus,
-	CreateModelPayload,
-	UpdateModelPayload
+	CreatePresetPayload,
+	UpdatePresetPayload
 } from '$lib/types/models';
+import type { RuntimeManifest } from '$lib/types/runtimes';
 
 export interface FeatureModelItem {
 	id: string;
@@ -15,14 +17,12 @@ export interface FeatureModelItem {
 	flags: string;
 }
 
-// Backward-compatibility aliases
 export type OpenAIChatModelItem = FeatureModelItem;
 export type OpenAIImageModelItem = FeatureModelItem;
 
 /**
  * Retrieves models available via the official OpenAI SDK (GET /v1/models),
  * optionally filtering by required runtime features (e.g. ['chat'], ['image-generation']).
- * If features is empty or undefined, returns all models.
  */
 export async function getFeatureModels(features: string[] = []): Promise<FeatureModelItem[]> {
 	const [openaiModels, backendModels, manifests] = await Promise.all([
@@ -32,11 +32,35 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 	]);
 
 	const candidates: FeatureModelItem[] = (openaiModels || []).map((om) => {
-		const match = (backendModels || []).find((bm) => bm.id === om.id);
+		let matchedRuntime = 'llama-cpp';
+		let matchedFlags = '';
+
+		// Match direct model ID or preset ID
+		const directMatch = (backendModels || []).find((bm) => bm.id === om.id);
+		if (directMatch) {
+			const def = directMatch.presets?.find((p) => p.is_default) || directMatch.presets?.[0];
+			matchedRuntime = def?.runtime_id || directMatch.runtime || 'llama-cpp';
+			const rawFlags = def?.flags ?? directMatch.flags;
+			matchedFlags = typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {});
+		} else {
+			// Check if om.id is in format model_id:preset_name
+			for (const bm of backendModels || []) {
+				const presetMatch = bm.presets?.find(
+					(p) => p.id === om.id || `${bm.id}:${p.name.toLowerCase().replace(/\s+/g, '-')}` === om.id
+				);
+				if (presetMatch) {
+					matchedRuntime = presetMatch.runtime_id;
+					const rawFlags = presetMatch.flags;
+					matchedFlags = typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {});
+					break;
+				}
+			}
+		}
+
 		return {
 			id: om.id,
-			runtime: match?.runtime || 'llama-cpp',
-			flags: match?.flags || ''
+			runtime: matchedRuntime,
+			flags: matchedFlags
 		};
 	});
 
@@ -52,13 +76,11 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 		);
 		const manifestFeatures = (manifest?.features || []).map((f) => f.toLowerCase().trim());
 
-		// Check if any requested feature is present in the runtime manifest
 		const hasManifestFeature = normalizedFeatures.some((target) =>
 			manifestFeatures.includes(target)
 		);
 		if (hasManifestFeature) return true;
 
-		// Fallbacks for known runtime identifiers
 		const rtLower = m.runtime.toLowerCase();
 		if (
 			normalizedFeatures.includes('chat') &&
@@ -78,7 +100,20 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 }
 
 export const modelsApi = {
-	list: (all: boolean = true) => api.get<ModelRecord[]>('/api/models', { all }),
+	list: async (all: boolean = true) => {
+		const models = await api.get<ModelRecord[]>('/api/models', { all });
+		return models.map((m) => {
+			const defaultPreset = m.presets?.find((p) => p.is_default) || m.presets?.[0];
+			const rawFlags = defaultPreset?.flags ?? m.flags;
+			return {
+				...m,
+				runtime: defaultPreset?.runtime_id || m.runtime || 'llama-cpp',
+				flags: typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {})
+			};
+		});
+	},
+
+	getById: (id: string) => api.get<ModelRecord>(`/api/models/${encodeURIComponent(id)}`),
 
 	getAvailableFiles: () => api.get<ModelFileItem[]>('/api/models/available'),
 
@@ -106,12 +141,38 @@ export const modelsApi = {
 		return () => es.close();
 	},
 
-	create: (payload: CreateModelPayload) => api.post<ModelRecord>('/api/models', payload),
+	delete: (id: string, deleteFile: boolean = false) =>
+		api.delete<void>(`/api/models/${encodeURIComponent(id)}`, { delete_file: deleteFile }),
 
-	update: (id: string, payload: UpdateModelPayload) =>
-		api.put<ModelRecord>(`/api/models/${encodeURIComponent(id)}`, payload),
+	// Presets Management
+	getPresets: (modelId: string) =>
+		api.get<ModelPreset[]>(`/api/models/${encodeURIComponent(modelId)}/presets`),
 
-	delete: (id: string) => api.delete<void>(`/api/models/${encodeURIComponent(id)}`),
+	createPreset: (modelId: string, payload: CreatePresetPayload) =>
+		api.post<ModelPreset>(`/api/models/${encodeURIComponent(modelId)}/presets`, payload),
+
+	updatePreset: (presetId: string, payload: UpdatePresetPayload) =>
+		api.put<ModelPreset>(`/api/models/presets/${encodeURIComponent(presetId)}`, payload),
+
+	deletePreset: (presetId: string) =>
+		api.delete<void>(`/api/models/presets/${encodeURIComponent(presetId)}`),
+
+	setDefaultPreset: (modelId: string, presetId: string) =>
+		api.post<void>(
+			`/api/models/${encodeURIComponent(modelId)}/presets/${encodeURIComponent(presetId)}/set-default`
+		),
+
+	// Compatible runtimes query
+	getCompatibleRuntimes: (
+		modalityOrParams?: string | { modality?: string; format?: string },
+		format?: string
+	) => {
+		const params =
+			typeof modalityOrParams === 'string'
+				? { modality: modalityOrParams, format }
+				: modalityOrParams || {};
+		return api.get<RuntimeManifest[]>('/api/runtimes/compatible', params);
+	},
 
 	load: (id: string) => api.post<{ status: string }>(`/api/models/${encodeURIComponent(id)}/load`),
 

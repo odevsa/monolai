@@ -24,6 +24,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { Alert, Button, Input, Select, Tabs } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import type { ModelRecord } from '$lib/types/models';
 
 	interface RuntimeItem {
 		id: string;
@@ -62,13 +63,6 @@
 		description: string;
 		binary_name?: string;
 		flags: ManifestFlag[];
-	}
-
-	interface ModelRecord {
-		id: string;
-		runtime?: string;
-		flags: string;
-		created_at?: string;
 	}
 
 	let {

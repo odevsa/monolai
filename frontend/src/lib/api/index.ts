@@ -7,3 +7,5 @@ export * from './host';
 export * from './config';
 export * from './settings';
 export * from './logs';
+export * from './hub';
+export * from './downloads';

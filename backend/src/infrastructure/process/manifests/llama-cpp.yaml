@@ -10,6 +10,11 @@ features:
   - chat
   - completion
   - embeddings
+supported_modalities:
+  - text-to-text
+  - embeddings
+supported_formats:
+  - gguf
 binary_name: "llama-server"
 
 downloads:

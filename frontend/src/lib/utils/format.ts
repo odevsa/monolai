@@ -32,6 +32,14 @@ export function splitBytesValue(bytes: number, isRate = false): { value: string;
 }
 
 /**
+ * Formats bytes per second into human-readable transfer rate (e.g. "12.4 MB/s").
+ */
+export function formatSpeed(bytesPerSec: number): string {
+	const s = splitBytesValue(bytesPerSec, true);
+	return `${s.value} ${s.unit}`;
+}
+
+/**
  * Formats seconds into human-readable uptime string (e.g. "2d 4h 12m 30s").
  */
 export function formatUptime(seconds: number): string {

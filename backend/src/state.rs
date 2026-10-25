@@ -1,7 +1,8 @@
 use crate::core::config::{AppConfig, ConfigStatus, PathResolver};
 use crate::infrastructure::db::SettingRepository;
 use crate::services::{
-    ChatService, HostService, LogService, ModelService, ProxyService, RuntimeService,
+    ChatService, DownloadService, HostService, HubService, LogService, ModelService, ProxyService,
+    RuntimeService,
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ pub struct AppState {
     pub host_service: Arc<HostService>,
     pub proxy_service: Arc<ProxyService>,
     pub log_service: Arc<LogService>,
+    pub hub_service: Arc<HubService>,
+    pub download_service: Arc<DownloadService>,
     pub setting_repo: SettingRepository,
 }
-

@@ -80,11 +80,9 @@
 				{#if header}
 					{@render header()}
 				{:else}
-					<div class="flex items-center gap-2.5 min-w-0">
+					<div class="flex items-center gap-2 min-w-0">
 						{#if IconComponent}
-							<div
-								class="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--primary-light)] text-[var(--primary)] shrink-0"
-							>
+							<div class="text-[var(--primary)] shrink-0">
 								<IconComponent size={16} />
 							</div>
 						{/if}

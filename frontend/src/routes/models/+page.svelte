@@ -1,37 +1,75 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
-	import { modelsApi, runtimesApi } from '$lib/api';
-	import { ModelCard, ModelEditSection, ModelFilterBar } from '$lib/components/models';
-	import { Alert, Button, EmptyState, PageHeader, Spinner } from '$lib/components/ui';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { modelsApi } from '$lib/api/models';
+	import { ModelCard, ModelDiscoverTab, ModelDownloadsTab } from '$lib/components/models';
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		EmptyState,
+		Input,
+		PageHeader,
+		Select,
+		Spinner,
+		Tabs
+	} from '$lib/components/ui';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
-	import type { ModelFileItem, ModelRecord, RunningModelStatus } from '$lib/types/models';
-	import type { Runtime, RuntimeManifest } from '$lib/types/runtimes';
+	import { downloadStore } from '$lib/state/downloads.svelte';
+	import type { ModelRecord, RunningModelStatus } from '$lib/types/models';
 	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { getMainModelFilePath, parseFlags } from '$lib/utils/model';
-	import { ArrowLeft, Box, Plus, Search } from '@lucide/svelte';
+	import { ArrowDownToLine, Box, HardDrive, RefreshCw, Search, Sparkles } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
+	type TabType = 'discover' | 'installed' | 'downloads';
+
+	let activeTab = $state<TabType>('installed');
 	let registeredModels = $state<ModelRecord[]>([]);
-	let runtimes = $state<Runtime[]>([]);
-	let availableFiles = $state<ModelFileItem[]>([]);
-	let runtimeManifests = $state<RuntimeManifest[]>([]);
 	let isLoadingData = $state(true);
 	let error = $state<string | null>(null);
 
-	// Filter and search states
+	// Filter and search states for Installed tab
 	let searchQuery = $state('');
-	let selectedRuntimeFilter = $state<string>('all');
+	let selectedModalityFilter = $state<string>('all');
 	let selectedStatusFilter = $state<'all' | 'running' | 'missing'>('all');
 	let copiedId = $state<string | null>(null);
 
-	// Form editing state
-	let isEditingModel = $state(false);
-	let editingModel = $state<ModelRecord | null>(null);
+	let tabItems = $derived([
+		{ id: 'discover', label: t('models.tabs.discover'), icon: Sparkles },
+		{
+			id: 'installed',
+			label: t('models.tabs.installed'),
+			icon: HardDrive,
+			badge: registeredModels.length || undefined
+		},
+		{
+			id: 'downloads',
+			label: t('models.tabs.downloads'),
+			icon: ArrowDownToLine,
+			badge: downloadStore.activeCount || undefined
+		}
+	]);
 
-	// Map of running models for quick lookup
+	const modalityOptions = [
+		{ value: 'all', label: t('models.allModalities') },
+		{ value: 'text-to-text', label: 'Text (LLM)' },
+		{ value: 'text-to-image', label: 'Image (Diffusion)' },
+		{ value: 'text-to-speech', label: 'Audio TTS' },
+		{ value: 'speech-to-text', label: 'Audio ASR' },
+		{ value: 'embeddings', label: 'Embeddings' }
+	];
+
+	const statusOptions = [
+		{ value: 'all', label: t('models.allStatuses') },
+		{ value: 'running', label: t('models.runningStatus') },
+		{ value: 'missing', label: t('models.missingStatus') }
+	];
+
+	// Running models map for instant lookup
 	let runningMap = $derived.by(() => {
 		const map = new Map<string, RunningModelStatus>();
 		for (const rm of runningModelsState.runningModels) {
@@ -40,17 +78,22 @@
 		return map;
 	});
 
-	// Selectbox options
-	let runtimeFilterOptions = $derived([
-		{ value: 'all', label: t('models.allRuntimes') },
-		...runtimes.map((rt) => ({ value: rt.id, label: rt.name }))
-	]);
+	// URL Query param tab synchronization
+	$effect(() => {
+		const tabParam = page.url.searchParams.get('tab');
+		if (tabParam === 'discover' || tabParam === 'installed' || tabParam === 'downloads') {
+			if (activeTab !== tabParam) {
+				activeTab = tabParam;
+			}
+		}
+	});
 
-	let statusFilterOptions = $derived<{ value: 'all' | 'running' | 'missing'; label: string }[]>([
-		{ value: 'all', label: t('models.allStatuses') },
-		{ value: 'running', label: t('models.runningStatus') },
-		{ value: 'missing', label: t('models.missingStatus') }
-	]);
+	function setTab(tab: TabType) {
+		activeTab = tab;
+		const url = new URL(page.url);
+		url.searchParams.set('tab', tab);
+		goto(url.toString(), { replaceState: true, noScroll: true });
+	}
 
 	// Filtered models list
 	let filteredModels = $derived.by(() => {
@@ -59,17 +102,18 @@
 		const q = searchQuery.trim().toLowerCase();
 		if (q) {
 			list = list.filter((m) => {
-				const mainFile = getMainModelFilePath(m).toLowerCase();
+				const path = (m.relative_path || m.filename || '').toLowerCase();
 				return (
 					m.id.toLowerCase().includes(q) ||
-					mainFile.includes(q) ||
-					m.runtime.toLowerCase().includes(q)
+					(m.name && m.name.toLowerCase().includes(q)) ||
+					path.includes(q) ||
+					(m.architecture && m.architecture.toLowerCase().includes(q))
 				);
 			});
 		}
 
-		if (selectedRuntimeFilter !== 'all') {
-			list = list.filter((m) => m.runtime.toLowerCase() === selectedRuntimeFilter.toLowerCase());
+		if (selectedModalityFilter !== 'all') {
+			list = list.filter((m) => m.modality.toLowerCase() === selectedModalityFilter.toLowerCase());
 		}
 
 		if (selectedStatusFilter === 'running') {
@@ -81,68 +125,19 @@
 		return list;
 	});
 
-	async function loadAllModelsData(isSilent = false) {
+	async function loadModels(isSilent = false) {
 		if (!isSilent) isLoadingData = true;
 		error = null;
 
 		try {
-			const [modelsRes, runtimesRes, filesRes, manifestsRes] = await Promise.all([
-				modelsApi.list(true).catch(() => []),
-				runtimesApi.list().catch(() => []),
-				modelsApi.getAvailableFiles().catch(() => []),
-				runtimesApi.getManifests().catch(() => [])
-			]);
-
-			registeredModels = modelsRes || [];
-			runtimes = runtimesRes || [];
-			availableFiles = filesRes || [];
-			runtimeManifests = manifestsRes || [];
-		} catch (e: any) {
-			error = e.message || t('models.errorLoading');
-			console.error('Error loading models data:', e);
+			registeredModels = await modelsApi.list();
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			error = msg || t('models.errorLoading');
+			console.error('Error loading models:', err);
 		} finally {
 			isLoadingData = false;
 		}
-	}
-
-	afterNavigate(() => {
-		isEditingModel = false;
-		editingModel = null;
-	});
-
-	onMount(() => {
-		loadAllModelsData();
-
-		const handleNavModels = () => {
-			if (isEditingModel) {
-				isEditingModel = false;
-				editingModel = null;
-			}
-		};
-
-		window.addEventListener('monolai:nav-models', handleNavModels);
-		return () => {
-			window.removeEventListener('monolai:nav-models', handleNavModels);
-		};
-	});
-
-	let containerRef = $state<HTMLDivElement | null>(null);
-
-	function startAddModel() {
-		editingModel = null;
-		isEditingModel = true;
-		(containerRef?.closest('main') || containerRef)?.scrollTo({ top: 0, behavior: 'smooth' });
-	}
-
-	function startEditModel(model: ModelRecord) {
-		editingModel = model;
-		isEditingModel = true;
-		(containerRef?.closest('main') || containerRef)?.scrollTo({ top: 0, behavior: 'smooth' });
-	}
-
-	function cancelEdit() {
-		isEditingModel = false;
-		editingModel = null;
 	}
 
 	async function copyId(id: string) {
@@ -153,35 +148,6 @@
 				if (copiedId === id) copiedId = null;
 			}, 2000);
 		}
-	}
-
-	async function handleSaveModel(payload: {
-		id: string;
-		runtime: string;
-		flags: Record<string, string>;
-	}) {
-		const isExisting = !!editingModel;
-		const flagsObj = parseFlags(payload.flags);
-		const flagsStr = JSON.stringify(flagsObj);
-
-		if (isExisting && editingModel) {
-			await modelsApi.update(editingModel.id, {
-				id: payload.id,
-				runtime: payload.runtime,
-				flags: flagsObj
-			});
-		} else {
-			await modelsApi.create({
-				id: payload.id,
-				runtime: payload.runtime,
-				flags: flagsObj
-			});
-		}
-
-		await loadAllModelsData(true);
-		refreshFeatures(true);
-		isEditingModel = false;
-		editingModel = null;
 	}
 
 	async function deleteModel(id: string) {
@@ -195,122 +161,132 @@
 		if (!confirmed) return;
 
 		try {
-			await modelsApi.delete(id);
-			await loadAllModelsData(true);
+			await modelsApi.delete(id, true);
+			await loadModels(true);
 			refreshFeatures(true);
-		} catch (e: any) {
-			await showAlert(e.message || t('models.deleteError'), t('common.error'), 'danger');
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			await showAlert(msg || t('models.deleteError'), t('common.error'), 'danger');
 		}
 	}
+
+	onMount(() => {
+		loadModels();
+	});
 </script>
 
 <svelte:head>
 	<title>{t('app.title')} - {t('models.pageTitle')}</title>
 </svelte:head>
 
-<div
-	bind:this={containerRef}
-	class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border"
->
-	<div class="flex flex-col gap-5 sm:gap-6">
-		<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box}>
-			{#if !isEditingModel}
-				<Button variant="primary" size="md" onclick={startAddModel}>
-					<Plus size={15} />
-					<span>{t('common.add')}</span>
-				</Button>
-			{:else}
-				<Button variant="secondary" size="md" onclick={cancelEdit}>
-					<ArrowLeft size={15} />
-					<span>{t('common.back')}</span>
-				</Button>
-			{/if}
-		</PageHeader>
+<div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border space-y-6">
+	<!-- Page Header -->
+	<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box}>
+		<Button variant="secondary" size="md" onclick={() => loadModels()} disabled={isLoadingData}>
+			<RefreshCw size={14} class={isLoadingData ? 'animate-spin text-[var(--primary)]' : ''} />
+			<span>{t('common.refresh')}</span>
+		</Button>
+	</PageHeader>
 
-		{#if error}
-			<Alert variant="error" title={t('common.connectionFailure')}>
-				<div class="flex items-center justify-between gap-3">
-					<span>{error}</span>
-					<Button variant="secondary" size="sm" onclick={() => loadAllModelsData()}>
-						{t('common.refresh')}
+	<!-- Sub-tabs Navigation Bar -->
+	<Tabs
+		variant="pills"
+		items={tabItems}
+		bind:value={activeTab}
+		onchange={(val) => setTab(val as TabType)}
+	/>
+
+	{#if error}
+		<Alert variant="error" title={t('common.connectionFailure')}>
+			<div class="flex items-center justify-between gap-3">
+				<span>{error}</span>
+				<Button variant="secondary" size="sm" onclick={() => loadModels()}>
+					{t('common.refresh')}
+				</Button>
+			</div>
+		</Alert>
+	{/if}
+
+	<!-- Tab Views -->
+	{#if activeTab === 'discover'}
+		<ModelDiscoverTab />
+	{:else if activeTab === 'downloads'}
+		<ModelDownloadsTab />
+	{:else if activeTab === 'installed'}
+		<!-- Filter & Search Bar for Installed Models -->
+		<Card padding="sm">
+			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+				<div class="flex-1">
+					<Input bind:value={searchQuery} placeholder={t('models.searchPlaceholder')} clearable>
+						{#snippet prefix()}
+							<Search size={15} />
+						{/snippet}
+					</Input>
+				</div>
+
+				<div class="flex items-center gap-2">
+					<div class="w-44">
+						<Select bind:value={selectedModalityFilter} options={modalityOptions} />
+					</div>
+
+					<div class="w-44">
+						<Select bind:value={selectedStatusFilter} options={statusOptions} />
+					</div>
+				</div>
+			</div>
+		</Card>
+
+		<!-- Installed Models Catalog Grid -->
+		{#if isLoadingData && registeredModels.length === 0}
+			<div class="flex flex-col items-center justify-center p-16 text-[var(--text-muted)] gap-3">
+				<Spinner size={32} />
+				<span class="text-xs">{t('common.loading')}</span>
+			</div>
+		{:else if registeredModels.length === 0}
+			<EmptyState
+				title={t('models.noModelsFound')}
+				description={t('models.noModelsFoundDesc')}
+				icon={Box}
+			>
+				{#snippet actions()}
+					<Button variant="primary" onclick={() => setTab('discover')}>
+						<Sparkles size={15} />
+						<span>{t('models.discoverModels')}</span>
 					</Button>
-				</div>
-			</Alert>
-		{/if}
-
-		{#if isEditingModel}
-			<ModelEditSection
-				{runtimes}
-				{availableFiles}
-				{runtimeManifests}
-				{editingModel}
-				onSave={handleSaveModel}
-				onCancel={cancelEdit}
-			/>
+				{/snippet}
+			</EmptyState>
+		{:else if filteredModels.length === 0}
+			<EmptyState
+				title={t('models.noMatchingModels')}
+				description={t('models.noMatchingModelsDesc')}
+				icon={Search}
+			>
+				{#snippet actions()}
+					<Button
+						variant="secondary"
+						onclick={() => {
+							searchQuery = '';
+							selectedModalityFilter = 'all';
+							selectedStatusFilter = 'all';
+						}}
+					>
+						{t('common.clear')}
+					</Button>
+				{/snippet}
+			</EmptyState>
 		{:else}
-			<ModelFilterBar
-				bind:searchQuery
-				bind:selectedRuntimeFilter
-				bind:selectedStatusFilter
-				{runtimeFilterOptions}
-				{statusFilterOptions}
-			/>
-
-			<!-- Models Catalog Grid -->
-			{#if isLoadingData && registeredModels.length === 0}
-				<div
-					class="flex flex-col items-center justify-center gap-3 p-16 text-[var(--text-muted)] text-sm"
-				>
-					<Spinner size={32} />
-					<p class="m-0 text-xs">{t('common.loading')}</p>
-				</div>
-			{:else if registeredModels.length === 0}
-				<EmptyState
-					title={t('models.noModelsFound')}
-					description={t('models.noModelsFoundDesc')}
-					icon={Box}
-				>
-					{#snippet actions()}
-						<Button variant="primary" onclick={startAddModel}>
-							<Plus size={15} />
-							<span>{t('common.add')}</span>
-						</Button>
-					{/snippet}
-				</EmptyState>
-			{:else if filteredModels.length === 0}
-				<EmptyState
-					title={t('models.noMatchingModels')}
-					description={t('models.noMatchingModelsDesc')}
-					icon={Search}
-				>
-					{#snippet actions()}
-						<Button
-							variant="secondary"
-							onclick={() => {
-								searchQuery = '';
-								selectedRuntimeFilter = 'all';
-								selectedStatusFilter = 'all';
-							}}
-						>
-							{t('common.clear')}
-						</Button>
-					{/snippet}
-				</EmptyState>
-			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
-					{#each filteredModels as model (model.id)}
-						<ModelCard
-							{model}
-							{availableFiles}
-							runningInfo={runningMap.get(model.id)}
-							{copiedId}
-							onCopyId={copyId}
-							onEdit={startEditModel}
-							onDelete={deleteModel}
-						/>
-					{/each}
-				</div>
-			{/if}
+			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+				{#each filteredModels as model (model.id)}
+					<ModelCard
+						{model}
+						runningInfo={runningMap.get(model.id)}
+						{copiedId}
+						onCopyId={copyId}
+						onModelUpdated={() => loadModels(true)}
+						onDelete={deleteModel}
+					/>
+				{/each}
+			</div>
 		{/if}
-	</div>
+	{/if}
 </div>

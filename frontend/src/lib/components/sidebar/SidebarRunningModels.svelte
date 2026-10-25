@@ -28,18 +28,16 @@
 	});
 
 	function getStatusDotPropsByType(statusType: string) {
-		const variant: "success" | "warning" | "danger" | "primary" | "muted" | undefined = statusType === 'ready' 
-			? 'success' 
-			: statusType === 'loading'
-				? 'warning'
-				: 'danger';
+		const variant: 'success' | 'warning' | 'danger' | 'primary' | 'muted' | undefined =
+			statusType === 'ready' ? 'success' : statusType === 'loading' ? 'warning' : 'danger';
 		const pulse = statusType === 'ready' || statusType === 'loading';
-		const title = statusType === 'ready'
-			? t('common.active')
-			: statusType === 'loading'
-				? t('sysinfo.statusLoading')
-				: t('common.error');
-		return {variant, pulse, title}
+		const title =
+			statusType === 'ready'
+				? t('common.active')
+				: statusType === 'loading'
+					? t('sysinfo.statusLoading')
+					: t('common.error');
+		return { variant, pulse, title };
 	}
 </script>
 
@@ -70,7 +68,7 @@
 					{@const isUnloading = unloadingIds.has(model.model_id)}
 					{@const rawStatus = getStatusType(model.state)}
 					{@const statusType = isUnloading ? 'loading' : rawStatus}
-					{@const {variant, pulse, title} = getStatusDotPropsByType(statusType)}
+					{@const { variant, pulse, title } = getStatusDotPropsByType(statusType)}
 					<div
 						class="flex items-center justify-between bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg px-2.5 py-1.5 gap-2"
 					>
@@ -106,12 +104,12 @@
 			{@const isUnloading = unloadingIds.has(model.model_id)}
 			{@const rawStatus = getStatusType(model.state)}
 			{@const statusType = isUnloading ? 'loading' : rawStatus}
-			{@const {variant, pulse, title} = getStatusDotPropsByType(statusType)}
+			{@const { variant, pulse, title } = getStatusDotPropsByType(statusType)}
 			<div
 				class="flex items-center justify-center py-2"
 				title={t('navigation.modelsLoaded', { count: loadedModels.length })}
 			>
-				<StatusDot variant={variant} pulse={pulse} title={title} size="lg" />
+				<StatusDot {variant} {pulse} {title} size="lg" />
 			</div>
 		{/each}
 	{/if}

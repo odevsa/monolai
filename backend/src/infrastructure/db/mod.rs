@@ -1,5 +1,7 @@
 pub mod chat_repo;
+pub mod download_repo;
 pub mod model_repo;
+pub mod repository_repo;
 pub mod setting_repo;
 
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -8,7 +10,9 @@ use std::path::Path;
 use std::str::FromStr;
 
 pub use chat_repo::ChatRepository;
-pub use model_repo::ModelRepository;
+pub use download_repo::DownloadRepository;
+pub use model_repo::{normalize_flags, ModelRepository};
+pub use repository_repo::RepositoryRepository;
 pub use setting_repo::SettingRepository;
 
 /// Initialize SQLite pool and execute embedded migrations.

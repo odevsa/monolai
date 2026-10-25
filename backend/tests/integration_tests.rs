@@ -69,4 +69,67 @@ mod tests {
 
         assert_eq!(count, 1);
     }
+
+    #[tokio::test]
+    async fn test_default_builtin_repositories() {
+        let pool = setup_test_db().await;
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM repositories WHERE is_builtin = 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(count, 3);
+    }
+
+    #[tokio::test]
+    async fn test_models_and_presets_schema() {
+        let pool = setup_test_db().await;
+
+        let model_id = "test-llama-3";
+        sqlx::query("INSERT INTO models (id, name, filename, relative_path, size_bytes, format, modality) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(model_id)
+            .bind("Test LLaMA 3")
+            .bind("test.gguf")
+            .bind("text-to-text/test.gguf")
+            .bind(4000000000i64)
+            .bind("gguf")
+            .bind("text-to-text")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let preset_id = "test-llama-3:default";
+        sqlx::query("INSERT INTO model_presets (id, model_id, name, runtime_id, flags, is_default) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(preset_id)
+            .bind(model_id)
+            .bind("Default")
+            .bind("llama-cpp")
+            .bind("{\"--model\": \"test.gguf\"}")
+            .bind(1)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let preset_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
+            .bind(model_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(preset_count, 1);
+
+        // Test cascade deletion
+        sqlx::query("DELETE FROM models WHERE id = ?")
+            .bind(model_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let after_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
+            .bind(model_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(after_count, 0);
+    }
 }

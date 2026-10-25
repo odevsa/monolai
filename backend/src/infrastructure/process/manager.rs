@@ -4,7 +4,6 @@ use crate::domain::{ModelState, RunningModelStatus};
 use crate::infrastructure::db::{ModelRepository, SettingRepository};
 use crate::infrastructure::downloader::find_installed_binary;
 use crate::infrastructure::process::manifests::get_manifest_for_runtime;
-use crate::infrastructure::scanner::check_model_file_exists;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -143,6 +142,48 @@ pub fn allocate_available_port() -> Result<u16, String> {
     Ok(port)
 }
 
+pub async fn resolve_model_and_preset(
+    model_repo: &ModelRepository,
+    target: &str,
+) -> AppResult<(crate::domain::ModelRecord, crate::domain::ModelPreset)> {
+    if let Some((m_id, p_name)) = target.split_once(':') {
+        if let Some(m) = model_repo.get_by_id(m_id).await? {
+            let found = m
+                .presets
+                .iter()
+                .find(|p| p.name.eq_ignore_ascii_case(p_name) || p.id == target)
+                .cloned();
+            if let Some(p) = found {
+                return Ok((m, p));
+            }
+        }
+    }
+
+    if let Some(m) = model_repo.get_by_id(target).await? {
+        let preset = m
+            .presets
+            .iter()
+            .find(|p| p.is_default)
+            .cloned()
+            .or_else(|| m.presets.first().cloned())
+            .ok_or_else(|| {
+                AppError::bad_request(format!("Model '{}' has no configured presets", target))
+            })?;
+        return Ok((m, preset));
+    }
+
+    if let Some(p) = model_repo.get_preset_by_id(target).await? {
+        if let Some(m) = model_repo.get_by_id(&p.model_id).await? {
+            return Ok((m, p));
+        }
+    }
+
+    Err(AppError::not_found(format!(
+        "Model or preset '{}' not found in database",
+        target
+    )))
+}
+
 pub async fn load_model_process(
     pm: &ProcessManager,
     model_repo: &ModelRepository,
@@ -150,15 +191,7 @@ pub async fn load_model_process(
     config: &AppConfig,
     model_id: &str,
 ) -> AppResult<RunningModelStatus> {
-    let model_record = match model_repo.get_by_id(model_id).await? {
-        Some(m) => m,
-        None => {
-            return Err(AppError::not_found(format!(
-                "Model '{}' not found in database",
-                model_id
-            )))
-        }
-    };
+    let (model_record, preset) = resolve_model_and_preset(model_repo, model_id).await?;
 
     let models_dir_str = config.models.as_deref().unwrap_or("");
     let models_dir = if models_dir_str.is_empty() {
@@ -167,15 +200,15 @@ pub async fn load_model_process(
         crate::core::config::expand_tilde(models_dir_str)
     };
 
-    let (file_exists, file_name) = check_model_file_exists(&models_dir, &model_record.flags);
-    if !file_exists {
+    let full_model_path = models_dir.join(&model_record.relative_path);
+    if !full_model_path.is_file() {
         return Err(AppError::bad_request(format!(
             "Model file '{}' not found on disk. The file may have been moved or deleted.",
-            file_name.unwrap_or_else(|| "unknown".to_string())
+            model_record.filename
         )));
     }
 
-    let runtime_id = model_record.runtime.clone();
+    let runtime_id = preset.runtime_id.clone();
     let runtimes_dir_str = config.runtimes.as_deref().unwrap_or("");
     let runtimes_dir = crate::core::config::expand_tilde(runtimes_dir_str);
 
@@ -256,11 +289,6 @@ pub async fn load_model_process(
         Err(e) => return Err(fail_with(e)),
     };
 
-    let parsed_flags = crate::infrastructure::scanner::parse_flags_map(&model_record.flags);
-
-    let mut cmd = Command::new(&binary_path);
-    let mut port_injected = false;
-
     let is_sd_server = runtime_id == "sd-cpp"
         || manifest.binary_name == "sd-server"
         || binary_path.ends_with("sd-server");
@@ -269,6 +297,28 @@ pub async fn load_model_process(
     } else {
         "--port"
     };
+
+    let mut parsed_flags = crate::infrastructure::scanner::parse_flags_map(&preset.flags);
+    let mut has_model_flag = false;
+    for (k, v) in parsed_flags.iter_mut() {
+        if k == "--model" || k == "-m" || k == "--checkpoint" || k == "-w" {
+            has_model_flag = true;
+            let p = std::path::Path::new(v);
+            if !p.is_absolute() {
+                *v = full_model_path.to_string_lossy().to_string();
+            }
+        }
+    }
+    if !has_model_flag {
+        let flag_name = if is_sd_server { "--checkpoint" } else { "--model" };
+        parsed_flags.insert(
+            flag_name.to_string(),
+            full_model_path.to_string_lossy().to_string(),
+        );
+    }
+
+    let mut cmd = Command::new(&binary_path);
+    let mut port_injected = false;
 
     if let Some(parent) = std::path::Path::new(&binary_path).parent() {
         cmd.current_dir(parent);
@@ -809,12 +859,7 @@ pub async fn swap_model_process(
     config: &AppConfig,
     model_id: &str,
 ) -> AppResult<RunningModelStatus> {
-    if model_repo.get_by_id(model_id).await?.is_none() {
-        return Err(AppError::not_found(format!(
-            "Model '{}' not found in database",
-            model_id
-        )));
-    }
+    let (_model_record, _preset) = resolve_model_and_preset(model_repo, model_id).await?;
 
     let wait_start = Instant::now();
     let max_loading_wait = Duration::from_secs(120);

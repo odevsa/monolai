@@ -5,3 +5,4 @@ export * from './features.svelte';
 export * from './imageGallery.svelte';
 export * from './chats.svelte';
 export * from './host.svelte';
+export * from './downloads.svelte';

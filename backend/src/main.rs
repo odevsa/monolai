@@ -12,14 +12,18 @@ use core::config::{
     expand_tilde, get_default_config_path, get_default_db_path, load_config, FullConfigDto,
     GuiPreferences, PathResolver,
 };
-use infrastructure::db::{init_db, ChatRepository, ModelRepository, SettingRepository};
+use infrastructure::db::{
+    init_db, ChatRepository, DownloadRepository, ModelRepository, RepositoryRepository,
+    SettingRepository,
+};
 use infrastructure::downloader::RuntimeInstallerManager;
 use infrastructure::hardware::GpuTracker;
 use infrastructure::process::manager::{
     adopt_or_clean_orphans, start_idle_auto_unload_loop, ProcessManager,
 };
 use services::{
-    ChatService, HostService, LogService, ModelService, ProxyService, RuntimeService,
+    ChatService, DownloadService, HostService, HubService, LogService, ModelService, ProxyService,
+    RuntimeService,
 };
 use state::AppState;
 use std::{
@@ -371,6 +375,8 @@ async fn main() {
 
     // 4. Initialize Repositories
     let model_repo = ModelRepository::new(db_pool.clone());
+    let repo_repo = RepositoryRepository::new(db_pool.clone());
+    let download_repo = DownloadRepository::new(db_pool.clone());
     let chat_repo = ChatRepository::new(db_pool.clone());
     let setting_repo = SettingRepository::new(db_pool.clone()).await;
 
@@ -428,11 +434,22 @@ async fn main() {
     let host_service = Arc::new(HostService::new(Arc::new(Mutex::new(sys)), gpu_tracker));
 
     let proxy_service = Arc::new(ProxyService::new(
-        model_repo,
+        model_repo.clone(),
         setting_repo.clone(),
         process_manager,
         config_lock.clone(),
     ));
+
+    let hub_service = Arc::new(HubService::new(repo_repo.clone()));
+    let download_service = Arc::new(DownloadService::new(
+        download_repo,
+        model_repo.clone(),
+        repo_repo,
+        config_lock.clone(),
+    ));
+
+    // Sync any pre-existing or manual files placed in the models folder
+    let _ = model_service.sync_local_models().await;
 
     // 9. Build AppState
     let state = AppState {
@@ -447,6 +464,8 @@ async fn main() {
         host_service,
         proxy_service,
         log_service,
+        hub_service,
+        download_service,
         setting_repo,
     };
 

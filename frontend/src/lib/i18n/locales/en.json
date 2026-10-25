@@ -42,7 +42,8 @@
 		"host": "Host Address",
 		"port": "Port",
 		"prompt": "Prompt",
-		"ready": "Ready"
+		"ready": "Ready",
+		"downloading": "Downloading..."
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -208,6 +209,55 @@
 	"models": {
 		"pageTitle": "Models Management",
 		"pageSubtitle": "Register, configure parameters, and monitor local model instances",
+		"allModalities": "All Modalities",
+		"discoverModels": "Discover Models",
+		"tabs": {
+			"discover": "Discover",
+			"installed": "Installed",
+			"downloads": "Downloads"
+		},
+		"discover": {
+			"noReposTitle": "No Model Repositories Enabled",
+			"noReposDesc": "Enable at least one model repository (like Hugging Face Hub) to explore, inspect quants, and download models.",
+			"enableHuggingFace": "Enable Hugging Face Hub",
+			"searchPlaceholder": "Search models on hub (e.g. qwen, llama, flux)...",
+			"search": "Search",
+			"inspectFiles": "Files & Quants",
+			"selectQuantPrompt": "Select a quantized weights file to download directly to your models directory:",
+			"noFilesAvailable": "No compatible model files found in this repository.",
+			"fitOptimal": "Optimal: Fits entirely in GPU VRAM for maximum inference performance",
+			"fitModerate": "Moderate: Fits in system RAM (CPU inference)",
+			"fitPartialGpu": "Moderate: Partial GPU offload (fits in RAM, spills over VRAM)",
+			"fitLow": "Low / Risk of OOM: Exceeds system RAM (high risk of slowdown or crash)",
+			"fitUnknown": "Performance fit unknown: file size not reported"
+		},
+		"presets": {
+			"title": "Execution Presets",
+			"addPreset": "Add Preset",
+			"editPreset": "Edit Preset",
+			"noPresets": "No presets configured for this model.",
+			"presetName": "Preset Name",
+			"runtime": "Runtime Engine",
+			"isDefault": "Default Preset",
+			"isDefaultDesc": "Use this preset automatically when the model is requested without a preset tag.",
+			"flags": "Execution Flags",
+			"nameRequired": "Preset name is required.",
+			"runtimeRequired": "A compatible runtime engine must be selected.",
+			"noCompatibleRuntimes": "No installed runtimes support modality '{{modality}}' and format '{{format}}'.",
+			"deleteConfirm": "Are you sure you want to delete preset '{{name}}'?"
+		},
+		"downloads": {
+			"emptyTitle": "No Downloads",
+			"emptyDesc": "You haven't initiated any model downloads yet. Search and download models from the Discover tab.",
+			"activeDownloadsCount": "{{count}} active download(s)",
+			"paused": "Paused",
+			"completed": "Completed",
+			"failed": "Failed",
+			"pause": "Pause",
+			"resume": "Resume",
+			"installedReady": "Installed & registered ({{size}})",
+			"deleteConfirm": "Are you sure you want to remove download record for '{{name}}'?"
+		},
 		"editModel": "Edit Model",
 		"deleteConfirmTitle": "Delete Model",
 		"deleteConfirmMsg": "Are you sure you want to delete model '{{id}}'? The configuration will be removed from database.",
@@ -332,7 +382,24 @@
 	},
 	"settings": {
 		"generalTab": "General",
+		"repositoriesTab": "Repositories",
 		"aboutTab": "About",
+		"repositories": {
+			"title": "Model Repositories",
+			"subtitle": "Configure model sources and hubs for discovery, direct downloads, and quant extraction.",
+			"configuredRepositories": "Configured Repositories",
+			"builtin": "Built-in",
+			"custom": "Custom",
+			"mirrorUrl": "Mirror URL",
+			"apiToken": "API Token",
+			"apiTokenPlaceholder": "Enter API token (e.g. hf_...)",
+			"deleteConfirm": "Are you sure you want to remove the repository '{{name}}'?",
+			"addCustomModalTitle": "Add Custom Repository",
+			"repoId": "Repository ID",
+			"repoName": "Display Name",
+			"repoType": "Repository Type",
+			"baseUrl": "Base URL"
+		},
 		"languageTitle": "Language",
 		"languageDesc": "Select your preferred user interface language",
 		"idleAutoUnload": "Automatic Model Unloading",

@@ -104,8 +104,16 @@ The backend is structured into four primary layers:
    - Maintain high cohesion and clear encapsulation: components must accept strongly-typed `$props()` and manage only state pertinent to their isolated scope.
    - Zero local `<style>` blocks in components: rely exclusively on Tailwind CSS utility classes and semantic theme variables.
 8. **Mandatory Global UI Design System Usage (`src/lib/components/ui/`)**:
-   - Always favor canonical UI components from `src/lib/components/ui/` (`Button`, `Badge`, `Input`, `Select`, `Card`, `Modal`, `Alert`, `EmptyState`) instead of writing ad-hoc raw HTML controls (`<button>`, `<input>`, `<select>`) with manual utility chains.
-   - If a reusable UI pattern or control variant is needed across multiple views (e.g. specialized pills, action buttons, filter inputs) and does not yet exist, create it as a global atom/molecule in `src/lib/components/ui/` rather than duplicating local ad-hoc markup in page views.
+   - **STRICT Zero-Tolerance for Ad-Hoc HTML Controls**: AI agents and developers must NEVER create ad-hoc raw HTML elements (`<button>`, `<input>`, `<select>`, custom `<button>` lists for tab bars, or `<div>` blocks simulating cards with ad-hoc borders/backgrounds) when a canonical component exists in `src/lib/components/ui/`.
+   - **Canonical Component Mapping**:
+     - Cards and surface containers: `<Card>` (never ad-hoc `<div class="bg-[var(--bg-surface)] border rounded-xl ...">`).
+     - Sub-tabs and category navigation: `<Tabs variant="pills" ...>` or `<Tabs variant="card" ...>`.
+     - Select boxes & dropdowns: `<Select>` from `$lib/components/ui` (never native `<select>`).
+     - Text / search inputs: `<Input>` with `prefix`/`suffix` snippets (never raw `<input type="text">`).
+     - Action buttons: `<Button>` (standard sizes: `'xs' | 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'icon-xs'`).
+     - Status pills, labels, and badges: `<Badge>`, `<StatusDot>`, `<DiagonalLabel>`.
+     - Modals and feedback: `<Modal>`, `<Alert>`, `<EmptyState>`.
+   - **Extension Rule**: If a reusable UI pattern or variant does not yet exist, you MUST implement it inside `src/lib/components/ui/` (as an atom, molecule, or organism) and export it from `src/lib/components/ui/index.ts` so it can be universally reused across all pages. Never duplicate inline ad-hoc patterns in views.
 
 ---
 

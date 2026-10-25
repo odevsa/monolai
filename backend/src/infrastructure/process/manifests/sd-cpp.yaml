@@ -9,6 +9,12 @@ description: |
   SD1.x, SD2.x, SDXL, FLUX, and SD3.5 model architectures with GPU offload.
 features:
   - image-generation
+supported_modalities:
+  - text-to-image
+  - image-to-image
+supported_formats:
+  - gguf
+  - safetensors
 binary_name: "sd-server"
 
 downloads:

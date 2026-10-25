@@ -71,6 +71,10 @@ pub struct RuntimeManifest {
     pub description: String,
     #[serde(default)]
     pub features: Vec<String>,
+    #[serde(default)]
+    pub supported_modalities: Vec<String>,
+    #[serde(default)]
+    pub supported_formats: Vec<String>,
     pub binary_name: String,
     #[serde(default)]
     #[schema(value_type = Object)]
