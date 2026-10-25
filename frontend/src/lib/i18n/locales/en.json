@@ -44,7 +44,9 @@
 		"port": "Port",
 		"prompt": "Prompt",
 		"ready": "Ready",
-		"downloading": "Downloading..."
+		"downloading": "Downloading...",
+		"show": "Show",
+		"hide": "Hide"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -394,6 +396,10 @@
 			"title": "Model Repositories",
 			"subtitle": "Configure model sources and hubs for discovery, direct downloads, and quant extraction.",
 			"configuredRepositories": "Configured Repositories",
+			"groupAdd": "Add Repository",
+			"addCustomRepoTitle": "Add Custom Repository",
+			"addCustomRepoSubtitle": "Connect an external Git or Hugging Face compatible model repository",
+			"noRepos": "No model repositories configured.",
 			"builtin": "Built-in",
 			"custom": "Custom",
 			"apiToken": "API Token",

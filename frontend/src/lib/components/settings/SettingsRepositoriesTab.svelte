@@ -4,14 +4,34 @@
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import type { CreateRepositoryPayload, RepositoryRecord } from '$lib/types/models';
-	import { ExternalLink, KeyRound, Plus, Save, Trash2 } from '@lucide/svelte';
+	import {
+		Check,
+		Database,
+		ExternalLink,
+		Eye,
+		EyeOff,
+		Globe,
+		KeyRound,
+		Plus,
+		Save,
+		ShieldCheck,
+		Trash2
+	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SettingGroup from './SettingGroup.svelte';
+	import SettingRow from './SettingRow.svelte';
 
 	let repositories = $state<RepositoryRecord[]>([]);
 	let isLoading = $state(true);
+	let isSaving = $state(false);
+	let saveSuccess = $state(false);
 	let errorMessage = $state<string | null>(null);
-	let successMessage = $state<string | null>(null);
+
+	// Tracking state per repo
+	let editingTokens = $state<Record<string, string>>({});
+	let editingEnabled = $state<Record<string, boolean>>({});
+	let showToken = $state<Record<string, boolean>>({});
+	let showTokenGuide = $state<Record<string, boolean>>({});
 
 	// Custom repo modal
 	let showAddModal = $state(false);
@@ -32,11 +52,6 @@
 		enabled: true
 	});
 
-	// Token edit tracking per repo id
-	let editingTokens = $state<Record<string, string>>({});
-	let savingRepoId = $state<string | null>(null);
-	let showTokenGuide = $state<Record<string, boolean>>({});
-
 	const repoTypeOptions = [
 		{ value: 'huggingface', label: 'Hugging Face Hub' },
 		{ value: 'custom', label: 'Custom' }
@@ -48,10 +63,13 @@
 		try {
 			repositories = await hubApi.getRepositories();
 			const tokens: Record<string, string> = {};
+			const enabled: Record<string, boolean> = {};
 			for (const r of repositories) {
 				tokens[r.id] = r.api_token || '';
+				enabled[r.id] = r.enabled;
 			}
 			editingTokens = tokens;
+			editingEnabled = enabled;
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			errorMessage = msg;
@@ -60,37 +78,38 @@
 		}
 	}
 
-	async function toggleEnabled(repo: RepositoryRecord) {
-		try {
-			const updated = await hubApi.updateRepository(repo.id, {
-				enabled: !repo.enabled
-			});
-			repositories = repositories.map((r) => (r.id === repo.id ? updated : r));
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			errorMessage = msg;
-		}
-	}
-
-	async function saveRepoSettings(repo: RepositoryRecord) {
-		savingRepoId = repo.id;
+	async function saveAllSettings() {
+		isSaving = true;
 		errorMessage = null;
-		successMessage = null;
+		saveSuccess = false;
+
 		try {
-			const tokenVal = editingTokens[repo.id]?.trim() || undefined;
-			const updated = await hubApi.updateRepository(repo.id, {
-				api_token: tokenVal
+			const updates = repositories.map(async (repo) => {
+				const tokenVal = editingTokens[repo.id]?.trim() ?? '';
+				const isEnabled = editingEnabled[repo.id] ?? repo.enabled;
+
+				return hubApi.updateRepository(repo.id, {
+					api_token: tokenVal,
+					enabled: isEnabled
+				});
 			});
-			repositories = repositories.map((r) => (r.id === repo.id ? updated : r));
-			successMessage = t('common.saved');
+
+			const updatedList = await Promise.all(updates);
+			repositories = updatedList;
+			for (const r of updatedList) {
+				editingTokens[r.id] = r.api_token || '';
+				editingEnabled[r.id] = r.enabled;
+			}
+
+			saveSuccess = true;
 			setTimeout(() => {
-				if (successMessage) successMessage = null;
+				saveSuccess = false;
 			}, 3000);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			errorMessage = msg;
 		} finally {
-			savingRepoId = null;
+			isSaving = false;
 		}
 	}
 
@@ -107,6 +126,8 @@
 		try {
 			await hubApi.deleteRepository(repo.id);
 			repositories = repositories.filter((r) => r.id !== repo.id);
+			delete editingTokens[repo.id];
+			delete editingEnabled[repo.id];
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			errorMessage = msg;
@@ -130,6 +151,7 @@
 			const created = await hubApi.createRepository(payload);
 			repositories = [...repositories, created];
 			editingTokens[created.id] = created.api_token || '';
+			editingEnabled[created.id] = created.enabled;
 			showAddModal = false;
 			newRepo = {
 				id: '',
@@ -152,59 +174,44 @@
 	});
 </script>
 
-<div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-	<!-- Header / Description -->
-	<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-		<div>
-			<h4 class="text-sm font-semibold text-[var(--text-primary)] m-0">
-				{t('settings.repositories.title')}
-			</h4>
-			<p class="text-xs text-[var(--text-muted)] mt-1 mb-0">
-				{t('settings.repositories.subtitle')}
-			</p>
-		</div>
+<div class="flex flex-col h-full min-h-0 w-full">
+	<!-- Scrollable content area -->
+	<div class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5 min-h-0">
+		{#if errorMessage}
+			<Alert variant="error" dismissible ondismiss={() => (errorMessage = null)}>
+				{errorMessage}
+			</Alert>
+		{/if}
 
-		<Button variant="primary" size="sm" onclick={() => (showAddModal = true)}>
-			<Plus size={14} />
-			<span>{t('common.add')}</span>
-		</Button>
-	</div>
-
-	{#if errorMessage}
-		<Alert variant="error" title={t('common.error')}>
-			{errorMessage}
-		</Alert>
-	{/if}
-
-	{#if successMessage}
-		<Alert variant="success" title={t('common.saved')}>
-			{successMessage}
-		</Alert>
-	{/if}
-
-	{#if isLoading}
-		<div class="flex flex-col items-center justify-center p-12 text-[var(--text-muted)] gap-2">
-			<Spinner size={24} />
-			<span class="text-xs">{t('common.loading')}</span>
-		</div>
-	{:else}
-		<SettingGroup title={t('settings.repositories.configuredRepositories')}>
-			<div class="space-y-4 p-4">
-				{#each repositories as repo (repo.id)}
-					<div
-						class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-4 transition-all duration-150 hover:border-[var(--border-hover)] space-y-3"
-					>
-						<!-- Top row: Status toggle, Name, Badge, Delete -->
-						<div class="flex items-center justify-between gap-3 flex-wrap">
-							<div class="flex items-center gap-3">
-								<Toggle
-									checked={repo.enabled}
-									onchange={() => toggleEnabled(repo)}
-									ariaLabel={repo.enabled ? t('common.active') : t('common.disabled')}
-								/>
-								<div>
-									<div class="flex items-center gap-2">
-										<span class="text-sm font-bold text-[var(--text-primary)] leading-tight">
+		{#if isLoading}
+			<div class="flex flex-col items-center justify-center p-12 text-[var(--text-muted)] gap-2">
+				<Spinner size={24} />
+				<span class="text-xs">{t('common.loading')}</span>
+			</div>
+		{:else}
+			<!-- Group 1: Configured Repositories -->
+			<div class="relative z-20">
+				<SettingGroup
+					title={t('settings.repositories.configuredRepositories')}
+					description={t('settings.repositories.subtitle')}
+				>
+					{#if repositories.length === 0}
+						<div
+							class="p-5 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-hover)] rounded-2xl"
+						>
+							{t('settings.repositories.noRepos')}
+						</div>
+					{:else}
+						{#each repositories as repo (repo.id)}
+							<SettingRow
+								icon={repo.repo_type === 'huggingface' ? Globe : Database}
+								vertical={true}
+							>
+								{#snippet titleSnippet()}
+									<div class="flex items-center gap-2 flex-wrap">
+										<span
+											class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight"
+										>
 											{repo.name}
 										</span>
 										{#if repo.is_builtin}
@@ -217,104 +224,168 @@
 										href={repo.base_url}
 										target="_blank"
 										rel="noreferrer"
-										class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] flex items-center gap-1 no-underline mt-0.5"
+										class="text-[11px] text-[var(--text-muted)] hover:text-[var(--primary)] inline-flex items-center gap-1 no-underline mt-0.5"
 									>
 										<span>{repo.base_url}</span>
 										<ExternalLink size={10} />
 									</a>
-								</div>
-							</div>
+								{/snippet}
 
-							<div class="flex items-center gap-2">
-								{#if !repo.is_builtin}
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onclick={() => deleteRepo(repo)}
-										title={t('common.delete')}
-										ariaLabel={t('common.delete')}
+								{#snippet actionSnippet()}
+									<div class="flex items-center gap-2">
+										{#if !repo.is_builtin}
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												onclick={() => deleteRepo(repo)}
+												title={t('common.delete')}
+												ariaLabel={t('common.delete')}
+											>
+												<Trash2 size={14} class="text-[var(--danger-text)]" />
+											</Button>
+										{/if}
+										<Toggle
+											bind:checked={editingEnabled[repo.id]}
+											ariaLabel={editingEnabled[repo.id]
+												? t('common.active')
+												: t('common.disabled')}
+										/>
+									</div>
+								{/snippet}
+
+								<!-- API Token Configuration -->
+								<div class="flex flex-col gap-2 pt-2 w-full">
+									<label
+										for="token-{repo.id}"
+										class="text-[11px] font-medium text-[var(--text-secondary)] block"
 									>
-										<Trash2 size={14} class="text-[var(--danger-text)]" />
-									</Button>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Config fields row: API Token -->
-						<div class="pt-1">
-							<label
-								for="token-{repo.id}"
-								class="text-[11px] font-medium text-[var(--text-secondary)] block mb-1"
-							>
-								{t('settings.repositories.apiToken')}
-							</label>
-							<div class="flex items-center gap-2 max-w-xl">
-								<Input
-									id="token-{repo.id}"
-									type="password"
-									bind:value={editingTokens[repo.id]}
-									placeholder={t('settings.repositories.apiTokenPlaceholder')}
-								/>
-								<Button
-									variant="secondary"
-									size="sm"
-									onclick={() => saveRepoSettings(repo)}
-									disabled={savingRepoId === repo.id}
-									title={t('common.save')}
-								>
-									{#if savingRepoId === repo.id}
-										<Spinner size={13} />
-									{:else}
-										<Save size={13} />
-									{/if}
-								</Button>
-							</div>
-
-							{#if repo.repo_type === 'huggingface'}
-								<div class="mt-2 space-y-2">
-									<button
-										type="button"
-										class="text-[11px] text-[var(--primary)] hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 font-medium"
-										onclick={() => (showTokenGuide[repo.id] = !showTokenGuide[repo.id])}
-									>
-										<KeyRound size={12} />
-										<span>{t('settings.repositories.howToTokenTitle')}</span>
-									</button>
-
-									{#if showTokenGuide[repo.id]}
-										<div
-											class="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg p-3 space-y-2 text-xs text-[var(--text-secondary)] max-w-xl"
+										{t('settings.repositories.apiToken')}
+									</label>
+									<div class="w-full max-w-xl">
+										<Input
+											id="token-{repo.id}"
+											name="monolai_hf_token_{repo.id}"
+											type={showToken[repo.id] ? 'text' : 'password'}
+											bind:value={editingTokens[repo.id]}
+											placeholder={t('settings.repositories.apiTokenPlaceholder')}
+											autocomplete="new-password"
+											spellcheck={false}
+											data-lpignore="true"
+											data-1p-ignore="true"
+											data-form-type="other"
 										>
-											<div class="flex items-center justify-between gap-2">
-												<span class="font-medium text-[var(--text-primary)]">
-													{t('settings.repositories.howToTokenDesc')}
-												</span>
-												<a
-													href="https://huggingface.co/settings/tokens"
-													target="_blank"
-													rel="noreferrer"
-													class="inline-flex items-center gap-1 text-[11px] text-[var(--primary)] hover:underline no-underline shrink-0"
+											{#snippet suffix()}
+												<button
+													type="button"
+													tabindex="-1"
+													class="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer bg-transparent border-0 flex items-center justify-center"
+													onclick={() => (showToken[repo.id] = !showToken[repo.id])}
+													aria-label={showToken[repo.id] ? t('common.hide') : t('common.show')}
+													title={showToken[repo.id] ? t('common.hide') : t('common.show')}
 												>
-													<span>{t('settings.repositories.openHfTokens')}</span>
-													<ExternalLink size={11} />
-												</a>
-											</div>
-											<ol class="space-y-1 pl-4 m-0 list-decimal text-[11px]">
-												<li>{t('settings.repositories.howToTokenStep1')}</li>
-												<li>{t('settings.repositories.howToTokenStep2')}</li>
-												<li>{t('settings.repositories.howToTokenStep3')}</li>
-												<li>{t('settings.repositories.howToTokenStep4')}</li>
-											</ol>
+													{#if showToken[repo.id]}
+														<EyeOff size={14} />
+													{:else}
+														<Eye size={14} />
+													{/if}
+												</button>
+											{/snippet}
+										</Input>
+									</div>
+
+									{#if repo.repo_type === 'huggingface'}
+										<div class="mt-1 space-y-2">
+											<button
+												type="button"
+												class="text-[11px] text-[var(--primary)] hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 font-medium"
+												onclick={() => (showTokenGuide[repo.id] = !showTokenGuide[repo.id])}
+											>
+												<KeyRound size={12} />
+												<span>{t('settings.repositories.howToTokenTitle')}</span>
+											</button>
+
+											{#if showTokenGuide[repo.id]}
+												<div
+													class="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg p-3 space-y-2 text-xs text-[var(--text-secondary)] max-w-xl"
+												>
+													<div class="flex items-center justify-between gap-2">
+														<span class="font-medium text-[var(--text-primary)]">
+															{t('settings.repositories.howToTokenDesc')}
+														</span>
+														<a
+															href="https://huggingface.co/settings/tokens"
+															target="_blank"
+															rel="noreferrer"
+															class="inline-flex items-center gap-1 text-[11px] text-[var(--primary)] hover:underline no-underline shrink-0"
+														>
+															<span>{t('settings.repositories.openHfTokens')}</span>
+															<ExternalLink size={11} />
+														</a>
+													</div>
+													<ol class="space-y-1 pl-4 m-0 list-decimal text-[11px]">
+														<li>{t('settings.repositories.howToTokenStep1')}</li>
+														<li>{t('settings.repositories.howToTokenStep2')}</li>
+														<li>{t('settings.repositories.howToTokenStep3')}</li>
+														<li>{t('settings.repositories.howToTokenStep4')}</li>
+													</ol>
+												</div>
+											{/if}
 										</div>
 									{/if}
 								</div>
-							{/if}
-						</div>
-					</div>
-				{/each}
+							</SettingRow>
+						{/each}
+					{/if}
+				</SettingGroup>
 			</div>
-		</SettingGroup>
-	{/if}
+
+			<!-- Group 2: Add Repository -->
+			<div class="relative z-10">
+				<SettingGroup title={t('settings.repositories.groupAdd')}>
+					<SettingRow
+						icon={Plus}
+						title={t('settings.repositories.addCustomRepoTitle')}
+						subtitle={t('settings.repositories.addCustomRepoSubtitle')}
+					>
+						<Button variant="secondary" size="sm" onclick={() => (showAddModal = true)}>
+							<Plus size={14} />
+							<span>{t('common.add')}</span>
+						</Button>
+					</SettingRow>
+				</SettingGroup>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Dedicated Solid Dialog Footer (Completely separate from scroll area) -->
+	<div
+		class="shrink-0 bg-[var(--bg-surface)] border-t border-[var(--border-color)] px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shadow-md"
+	>
+		<div class="flex items-center gap-2">
+			{#if saveSuccess}
+				<div
+					class="flex items-center gap-1.5 text-xs font-semibold text-[var(--success-text)] animate-in fade-in"
+				>
+					<ShieldCheck size={16} />
+					<span>{t('settings.saveSuccess')}</span>
+				</div>
+			{:else}
+				<span class="text-[11px] text-[var(--text-muted)]">
+					{t('settings.changesImmediate')}
+				</span>
+			{/if}
+		</div>
+
+		<Button variant="primary" size="md" loading={isSaving} onclick={saveAllSettings}>
+			{#if saveSuccess}
+				<Check size={14} />
+				<span>{t('common.saved')}</span>
+			{:else}
+				<Save size={14} />
+				<span>{t('common.save')}</span>
+			{/if}
+		</Button>
+	</div>
 </div>
 
 <!-- Add Custom Repository Modal -->
@@ -382,6 +453,12 @@
 				</label>
 				<Input
 					id="new-repo-token"
+					name="monolai_new_repo_token"
+					autocomplete="new-password"
+					spellcheck={false}
+					data-lpignore="true"
+					data-1p-ignore="true"
+					data-form-type="other"
 					type="password"
 					bind:value={newRepo.api_token}
 					placeholder="Optional API token (Bearer)"
