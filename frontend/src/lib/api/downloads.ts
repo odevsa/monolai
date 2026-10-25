@@ -14,6 +14,8 @@ export const downloadsApi = {
 
 	delete: (id: string) => api.delete<void>(`/api/downloads/${encodeURIComponent(id)}`),
 
+	clearInactive: () => api.post<void>('/api/downloads/clear'),
+
 	subscribe: (
 		onUpdate: (downloads: DownloadRecord[]) => void,
 		onError?: (err: Event) => void

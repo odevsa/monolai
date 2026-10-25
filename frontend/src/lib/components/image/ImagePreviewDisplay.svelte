@@ -4,6 +4,7 @@
 	import type { GeneratedImageItem as GeneratedImage } from '$lib/types/chat';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import { Image as ImageIcon, Sparkles } from '@lucide/svelte';
+	import Loader from '../ui/atoms/Loader.svelte';
 
 	interface ImagePreviewDisplayProps {
 		selectedImage: GeneratedImage | null;
@@ -25,10 +26,7 @@
 		<!-- Loading State -->
 		<div class="flex flex-col items-center justify-center gap-3 p-8 text-center">
 			<div class="relative w-16 h-16 flex items-center justify-center">
-				<div
-					class="absolute inset-0 rounded-full border-2 border-[var(--border-color)] border-t-[var(--primary)] animate-spin"
-				></div>
-				<Sparkles size={24} class="text-[var(--primary)] animate-pulse" />
+				<Loader size={64} />
 			</div>
 			<span class="text-xs text-[var(--text-muted)] animate-pulse">
 				{t('image.generatingBtn')}

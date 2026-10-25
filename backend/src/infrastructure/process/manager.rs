@@ -146,19 +146,7 @@ pub async fn resolve_model_and_preset(
     model_repo: &ModelRepository,
     target: &str,
 ) -> AppResult<(crate::domain::ModelRecord, crate::domain::ModelPreset)> {
-    if let Some((m_id, p_name)) = target.split_once(':') {
-        if let Some(m) = model_repo.get_by_id(m_id).await? {
-            let found = m
-                .presets
-                .iter()
-                .find(|p| p.name.eq_ignore_ascii_case(p_name) || p.id == target)
-                .cloned();
-            if let Some(p) = found {
-                return Ok((m, p));
-            }
-        }
-    }
-
+    // 1. Direct match by exact model ID (e.g. "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct-q4_k_m.gguf")
     if let Some(m) = model_repo.get_by_id(target).await? {
         let preset = m
             .presets
@@ -172,10 +160,45 @@ pub async fn resolve_model_and_preset(
         return Ok((m, preset));
     }
 
+    // 2. Direct match by preset ID
     if let Some(p) = model_repo.get_preset_by_id(target).await? {
         if let Some(m) = model_repo.get_by_id(&p.model_id).await? {
             return Ok((m, p));
         }
+    }
+
+    // 3. Match model_id:preset_name
+    if let Some((m_id, p_name)) = target.rsplit_once(':') {
+        if let Some(m) = model_repo.get_by_id(m_id).await? {
+            let found = m
+                .presets
+                .iter()
+                .find(|p| p.name.eq_ignore_ascii_case(p_name) || p.id == target)
+                .cloned();
+            if let Some(p) = found {
+                return Ok((m, p));
+            }
+        }
+    }
+
+    // 4. Fallback search across all models by relative_path, filename or source_repo
+    let all = model_repo.get_all().await?;
+    if let Some(m) = all.into_iter().find(|m| {
+        m.id.eq_ignore_ascii_case(target)
+            || m.filename.eq_ignore_ascii_case(target)
+            || m.relative_path.eq_ignore_ascii_case(target)
+            || m.source_repo.as_deref().map(|s| s.eq_ignore_ascii_case(target)).unwrap_or(false)
+    }) {
+        let preset = m
+            .presets
+            .iter()
+            .find(|p| p.is_default)
+            .cloned()
+            .or_else(|| m.presets.first().cloned())
+            .ok_or_else(|| {
+                AppError::bad_request(format!("Model '{}' has no configured presets", target))
+            })?;
+        return Ok((m, preset));
     }
 
     Err(AppError::not_found(format!(

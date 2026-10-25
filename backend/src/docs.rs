@@ -43,6 +43,7 @@ use utoipa::OpenApi;
         crate::handlers::downloads::resume_download_handler,
         crate::handlers::downloads::cancel_download_handler,
         crate::handlers::downloads::delete_download_handler,
+        crate::handlers::downloads::clear_downloads_handler,
         crate::handlers::downloads::downloads_stream_handler,
         crate::handlers::chats::get_chats_handler,
         crate::handlers::chats::create_chat_handler,

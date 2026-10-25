@@ -140,4 +140,6 @@ export interface HubModelItem {
 	pipeline_tag?: string;
 	modality: string;
 	siblings: HubModelSibling[];
+	is_gated?: boolean;
+	requires_auth?: boolean;
 }

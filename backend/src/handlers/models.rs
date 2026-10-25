@@ -21,6 +21,7 @@ use std::{convert::Infallible, time::Duration};
 pub struct GetModelsQuery {
     pub all: Option<bool>,
     pub include_missing: Option<bool>,
+    pub sync: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
@@ -54,7 +55,8 @@ pub async fn available_models_handler(State(state): State<AppState>) -> Json<Vec
     path = "/api/models",
     tag = "Models",
     params(
-        ("all" = Option<bool>, Query, description = "Include models whose files are missing on disk (default: false)")
+        ("all" = Option<bool>, Query, description = "Include models whose files are missing on disk (default: false)"),
+        ("sync" = Option<bool>, Query, description = "Force rescan of models on disk (default: false)")
     ),
     responses(
         (status = 200, description = "List of registered models", body = Vec<ModelRecord>)
@@ -65,7 +67,8 @@ pub async fn get_models_handler(
     Query(query): Query<GetModelsQuery>,
 ) -> AppResult<Json<Vec<ModelRecord>>> {
     let include_all = query.all.unwrap_or(false) || query.include_missing.unwrap_or(false);
-    let models = state.model_service.get_models(include_all).await?;
+    let force_sync = query.sync.unwrap_or(false);
+    let models = state.model_service.get_models(include_all, force_sync).await?;
     Ok(Json(models))
 }
 

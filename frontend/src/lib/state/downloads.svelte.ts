@@ -9,6 +9,13 @@ class DownloadStore {
 	activeDownloads = $derived(this.downloads.filter((d) => d.status === 'downloading'));
 	hasActive = $derived(this.activeDownloads.length > 0);
 	activeCount = $derived(this.activeDownloads.length);
+	completedDownloads = $derived(this.downloads.filter((d) => d.status === 'completed'));
+	completedCount = $derived(this.completedDownloads.length);
+	hasInactive = $derived(
+		this.downloads.some(
+			(d) => d.status === 'completed' || d.status === 'failed' || d.status === 'cancelled'
+		)
+	);
 	totalSpeed = $derived(
 		this.activeDownloads.reduce((acc, curr) => acc + (curr.speed_bytes_sec || 0), 0)
 	);
@@ -66,6 +73,11 @@ class DownloadStore {
 
 	async delete(id: string) {
 		await downloadsApi.delete(id);
+		await this.refresh();
+	}
+
+	async clearInactive() {
+		await downloadsApi.clearInactive();
 		await this.refresh();
 	}
 

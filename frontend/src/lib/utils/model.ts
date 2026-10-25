@@ -8,19 +8,129 @@ export interface ParsedModelDetails {
 }
 
 /**
- * Parses raw model identifiers, paths, or existing tag arrays into a clean base
- * model name and a set of tag badges (e.g. parameter size, quantization, instruction type).
+ * Canonical model string formatter (SSoT):
+ * Formats any model representation (object, record, path, or raw identifier)
+ * into the canonical project standard: "{user}/{model}:{filename}"
+ *
+ * Examples:
+ *   formatCanonicalModelString({ source_repo: "Qwen/Qwen2.5-GGUF", filename: "qwen2.5-1.5b-instruct-q4_k_m.gguf" })
+ *   => "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct-q4_k_m.gguf"
+ *
+ *   formatCanonicalModelString("text-to-text/Qwen/Qwen2.5-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf")
+ *   => "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct-q4_k_m.gguf"
+ *
+ *   formatCanonicalModelString("Qwen--Qwen2.5-GGUF--qwen2.5-1.5b-instruct")
+ *   => "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct"
+ */
+export function formatCanonicalModelString(
+	input:
+		| string
+		| string[]
+		| {
+				id?: string;
+				source_repo?: string;
+				relative_path?: string;
+				filename?: string;
+				name?: string;
+		  }
+		| undefined
+		| null
+): string {
+	if (!input) return '';
+
+	if (Array.isArray(input)) {
+		if (input.length === 0) return '';
+		return formatCanonicalModelString(input[0]);
+	}
+
+	if (typeof input === 'object') {
+		// If object has source_repo and filename
+		if (input.source_repo && input.filename) {
+			const cleanRepo = input.source_repo.trim().replace(/^[:/]+|[:/]+$/g, '');
+			const cleanFile = input.filename.trim();
+			return `${cleanRepo}:${cleanFile}`;
+		}
+		// If object has relative_path: e.g. text-to-text/user/model/filename
+		if (input.relative_path) {
+			const norm = input.relative_path.replace(/\\/g, '/').replace(/^\/+/, '');
+			const parts = norm.split('/');
+			if (parts.length >= 4) {
+				return `${parts[1]}/${parts[2]}:${parts.slice(3).join('/')}`;
+			} else if (parts.length === 3) {
+				return `${parts[1]}:${parts[2]}`;
+			} else if (parts.length === 2 && input.filename) {
+				return `${parts[0]}:${parts[1]}`;
+			}
+		}
+		if (input.id) {
+			return formatCanonicalModelString(input.id);
+		}
+		if (input.name && input.filename) {
+			return `${input.name}:${input.filename}`;
+		}
+		return '';
+	}
+
+	const str = input.trim();
+	if (!str) return '';
+
+	// If already in "{user}/{model}:{filename}" format
+	if (str.includes(':')) {
+		const [first, ...rest] = str.split(':');
+		const file = rest.join(':');
+		const normFirst = first.replace(/\\/g, '/').replace(/^\/+/, '');
+		const parts = normFirst.split('/');
+		if (
+			parts.length >= 3 &&
+			['text-to-text', 'text-to-image', 'text-to-speech', 'speech-to-text', 'embeddings'].includes(
+				parts[0]
+			)
+		) {
+			return `${parts.slice(1).join('/')}:${file}`;
+		}
+		return `${normFirst}:${file}`;
+	}
+
+	// Check for double dash pattern e.g. "Qwen--Qwen2.5-GGUF--qwen2.5-1.5b-instruct"
+	if (str.includes('--')) {
+		const parts = str.split('--');
+		if (parts.length >= 3) {
+			return `${parts[0]}/${parts[1]}:${parts.slice(2).join('--')}`;
+		} else if (parts.length === 2) {
+			return `${parts[0]}:${parts[1]}`;
+		}
+	}
+
+	// Check if string is a relative path: e.g. "text-to-text/Qwen/Qwen2.5-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+	const norm = str.replace(/\\/g, '/').replace(/^\/+/, '');
+	const parts = norm.split('/');
+	if (parts.length >= 4) {
+		return `${parts[1]}/${parts[2]}:${parts.slice(3).join('/')}`;
+	} else if (parts.length === 3) {
+		return `${parts[1]}:${parts[2]}`;
+	}
+
+	return str;
+}
+
+/**
+ * Parses raw model identifiers or canonical "{user}/{model}:{filename}" strings
+ * into a clean base model name and tag badges.
+ *
+ * ModelBadge displays: "{user}/{model} [tags]"
  *
  * Example:
- *   "qwen2.5-0.5b-instruct-q8_0.gguf"
- *   => { name: "qwen2.5", tags: ["0.5B", "q8_0", "instruct"] }
+ *   "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct-q4_k_m.gguf"
+ *   => { name: "Qwen/Qwen2.5-GGUF", tags: ["1.5B", "q4_k_m", "instruct"] }
  */
-export function parseModelDetails(input: string | string[] | undefined | null): ParsedModelDetails {
+export function parseModelDetails(
+	input: string | string[] | any | undefined | null
+): ParsedModelDetails {
 	if (!input) {
 		return { name: '', tags: [] };
 	}
 
-	let str = '';
+	// If explicit array with > 1 element already pre-parsed: [name, ...tags]
 	if (Array.isArray(input)) {
 		if (input.length === 0) return { name: '', tags: [] };
 		if (input.length > 1) {
@@ -29,64 +139,75 @@ export function parseModelDetails(input: string | string[] | undefined | null): 
 				tags: input.slice(1)
 			};
 		}
-		str = input[0];
-	} else {
-		str = input;
+		input = input[0];
 	}
 
-	if (!str) return { name: '', tags: [] };
+	const canonical = formatCanonicalModelString(input);
+	if (!canonical) return { name: '', tags: [] };
+
+	let baseName = '';
+	let tagSource = '';
+
+	if (canonical.includes(':')) {
+		const colonIdx = canonical.indexOf(':');
+		baseName = canonical.slice(0, colonIdx).trim();
+		tagSource = canonical.slice(colonIdx + 1).trim();
+	} else {
+		baseName = canonical;
+		tagSource = canonical;
+	}
 
 	// Remove file extensions (.gguf, .bin, .safetensors, .pt, .onnx)
-	let cleaned = str.replace(/\.(gguf|bin|safetensors|pt|onnx)$/i, '');
-
-	// Extract runtime if formatted as "runtime/model"
-	if (cleaned.includes('/') && !cleaned.startsWith('/') && !cleaned.startsWith('.')) {
-		cleaned = cleaned.split('/')[1] || cleaned;
-	}
+	tagSource = tagSource.replace(/\.(gguf|bin|safetensors|pt|onnx)$/i, '');
 
 	let sizeTag = '';
 	let quantTag = '';
 	let typeTag = '';
 
 	// Size tag match (e.g., 0.5b, 7b, 1.5b, 70b, 1b, 3b, 8b, 14b, 32b, 72b)
-	const sizeMatch = cleaned.match(/(?:^|[:\-_])(\d+(?:\.\d+)?[bmktBMKT])(?:[:\-_]|$)/);
+	const sizeMatch = tagSource.match(/(?:^|[:\-_])(\d+(?:\.\d+)?[bmktBMKT])(?:[:\-_]|$)/);
 	if (sizeMatch) {
 		sizeTag = sizeMatch[1].toUpperCase();
 		const prefix = sizeMatch[0][0];
-		cleaned = cleaned.replace(sizeMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
+		tagSource = tagSource.replace(sizeMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
 	}
 
 	// Quantization tag match (e.g., q8_0, q4_k_m, q4_k_s, q5_k_m, q4_0, q5_0, f16, f32, bf16, fp16, fp32, int8, int4, q8_k, q8, q4, q5, q6)
-	const quantMatch = cleaned.match(
+	const quantMatch = tagSource.match(
 		/(?:^|[:\-_])(q\d+(?:_[a-z0-9_]+|[kK]_[sSmMlL]|_k)?|f16|f32|bf16|fp16|fp32|int8|int4)(?:[:\-_]|$)/i
 	);
 	if (quantMatch) {
 		quantTag = quantMatch[1];
 		const prefix = quantMatch[0][0];
-		cleaned = cleaned.replace(quantMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
+		tagSource = tagSource.replace(quantMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
 	}
 
 	// Type/variant tag match (e.g., instruct, chat, coder, code, math, vision, base, it, rlhf, distill, thinking, lite, mtp)
-	const typeMatch = cleaned.match(
+	const typeMatch = tagSource.match(
 		/(?:^|[:\-_])(instruct|chat|coder|code|math|vision|base|it|rlhf|distill|thinking|lite|mtp)(?:[:\-_]|$)/i
 	);
 	if (typeMatch) {
 		typeTag = typeMatch[1].toLowerCase();
 		const prefix = typeMatch[0][0];
-		cleaned = cleaned.replace(typeMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
+		tagSource = tagSource.replace(typeMatch[0], /[:\-_]/.test(prefix) ? prefix : '');
 	}
 
-	// Clean up remaining string for base name
-	let name = cleaned.replace(/^[:\-_.]+|[:\-_.]+$|:\-$|:$/g, '').trim();
-	name = name.replace(/[:\-_]{2,}/g, '-');
-	if (!name) name = str;
+	// If no colon was provided in the input, baseName might also contain size/quant/type tags that should be cleaned up
+	if (!canonical.includes(':')) {
+		let cleanedBase = baseName.replace(/\.(gguf|bin|safetensors|pt|onnx)$/i, '');
+		if (sizeMatch) cleanedBase = cleanedBase.replace(sizeMatch[0], '');
+		if (quantMatch) cleanedBase = cleanedBase.replace(quantMatch[0], '');
+		if (typeMatch) cleanedBase = cleanedBase.replace(typeMatch[0], '');
+		cleanedBase = cleanedBase.replace(/^[:\-_.]+|[:\-_.]+$|:\-$|:$/g, '').trim();
+		if (cleanedBase) baseName = cleanedBase;
+	}
 
 	const tags: string[] = [];
 	if (sizeTag) tags.push(sizeTag);
 	if (quantTag) tags.push(quantTag);
 	if (typeTag) tags.push(typeTag);
 
-	return { name, tags };
+	return { name: baseName, tags };
 }
 
 /**

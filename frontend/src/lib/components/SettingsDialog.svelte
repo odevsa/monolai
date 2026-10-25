@@ -7,6 +7,7 @@
 	} from '$lib/components/settings';
 	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import { settingsDialogState, type SettingsTab } from '$lib/state';
 	import type { ThemeId } from '$lib/themes';
 	import { Database, Info, MessageSquare, SlidersVertical, X } from '@lucide/svelte';
 
@@ -20,10 +21,18 @@
 		effectiveTheme: 'dark' | 'light';
 	} = $props();
 
-	let activeTab = $state<'general' | 'repositories' | 'chat' | 'about'>('general');
+	let activeTab = $state<SettingsTab>('general');
+
+	$effect(() => {
+		if (settingsDialogState.isOpen) {
+			open = true;
+			activeTab = settingsDialogState.activeTab;
+		}
+	});
 
 	function close() {
 		open = false;
+		settingsDialogState.isOpen = false;
 	}
 
 	function handleBackdropClick(e: MouseEvent) {

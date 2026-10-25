@@ -40,10 +40,14 @@ pub async fn init_db(
         format!("sqlite:{}?mode=rwc", database_url)
     };
 
-    let options = SqliteConnectOptions::from_str(&connection_url)?.create_if_missing(true);
+    let options = SqliteConnectOptions::from_str(&connection_url)?
+        .create_if_missing(true)
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+        .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+        .busy_timeout(std::time::Duration::from_secs(10));
 
     let pool = SqlitePoolOptions::new()
-        .max_connections(5)
+        .max_connections(10)
         .connect_with(options)
         .await?;
 

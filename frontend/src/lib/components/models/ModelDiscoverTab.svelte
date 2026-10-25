@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { hubApi } from '$lib/api/hub';
 	import { modelsApi } from '$lib/api/models';
 	import {
@@ -18,6 +20,7 @@
 	import { t } from '$lib/i18n';
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import { hostState } from '$lib/state/host.svelte';
+	import { settingsDialogState } from '$lib/state';
 	import type {
 		HubModelItem,
 		HubModelSibling,
@@ -60,14 +63,14 @@
 
 	let enabledRepos = $derived(repositories.filter((r) => r.enabled));
 
-	let completedDownloadsCount = $derived(
-		downloadStore.downloads.filter((d) => d.status === 'completed').length
-	);
+	let lastCompletedCount = $state<number | null>(null);
 
 	$effect(() => {
-		if (completedDownloadsCount >= 0) {
+		const current = downloadStore.completedCount;
+		if (lastCompletedCount !== null && current > lastCompletedCount) {
 			loadRegisteredModels();
 		}
+		lastCompletedCount = current;
 	});
 
 	const modalityTabItems = [
@@ -92,6 +95,8 @@
 			const enabled = repositories.filter((r) => r.enabled);
 			if (enabled.length > 0 && !selectedRepoId) {
 				selectedRepoId = enabled[0].id;
+			}
+			if (selectedRepoId) {
 				executeSearch();
 			}
 		} catch (err: unknown) {
@@ -110,30 +115,70 @@
 		}
 	}
 
-	function findDownloadedModelForFile(file: HubModelSibling): ModelRecord | undefined {
+	const GENERIC_FILENAMES = new Set([
+		'model.safetensors',
+		'model.bin',
+		'model.gguf',
+		'weights.safetensors',
+		'weights.bin',
+		'pytorch_model.bin',
+		'diffusion_pytorch_model.safetensors',
+		'config.json',
+		'tokenizer.json'
+	]);
+
+	function findDownloadedModelForFile(
+		file: HubModelSibling,
+		model?: HubModelItem | null
+	): ModelRecord | undefined {
 		const baseName = (file.rfilename.split('/').pop() || file.rfilename).toLowerCase();
 		return registeredModels.find((m) => {
 			if (m.file_exists === false) return false;
 			const mBase = (m.filename || m.relative_path.split('/').pop() || '').toLowerCase();
-			return mBase === baseName;
+			if (mBase !== baseName) return false;
+
+			// If we know which Hub model we are inspecting, verify it matches
+			if (model) {
+				const normModelId = model.id.toLowerCase();
+				const baseId = (model.id.split('/').pop() || model.id).toLowerCase();
+				if (m.source_repo && m.source_repo.toLowerCase() === normModelId) return true;
+				const rel = m.relative_path.toLowerCase();
+				if (rel.includes(`/${normModelId}/`) || rel.includes(`/${baseId}/`)) return true;
+				// Never match a generic filename against a model unless the directory or source_repo matches
+				if (GENERIC_FILENAMES.has(baseName)) return false;
+			}
+
+			return !GENERIC_FILENAMES.has(baseName);
 		});
 	}
 
 	function isModelInstalled(model: HubModelItem): boolean {
-		if (model.siblings && model.siblings.length > 0) {
-			const hasDownloadedSibling = model.siblings.some((s) => !!findDownloadedModelForFile(s));
-			if (hasDownloadedSibling) return true;
-		}
-
 		const normId = model.id.toLowerCase();
 		const baseId = (model.id.split('/').pop() || model.id).toLowerCase();
-		return registeredModels.some((m) => {
+
+		// 1. Direct match on source_repo or path containing the model ID in folder structure
+		const directMatch = registeredModels.some((m) => {
 			if (m.file_exists === false) return false;
 			if (m.source_repo && m.source_repo.toLowerCase() === normId) return true;
-			const mId = m.id.toLowerCase();
-			const mName = m.name.toLowerCase();
-			return mId.includes(baseId) || mName.includes(baseId);
+			const rel = m.relative_path.toLowerCase();
+			if (rel.includes(`/${normId}/`) || rel.includes(`/${baseId}/`)) return true;
+			const mBase = (m.filename || rel.split('/').pop() || '').toLowerCase();
+			if (!GENERIC_FILENAMES.has(mBase)) {
+				return (
+					m.id.toLowerCase() === baseId || m.name.toLowerCase() === baseId || rel.includes(baseId)
+				);
+			}
+			return false;
 		});
+
+		if (directMatch) return true;
+
+		// 2. Sibling check (only for non-generic files or files belonging to this model)
+		if (model.siblings && model.siblings.length > 0) {
+			return model.siblings.some((s) => !!findDownloadedModelForFile(s, model));
+		}
+
+		return false;
 	}
 
 	function getEffectiveFileSize(file: HubModelSibling): number {
@@ -221,8 +266,47 @@
 		}
 	}
 
+	function updateUrlParams() {
+		if (page.url.searchParams.get('tab') !== 'discover') return;
+		const url = new URL(page.url);
+		url.searchParams.set('tab', 'discover');
+
+		const trimmed = searchQuery.trim();
+		if (trimmed) {
+			url.searchParams.set('q', trimmed);
+		} else {
+			url.searchParams.delete('q');
+		}
+
+		if (selectedModality && selectedModality !== 'all') {
+			url.searchParams.set('modality', selectedModality);
+		} else {
+			url.searchParams.delete('modality');
+		}
+
+		if (selectedSort && selectedSort !== 'downloads') {
+			url.searchParams.set('sort', selectedSort);
+		} else {
+			url.searchParams.delete('sort');
+		}
+
+		if (selectedRepoId && selectedRepoId !== 'huggingface') {
+			url.searchParams.set('repo', selectedRepoId);
+		} else {
+			url.searchParams.delete('repo');
+		}
+
+		const rawSearch = url.searchParams.toString().replace(/%20/g, '+');
+		const target = `${url.pathname}${rawSearch ? '?' + rawSearch : ''}`;
+		if (target !== `${page.url.pathname}${page.url.search}`) {
+			goto(target, { replaceState: true, noScroll: true, keepFocus: true });
+		}
+	}
+
 	async function executeSearch() {
 		if (!selectedRepoId) return;
+
+		updateUrlParams();
 
 		isSearching = true;
 		errorMessage = null;
@@ -242,6 +326,16 @@
 	}
 
 	async function inspectFiles(model: HubModelItem) {
+		if (model.requires_auth) {
+			await showAlert(
+				t('models.discover.authRequiredDesc'),
+				t('models.discover.authRequiredTitle'),
+				'warning'
+			);
+			settingsDialogState.open('repositories');
+			return;
+		}
+
 		inspectingModel = model;
 		isLoadingDetails = true;
 		modelFiles = [];
@@ -250,6 +344,20 @@
 			modelFiles = details.siblings || [];
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
+			if (
+				msg.includes('401') ||
+				msg.toLowerCase().includes('unauthorized') ||
+				msg.toLowerCase().includes('token')
+			) {
+				await showAlert(
+					t('models.discover.authRequiredDesc'),
+					t('models.discover.authRequiredTitle'),
+					'warning'
+				);
+				settingsDialogState.open('repositories');
+				inspectingModel = null;
+				return;
+			}
 			errorMessage = msg;
 		} finally {
 			isLoadingDetails = false;
@@ -266,6 +374,10 @@
 			file.download_url ||
 			`https://huggingface.co/${inspectingModel.id}/resolve/main/${file.rfilename}`;
 
+		const modelModality =
+			inspectingModel.modality ||
+			(inspectingModel.pipeline_tag === 'text-to-image' ? 'text-to-image' : 'text-to-text');
+
 		try {
 			await downloadStore.enqueue({
 				url: resolvedUrl,
@@ -273,7 +385,7 @@
 				model_name: inspectingModel.id,
 				filename,
 				repo_id: selectedRepoId,
-				modality: inspectingModel.modality,
+				modality: modelModality,
 				size_bytes: file.size || 0
 			});
 		} catch (err: unknown) {
@@ -303,6 +415,18 @@
 	}
 
 	onMount(() => {
+		const p = page.url.searchParams;
+		const q = p.get('q');
+		if (q) searchQuery = q;
+		const mod = p.get('modality');
+		if (mod) selectedModality = mod;
+		const sort = p.get('sort');
+		if (sort === 'downloads' || sort === 'likes' || sort === 'lastModified') {
+			selectedSort = sort;
+		}
+		const repo = p.get('repo');
+		if (repo) selectedRepoId = repo;
+
 		loadRepos();
 		loadRegisteredModels();
 		hostState.fetchStaticInfo();
@@ -405,6 +529,8 @@
 					<Card padding="md" class="relative overflow-hidden flex flex-col justify-between h-full">
 						{#if isModelInstalled(model)}
 							<DiagonalLabel text={t('common.installed')} />
+						{:else if model.requires_auth}
+							<DiagonalLabel variant="warning" text={t('models.discover.authRequired')} />
 						{/if}
 
 						<div class="flex flex-col gap-4">
@@ -413,10 +539,10 @@
 									class="text-sm font-semibold text-[var(--text-primary)] leading-tight m-0 line-clamp-2"
 									title={model.id}
 								>
-									{#if model.author}
-										<span class="text-[var(--text-muted)]">{model.author}/</span>{getOnlyModelName(
-											model
-										)}
+									{#if model.author || model.id.includes('/')}
+										<span class="text-[var(--text-muted)]"
+											>{model.author || model.id.split('/')[0]}/</span
+										>{getOnlyModelName(model)}
 									{:else}
 										{getOnlyModelName(model)}
 									{/if}
@@ -486,7 +612,7 @@
 					{#each modelFiles as file}
 						{@const fileSize = getEffectiveFileSize(file)}
 						{@const fit = getPerformanceFit(fileSize)}
-						{@const downloadedModel = findDownloadedModelForFile(file)}
+						{@const downloadedModel = findDownloadedModelForFile(file, inspectingModel)}
 						{@const isDownloading = enqueuedFiles[file.rfilename]}
 
 						<Card
@@ -529,7 +655,7 @@
 
 								<div class="shrink-0 flex items-center gap-2">
 									{#if isDownloading}
-										<Button variant="secondary" size="sm" disabled>
+										<Button variant="success" size="sm" disabled>
 											<ArrowDownToLine size={13} class="animate-pulse text-[var(--success-text)]" />
 											<span>{t('common.downloading')}</span>
 										</Button>

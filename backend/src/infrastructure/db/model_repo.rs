@@ -98,6 +98,30 @@ impl ModelRepository {
         Ok(())
     }
 
+    pub async fn update_model_id(
+        &self,
+        old_id: &str,
+        new_id: &str,
+        name: &str,
+        source_repo: Option<&str>,
+    ) -> AppResult<()> {
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("UPDATE model_presets SET model_id = ?1 WHERE model_id = ?2")
+            .bind(new_id)
+            .bind(old_id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("UPDATE models SET id = ?1, name = ?2, source_repo = ?3 WHERE id = ?4")
+            .bind(new_id)
+            .bind(name)
+            .bind(source_repo)
+            .bind(old_id)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
     pub async fn delete_model(&self, id: &str) -> AppResult<()> {
         sqlx::query("DELETE FROM models WHERE id = ?1")
             .bind(id)

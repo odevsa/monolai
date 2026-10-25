@@ -88,11 +88,58 @@
 		}
 	});
 
+	function updateInstalledUrlParams() {
+		if (activeTab !== 'installed') return;
+		const url = new URL(page.url);
+		url.searchParams.set('tab', 'installed');
+
+		const trimmed = searchQuery.trim();
+		if (trimmed) {
+			url.searchParams.set('q', trimmed);
+		} else {
+			url.searchParams.delete('q');
+		}
+
+		if (selectedModalityFilter && selectedModalityFilter !== 'all') {
+			url.searchParams.set('modality', selectedModalityFilter);
+		} else {
+			url.searchParams.delete('modality');
+		}
+
+		if (selectedStatusFilter && selectedStatusFilter !== 'all') {
+			url.searchParams.set('status', selectedStatusFilter);
+		} else {
+			url.searchParams.delete('status');
+		}
+
+		// Clean discover-specific params
+		url.searchParams.delete('sort');
+		url.searchParams.delete('repo');
+
+		const rawSearch = url.searchParams.toString().replace(/%20/g, '+');
+		const target = `${url.pathname}${rawSearch ? '?' + rawSearch : ''}`;
+		if (target !== `${page.url.pathname}${page.url.search}`) {
+			goto(target, { replaceState: true, noScroll: true, keepFocus: true });
+		}
+	}
+
 	function setTab(tab: TabType) {
 		activeTab = tab;
 		const url = new URL(page.url);
 		url.searchParams.set('tab', tab);
-		goto(url.toString(), { replaceState: true, noScroll: true });
+
+		// Clean query params of other tab
+		url.searchParams.delete('q');
+		url.searchParams.delete('modality');
+		url.searchParams.delete('sort');
+		url.searchParams.delete('repo');
+		url.searchParams.delete('status');
+
+		const rawSearch = url.searchParams.toString();
+		goto(`${url.pathname}?${rawSearch}`, { replaceState: true, noScroll: true });
+		if (tab === 'installed') {
+			loadModels(true);
+		}
 	}
 
 	// Filtered models list
@@ -125,12 +172,23 @@
 		return list;
 	});
 
-	async function loadModels(isSilent = false) {
+	let lastCompletedDownloads = $state<number | null>(null);
+
+	$effect(() => {
+		const current = downloadStore.completedCount;
+		if (lastCompletedDownloads !== null && current > lastCompletedDownloads) {
+			loadModels(true);
+			refreshFeatures(true);
+		}
+		lastCompletedDownloads = current;
+	});
+
+	async function loadModels(isSilent = false, sync = false) {
 		if (!isSilent) isLoadingData = true;
 		error = null;
 
 		try {
-			registeredModels = await modelsApi.list();
+			registeredModels = await modelsApi.list(false, sync);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			error = msg || t('models.errorLoading');
@@ -171,6 +229,23 @@
 	}
 
 	onMount(() => {
+		const p = page.url.searchParams;
+		const tabParam = p.get('tab');
+		if (tabParam === 'discover' || tabParam === 'installed' || tabParam === 'downloads') {
+			activeTab = tabParam;
+		}
+
+		if (activeTab === 'installed') {
+			const q = p.get('q');
+			if (q) searchQuery = q;
+			const mod = p.get('modality');
+			if (mod) selectedModalityFilter = mod;
+			const status = p.get('status');
+			if (status === 'running' || status === 'missing') {
+				selectedStatusFilter = status;
+			}
+		}
+
 		loadModels();
 	});
 </script>
@@ -182,7 +257,12 @@
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border space-y-6">
 	<!-- Page Header -->
 	<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box}>
-		<Button variant="secondary" size="md" onclick={() => loadModels()} disabled={isLoadingData}>
+		<Button
+			variant="secondary"
+			size="md"
+			onclick={() => loadModels(false, true)}
+			disabled={isLoadingData}
+		>
 			<RefreshCw size={14} class={isLoadingData ? 'animate-spin text-[var(--primary)]' : ''} />
 			<span>{t('common.refresh')}</span>
 		</Button>
@@ -217,7 +297,12 @@
 		<Card padding="sm">
 			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
 				<div class="flex-1">
-					<Input bind:value={searchQuery} placeholder={t('models.searchPlaceholder')} clearable>
+					<Input
+						bind:value={searchQuery}
+						oninput={updateInstalledUrlParams}
+						placeholder={t('models.searchPlaceholder')}
+						clearable
+					>
 						{#snippet prefix()}
 							<Search size={15} />
 						{/snippet}
@@ -226,11 +311,19 @@
 
 				<div class="flex items-center gap-2">
 					<div class="w-44">
-						<Select bind:value={selectedModalityFilter} options={modalityOptions} />
+						<Select
+							bind:value={selectedModalityFilter}
+							onchange={updateInstalledUrlParams}
+							options={modalityOptions}
+						/>
 					</div>
 
 					<div class="w-44">
-						<Select bind:value={selectedStatusFilter} options={statusOptions} />
+						<Select
+							bind:value={selectedStatusFilter}
+							onchange={updateInstalledUrlParams}
+							options={statusOptions}
+						/>
 					</div>
 				</div>
 			</div>

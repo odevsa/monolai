@@ -15,15 +15,7 @@
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
 	import { formatSpeed } from '$lib/utils/format';
-	import {
-		ArrowDownToLine,
-		PanelLeftOpen,
-		Plus,
-		RefreshCw,
-		Square,
-		Trash,
-		X
-	} from '@lucide/svelte';
+	import { ArrowDown, PanelLeftOpen, Plus, RefreshCw, Square, Trash, X } from '@lucide/svelte';
 	import { onMount, setContext } from 'svelte';
 	import '../app.css';
 
@@ -253,7 +245,9 @@
 								class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] bg-[var(--primary-light)] border border-[var(--primary)]/30 rounded-lg backdrop-blur-md transition-all hover:bg-[var(--primary-hover)]/20 no-underline shadow-xs"
 								title="{downloadStore.activeCount} active download(s)"
 							>
-								<ArrowDownToLine size={13} class="animate-bounce" />
+								<span class="border-b border-[var(--primary)]">
+									<ArrowDown size={13} class="animate-bounce" />
+								</span>
 								<span>{downloadStore.activeCount}</span>
 								<span class="text-[10px] opacity-80 font-mono hidden sm:inline"
 									>({formatSpeed(downloadStore.totalSpeedBytesSec)})</span

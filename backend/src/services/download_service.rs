@@ -115,18 +115,38 @@ impl DownloadService {
             }
         }
 
-        let modality = payload.modality.unwrap_or_else(|| "text-to-text".to_string());
-        let models_dir = self.resolve_models_dir().await;
-        let target_subfolder = models_dir.join(&modality);
-        let _ = tokio::fs::create_dir_all(&target_subfolder).await;
+        let modality = payload
+            .modality
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or_else(|| "text-to-text".to_string());
 
-        let relative_path = format!("{}/{}", modality, filename);
+        let model_name = payload.model_name.trim();
+        let models_dir = self.resolve_models_dir().await;
+
+        // Canonical directory structure: {type}/{user}/{model}/{filename}
+        // e.g. text-to-text/Qwen/Qwen2.5-1.5B-Instruct-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf
+        let relative_path = if !model_name.is_empty() {
+            let parts: Vec<&str> = model_name.trim_matches('/').split('/').collect();
+            if parts.len() >= 2 {
+                let user = parts[0].trim();
+                let model = parts[1..].join("/").trim().to_string();
+                format!("{}/{}/{}/{}", modality, user, model, filename)
+            } else {
+                format!("{}/{}/{}", modality, model_name, filename)
+            }
+        } else {
+            format!("{}/{}", modality, filename)
+        };
+
         let absolute_path = models_dir.join(&relative_path);
+        if let Some(parent) = absolute_path.parent() {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
 
         let id = uuid::Uuid::new_v4().to_string();
         let record = DownloadRecord {
             id: id.clone(),
-            model_name: payload.model_name.trim().to_string(),
+            model_name: model_name.to_string(),
             url: url.clone(),
             file_path: relative_path,
             total_bytes: 0,
@@ -142,7 +162,7 @@ impl DownloadService {
         self.notify_broadcast().await;
 
         // Spawn background worker
-        self.spawn_download_task(id.clone(), absolute_path, url, payload.repo_id).await;
+        self.spawn_download_task(id.clone(), absolute_path, url, payload.repo_id, Some(model_name.to_string())).await;
 
         self.download_repo
             .get_by_id(&id)
@@ -156,6 +176,7 @@ impl DownloadService {
         target_path: PathBuf,
         url: String,
         repo_id: Option<String>,
+        model_name: Option<String>,
     ) {
         let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
         let (pause_tx, pause_rx) = tokio::sync::watch::channel(false);
@@ -180,14 +201,17 @@ impl DownloadService {
                 target_path,
                 url,
                 repo_id,
+                model_name,
                 cancel_rx,
                 pause_rx,
                 speed_bytes_sec,
             )
             .await;
 
-            let mut active = this.active_tasks.lock().await;
-            active.remove(&task_id);
+            {
+                let mut active = this.active_tasks.lock().await;
+                active.remove(&task_id);
+            }
             this.notify_broadcast().await;
         });
     }
@@ -198,8 +222,9 @@ impl DownloadService {
         target_path: PathBuf,
         url: String,
         repo_id: Option<String>,
-        cancel_rx: tokio::sync::watch::Receiver<bool>,
-        pause_rx: tokio::sync::watch::Receiver<bool>,
+        model_name: Option<String>,
+        mut cancel_rx: tokio::sync::watch::Receiver<bool>,
+        mut pause_rx: tokio::sync::watch::Receiver<bool>,
         speed_ref: Arc<Mutex<u64>>,
     ) {
         let _ = self.download_repo.update_status(&task_id, "downloading", None).await;
@@ -222,7 +247,13 @@ impl DownloadService {
         }
 
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(60))
+            .connect_timeout(Duration::from_secs(30))
+            .read_timeout(Duration::from_secs(60))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .tcp_keepalive(Duration::from_secs(30))
+            .no_gzip()
+            .no_brotli()
+            .no_deflate()
             .user_agent("Monolai/0.2.3")
             .build()
             .unwrap_or_default();
@@ -238,18 +269,32 @@ impl DownloadService {
             req = req.header("Range", format!("bytes={}-", existing_bytes));
         }
 
-        let resp = match req.send().await {
-            Ok(r) => r,
-            Err(e) => {
-                let err_msg = format!("Network error connecting to model URL: {}", e);
-                let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+        let resp = tokio::select! {
+            _ = cancel_rx.changed() => {
+                if *cancel_rx.borrow() {
+                    let _ = tokio::fs::remove_file(&part_path).await;
+                    let _ = self.download_repo.update_status(&task_id, "cancelled", None).await;
+                    return;
+                }
                 return;
+            }
+            res = req.send() => match res {
+                Ok(r) => r,
+                Err(e) => {
+                    let err_msg = format!("Network error connecting to model URL: {}", e);
+                    let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+                    return;
+                }
             }
         };
 
         let status = resp.status();
         if !status.is_success() && status.as_u16() != 206 {
-            let err_msg = format!("HTTP server returned error: {}", status);
+            let err_msg = if status.as_u16() == 401 {
+                "Authentication required (401 Unauthorized). Please configure an API token for this repository in Settings.".to_string()
+            } else {
+                format!("HTTP server returned error: {}", status)
+            };
             let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
             return;
         }
@@ -289,17 +334,30 @@ impl DownloadService {
         let mut bytes_since_sample = 0u64;
         let mut last_db_update = Instant::now();
 
-        while let Some(chunk_res) = stream.next().await {
-            if *cancel_rx.borrow() {
-                let _ = tokio::fs::remove_file(&part_path).await;
-                let _ = self.download_repo.update_status(&task_id, "cancelled", None).await;
-                return;
-            }
+        loop {
+            let chunk_opt = tokio::select! {
+                _ = cancel_rx.changed() => {
+                    if *cancel_rx.borrow() {
+                        let _ = tokio::fs::remove_file(&part_path).await;
+                        let _ = self.download_repo.update_status(&task_id, "cancelled", None).await;
+                        return;
+                    }
+                    None
+                }
+                _ = pause_rx.changed() => {
+                    if *pause_rx.borrow() {
+                        let _ = self.download_repo.update_status(&task_id, "paused", None).await;
+                        return;
+                    }
+                    None
+                }
+                chunk_res = stream.next() => chunk_res,
+            };
 
-            if *pause_rx.borrow() {
-                let _ = self.download_repo.update_status(&task_id, "paused", None).await;
-                return;
-            }
+            let chunk_res = match chunk_opt {
+                Some(c) => c,
+                None => break,
+            };
 
             let chunk = match chunk_res {
                 Ok(c) => c,
@@ -358,11 +416,16 @@ impl DownloadService {
         let _ = self.download_repo.update_status(&task_id, "completed", None).await;
 
         // Auto-register model in DB and create default preset
-        self.auto_register_completed_model(&target_path, repo_id.as_deref()).await;
+        self.auto_register_completed_model(&target_path, repo_id.as_deref(), model_name.as_deref()).await;
         self.notify_broadcast().await;
     }
 
-    async fn auto_register_completed_model(&self, target_path: &Path, source_repo: Option<&str>) {
+    async fn auto_register_completed_model(
+        &self,
+        target_path: &Path,
+        _repo_id: Option<&str>,
+        model_name: Option<&str>,
+    ) {
         let models_dir = self.resolve_models_dir().await;
         let filename = target_path
             .file_name()
@@ -375,24 +438,39 @@ impl DownloadService {
             .unwrap_or_else(|_| filename.clone());
 
         let inspect = inspect_model_file(target_path);
-        let id = target_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| filename.clone());
+
+        let norm_path = relative_path.replace('\\', "/");
+        let parts: Vec<&str> = norm_path.split('/').collect();
+
+        // Canonical ID pattern: {user}/{model}:{filename}
+        let (id, display_name, source_repo) = if let Some(mn) = model_name.filter(|s| !s.trim().is_empty()) {
+            let clean_mn = mn.trim().trim_matches('/');
+            (format!("{}:{}", clean_mn, filename), clean_mn.to_string(), Some(clean_mn.to_string()))
+        } else if parts.len() >= 4 {
+            let user = parts[1];
+            let repo = parts[2];
+            let repo_slug = format!("{}/{}", user, repo);
+            (format!("{}/{}:{}", user, repo, filename), repo_slug.clone(), Some(repo_slug))
+        } else if parts.len() == 3 {
+            let folder = parts[1];
+            (format!("{}:{}", folder, filename), folder.to_string(), Some(folder.to_string()))
+        } else {
+            (filename.clone(), filename.clone(), None)
+        };
 
         let metadata = tokio::fs::metadata(target_path).await.ok();
         let size_bytes = metadata.map(|m| m.len()).unwrap_or(0) as i64;
 
         let model_record = ModelRecord {
             id: id.clone(),
-            name: inspect.model_name.unwrap_or_else(|| id.clone()),
+            name: display_name,
             filename,
             relative_path: relative_path.clone(),
             size_bytes,
             format: inspect.format.clone(),
             modality: inspect.modality.clone(),
             architecture: inspect.architecture,
-            source_repo: source_repo.map(|s| s.to_string()),
+            source_repo,
             created_at: String::new(),
             presets: Vec::new(),
             file_exists: true,
@@ -422,10 +500,17 @@ impl DownloadService {
     }
 
     pub async fn pause_download(&self, id: &str) -> AppResult<()> {
-        let active = self.active_tasks.lock().await;
-        if let Some(task) = active.get(id) {
-            let _ = task.pause_tx.send(true);
-        } else {
+        let found = {
+            let active = self.active_tasks.lock().await;
+            if let Some(task) = active.get(id) {
+                let _ = task.pause_tx.send(true);
+                true
+            } else {
+                false
+            }
+        };
+
+        if !found {
             let _ = self.download_repo.update_status(id, "paused", None).await;
         }
         self.notify_broadcast().await;
@@ -442,15 +527,35 @@ impl DownloadService {
         let models_dir = self.resolve_models_dir().await;
         let target_path = models_dir.join(&record.file_path);
 
-        self.spawn_download_task(id.to_string(), target_path, record.url, None).await;
+        let repo_id = if record.url.contains("huggingface.co") {
+            Some("huggingface".to_string())
+        } else {
+            None
+        };
+
+        self.spawn_download_task(
+            id.to_string(),
+            target_path,
+            record.url,
+            repo_id,
+            Some(record.model_name),
+        )
+        .await;
         Ok(())
     }
 
     pub async fn cancel_download(&self, id: &str) -> AppResult<()> {
-        let active = self.active_tasks.lock().await;
-        if let Some(task) = active.get(id) {
-            let _ = task.cancel_tx.send(true);
-        } else {
+        let found = {
+            let active = self.active_tasks.lock().await;
+            if let Some(task) = active.get(id) {
+                let _ = task.cancel_tx.send(true);
+                true
+            } else {
+                false
+            }
+        };
+
+        if !found {
             let record = self.download_repo.get_by_id(id).await?;
             if let Some(r) = record {
                 let models_dir = self.resolve_models_dir().await;
@@ -468,5 +573,11 @@ impl DownloadService {
         self.download_repo.delete(id).await?;
         self.notify_broadcast().await;
         Ok(())
+    }
+
+    pub async fn clear_inactive_downloads(&self) -> AppResult<u64> {
+        let count = self.download_repo.delete_inactive().await?;
+        self.notify_broadcast().await;
+        Ok(count)
     }
 }

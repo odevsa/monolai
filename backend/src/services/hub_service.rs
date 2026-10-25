@@ -188,6 +188,13 @@ impl HubService {
             ("full", "true".to_string()),
             ("sort", hf_sort.to_string()),
             ("direction", "-1".to_string()),
+            ("expand[]", "author".to_string()),
+            ("expand[]", "downloads".to_string()),
+            ("expand[]", "likes".to_string()),
+            ("expand[]", "pipeline_tag".to_string()),
+            ("expand[]", "siblings".to_string()),
+            ("expand[]", "gated".to_string()),
+            ("expand[]", "private".to_string()),
         ];
 
         if !search_text.is_empty() {
@@ -229,6 +236,7 @@ impl HubService {
         }
 
         let raw_items: Vec<Value> = resp.json().await.unwrap_or_default();
+        let has_token = repo.api_token.as_ref().map(|t| !t.trim().is_empty()).unwrap_or(false);
         let mut results = Vec::new();
 
         for item in raw_items {
@@ -237,7 +245,26 @@ impl HubService {
                 continue;
             }
 
-            let author = item.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let is_gated = match item.get("gated") {
+                Some(Value::Bool(b)) => *b,
+                Some(Value::String(s)) => !s.eq_ignore_ascii_case("false") && !s.is_empty(),
+                _ => false,
+            } || item.get("private").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            let requires_auth = is_gated && !has_token;
+
+            let author = item
+                .get("author")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.trim().is_empty())
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    if id.contains('/') {
+                        id.split('/').next().filter(|s| !s.is_empty()).map(|s| s.to_string())
+                    } else {
+                        None
+                    }
+                });
             let downloads = item.get("downloads").and_then(|v| v.as_u64());
             let likes = item.get("likes").and_then(|v| v.as_u64());
             let pipeline_tag = item
@@ -285,6 +312,8 @@ impl HubService {
                 pipeline_tag,
                 modality: item_modality.to_string(),
                 siblings,
+                is_gated,
+                requires_auth,
             });
         }
 
@@ -411,6 +440,15 @@ impl HubService {
             siblings.sort_by(|a, b| a.rfilename.cmp(&b.rfilename));
         }
 
+        let has_token = repo.api_token.as_ref().map(|t| !t.trim().is_empty()).unwrap_or(false);
+        let is_gated = match item.get("gated") {
+            Some(Value::Bool(b)) => *b,
+            Some(Value::String(s)) => !s.eq_ignore_ascii_case("false") && !s.is_empty(),
+            _ => false,
+        } || item.get("private").and_then(|v| v.as_bool()).unwrap_or(false);
+
+        let requires_auth = is_gated && !has_token;
+
         Ok(HubModelItem {
             id,
             author,
@@ -419,6 +457,8 @@ impl HubService {
             pipeline_tag,
             modality: modality.to_string(),
             siblings,
+            is_gated,
+            requires_auth,
         })
     }
 }

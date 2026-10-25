@@ -79,4 +79,11 @@ impl DownloadRepository {
             .await?;
         Ok(())
     }
+
+    pub async fn delete_inactive(&self) -> AppResult<u64> {
+        let res = sqlx::query("DELETE FROM downloads WHERE status NOT IN ('downloading', 'queued')")
+            .execute(&self.pool)
+            .await?;
+        Ok(res.rows_affected())
+    }
 }

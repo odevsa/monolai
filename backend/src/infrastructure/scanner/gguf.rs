@@ -301,10 +301,16 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
                     }
                 }
             }
-            // Check top-level keys in safetensors for diffusion UNet markers
+            // Check top-level keys in safetensors for diffusion UNet / checkpoint markers
             if detected_modality.is_none() {
                 if let Some(obj) = json.as_object() {
-                    let has_unet = obj.keys().any(|k| k.starts_with("model.diffusion_model") || k.starts_with("double_blocks."));
+                    let has_unet = obj.keys().any(|k| {
+                        k.starts_with("model.diffusion_model")
+                            || k.starts_with("first_stage_model")
+                            || k.starts_with("cond_stage_model")
+                            || k.starts_with("double_blocks.")
+                            || k.contains("diffusion_model")
+                    });
                     if has_unet {
                         detected_modality = Some("text-to-image");
                         info.architecture = Some("diffusion".to_string());
@@ -317,15 +323,19 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         }
     }
 
-    // Fallback: If modality wasn't resolved by binary inspection, inspect parent directory name
-    if info.architecture.is_none() {
-        if let Some(parent) = path_ref.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) {
-            match parent {
-                "text-to-text" | "text-to-image" | "text-to-speech" | "speech-to-text"
-                | "embeddings" | "miscellaneous" => {
-                    info.modality = parent.to_string();
+    // Single Source of Truth fallback: If modality wasn't specified in binary metadata,
+    // inspect canonical directory structure component (e.g. text-to-image, text-to-text)
+    if info.modality == "text-to-text" {
+        for comp in path_ref.components() {
+            if let Some(s) = comp.as_os_str().to_str() {
+                match s {
+                    "text-to-image" | "text-to-text" | "text-to-speech" | "speech-to-text"
+                    | "embeddings" | "miscellaneous" => {
+                        info.modality = s.to_string();
+                        break;
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }

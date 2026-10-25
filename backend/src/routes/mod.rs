@@ -22,9 +22,9 @@ use crate::{
         },
         config::{config_status_handler, hardware_detect_handler, save_setup_config_handler},
         downloads::{
-            cancel_download_handler, delete_download_handler, downloads_stream_handler,
-            enqueue_download_handler, get_downloads_handler, pause_download_handler,
-            resume_download_handler,
+            cancel_download_handler, clear_downloads_handler, delete_download_handler,
+            downloads_stream_handler, enqueue_download_handler, get_downloads_handler,
+            pause_download_handler, resume_download_handler,
         },
         health::health_handler,
         host::{sysinfo_handler, sysinfo_stream_handler},
@@ -179,6 +179,10 @@ fn api_router() -> Router<AppState> {
         .route(
             "/downloads",
             get(get_downloads_handler).post(enqueue_download_handler),
+        )
+        .route(
+            "/downloads/clear",
+            post(clear_downloads_handler).delete(clear_downloads_handler),
         )
         .route("/downloads/:id/pause", post(pause_download_handler))
         .route("/downloads/:id/resume", post(resume_download_handler))

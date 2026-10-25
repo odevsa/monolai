@@ -79,7 +79,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(count, 3);
+        assert_eq!(count, 1);
     }
 
     #[tokio::test]

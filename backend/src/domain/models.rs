@@ -135,6 +135,10 @@ pub struct HubModelItem {
     pub pipeline_tag: Option<String>,
     pub modality: String,
     pub siblings: Vec<HubModelSibling>,
+    #[serde(default)]
+    pub is_gated: bool,
+    #[serde(default)]
+    pub requires_auth: bool,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]

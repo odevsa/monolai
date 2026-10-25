@@ -5,7 +5,17 @@
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import type { DownloadRecord } from '$lib/types/models';
 	import { formatBytes, formatSpeed } from '$lib/utils/format';
-	import { CircleAlert, ArrowDownToLine, CircleCheck, Pause, Play, Trash, X } from '@lucide/svelte';
+	import {
+		ArrowDown,
+		ArrowDownToLine,
+		CircleAlert,
+		CircleCheck,
+		Pause,
+		Play,
+		RotateCcw,
+		Trash,
+		X
+	} from '@lucide/svelte';
 
 	let downloads = $derived(downloadStore.downloads);
 
@@ -40,26 +50,56 @@
 			console.error('Failed to delete download record:', err);
 		}
 	}
+
+	async function handleClearInactive() {
+		const confirmed = await askConfirm(
+			t('models.downloads.clearCompletedConfirm'),
+			t('models.downloads.clearCompleted'),
+			'danger',
+			t('common.clear'),
+			t('common.cancel')
+		);
+		if (!confirmed) return;
+
+		try {
+			await downloadStore.clearInactive();
+		} catch (err: unknown) {
+			console.error('Failed to clear inactive downloads:', err);
+		}
+	}
 </script>
 
 <div class="space-y-4">
-	<!-- Summary header when downloads active -->
-	{#if downloadStore.hasActive}
-		<div
-			class="bg-[var(--primary-light)] border border-[var(--primary)]/30 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs"
-		>
-			<div class="flex items-center gap-2">
-				<ArrowDownToLine size={16} class="text-[var(--primary)] animate-bounce" />
-				<span class="font-semibold text-[var(--primary)]">
-					{t('models.downloads.activeDownloadsCount', { count: downloadStore.activeCount })}
+	<!-- Summary header when downloads active or inactive available to clear -->
+	<div class="flex items-center justify-between gap-3 flex-wrap">
+		{#if downloadStore.hasActive}
+			<div
+				class="bg-[var(--primary-light)] border border-[var(--primary)]/30 rounded-xl px-3.5 py-2 flex items-center justify-between gap-3 text-xs flex-1 min-w-[240px]"
+			>
+				<div class="flex items-center gap-2">
+					<span class="border-b border-[var(--primary)]">
+						<ArrowDown size={16} class="text-[var(--primary)] animate-bounce" />
+					</span>
+					<span class="font-semibold text-[var(--primary)]">
+						{t('models.downloads.activeDownloadsCount', { count: downloadStore.activeCount })}
+					</span>
+				</div>
+
+				<span class="font-mono font-bold text-[var(--primary)]">
+					{formatSpeed(downloadStore.totalSpeedBytesSec)}
 				</span>
 			</div>
+		{/if}
 
-			<span class="font-mono font-bold text-[var(--primary)]">
-				{formatSpeed(downloadStore.totalSpeedBytesSec)}
-			</span>
-		</div>
-	{/if}
+		{#if downloadStore.hasInactive}
+			<div class="ml-auto">
+				<Button variant="secondary" size="sm" onclick={handleClearInactive}>
+					<Trash size={14} class="text-[var(--danger-text)]" />
+					<span>{t('models.downloads.clearCompleted')}</span>
+				</Button>
+			</div>
+		{/if}
+	</div>
 
 	{#if downloads.length === 0}
 		<EmptyState
@@ -149,7 +189,35 @@
 								>
 									<X size={14} class="text-[var(--danger-text)]" />
 								</Button>
+							{:else if d.status === 'failed'}
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onclick={() => downloadStore.resume(d.id)}
+									title={t('common.retry')}
+									ariaLabel={t('common.retry')}
+								>
+									<RotateCcw size={14} class="text-[var(--primary)]" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onclick={() => handleDelete(d)}
+									title={t('common.delete')}
+									ariaLabel={t('common.delete')}
+								>
+									<Trash size={14} class="text-[var(--danger-text)]" />
+								</Button>
 							{:else}
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onclick={() => downloadStore.resume(d.id)}
+									title={t('common.retry')}
+									ariaLabel={t('common.retry')}
+								>
+									<RotateCcw size={14} class="text-[var(--primary)]" />
+								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"

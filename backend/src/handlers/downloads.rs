@@ -122,6 +122,21 @@ pub async fn delete_download_handler(
 }
 
 #[utoipa::path(
+    post,
+    path = "/api/downloads/clear",
+    tag = "Downloads",
+    responses(
+        (status = 200, description = "Cleared inactive downloads successfully")
+    )
+)]
+pub async fn clear_downloads_handler(
+    State(state): State<AppState>,
+) -> AppResult<StatusCode> {
+    state.download_service.clear_inactive_downloads().await?;
+    Ok(StatusCode::OK)
+}
+
+#[utoipa::path(
     get,
     path = "/api/downloads/stream",
     tag = "Downloads",

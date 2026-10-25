@@ -4,7 +4,7 @@
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import type { CreateRepositoryPayload, RepositoryRecord } from '$lib/types/models';
-	import { ExternalLink, Plus, Save, Trash2 } from '@lucide/svelte';
+	import { ExternalLink, KeyRound, Plus, Save, Trash2 } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import SettingGroup from './SettingGroup.svelte';
 
@@ -21,7 +21,6 @@
 		name: string;
 		repo_type: string;
 		base_url: string;
-		mirror_url: string;
 		api_token: string;
 		enabled: boolean;
 	}>({
@@ -29,15 +28,14 @@
 		name: '',
 		repo_type: 'huggingface',
 		base_url: '',
-		mirror_url: '',
 		api_token: '',
 		enabled: true
 	});
 
-	// Token & mirror edit tracking per repo id
+	// Token edit tracking per repo id
 	let editingTokens = $state<Record<string, string>>({});
-	let editingMirrors = $state<Record<string, string>>({});
 	let savingRepoId = $state<string | null>(null);
+	let showTokenGuide = $state<Record<string, boolean>>({});
 
 	const repoTypeOptions = [
 		{ value: 'huggingface', label: 'Hugging Face Hub' },
@@ -50,13 +48,10 @@
 		try {
 			repositories = await hubApi.getRepositories();
 			const tokens: Record<string, string> = {};
-			const mirrors: Record<string, string> = {};
 			for (const r of repositories) {
 				tokens[r.id] = r.api_token || '';
-				mirrors[r.id] = r.mirror_url || '';
 			}
 			editingTokens = tokens;
-			editingMirrors = mirrors;
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			errorMessage = msg;
@@ -83,10 +78,8 @@
 		successMessage = null;
 		try {
 			const tokenVal = editingTokens[repo.id]?.trim() || undefined;
-			const mirrorVal = editingMirrors[repo.id]?.trim() || undefined;
 			const updated = await hubApi.updateRepository(repo.id, {
-				api_token: tokenVal,
-				mirror_url: mirrorVal
+				api_token: tokenVal
 			});
 			repositories = repositories.map((r) => (r.id === repo.id ? updated : r));
 			successMessage = t('common.saved');
@@ -131,21 +124,18 @@
 				name: newRepo.name.trim(),
 				repo_type: newRepo.repo_type,
 				base_url: newRepo.base_url.trim(),
-				mirror_url: newRepo.mirror_url.trim() || undefined,
 				api_token: newRepo.api_token.trim() || undefined,
 				enabled: newRepo.enabled
 			};
 			const created = await hubApi.createRepository(payload);
 			repositories = [...repositories, created];
 			editingTokens[created.id] = created.api_token || '';
-			editingMirrors[created.id] = created.mirror_url || '';
 			showAddModal = false;
 			newRepo = {
 				id: '',
 				name: '',
 				repo_type: 'huggingface',
 				base_url: '',
-				mirror_url: '',
 				api_token: '',
 				enabled: true
 			};
@@ -250,51 +240,75 @@
 							</div>
 						</div>
 
-						<!-- Config fields row: Mirror URL & API Token -->
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-							<div>
-								<label
-									for="mirror-{repo.id}"
-									class="text-[11px] font-medium text-[var(--text-secondary)] block mb-1"
-								>
-									{t('settings.repositories.mirrorUrl')}
-								</label>
+						<!-- Config fields row: API Token -->
+						<div class="pt-1">
+							<label
+								for="token-{repo.id}"
+								class="text-[11px] font-medium text-[var(--text-secondary)] block mb-1"
+							>
+								{t('settings.repositories.apiToken')}
+							</label>
+							<div class="flex items-center gap-2 max-w-xl">
 								<Input
-									id="mirror-{repo.id}"
-									bind:value={editingMirrors[repo.id]}
-									placeholder="e.g. https://hf-mirror.com"
+									id="token-{repo.id}"
+									type="password"
+									bind:value={editingTokens[repo.id]}
+									placeholder={t('settings.repositories.apiTokenPlaceholder')}
 								/>
+								<Button
+									variant="secondary"
+									size="sm"
+									onclick={() => saveRepoSettings(repo)}
+									disabled={savingRepoId === repo.id}
+									title={t('common.save')}
+								>
+									{#if savingRepoId === repo.id}
+										<Spinner size={13} />
+									{:else}
+										<Save size={13} />
+									{/if}
+								</Button>
 							</div>
 
-							<div>
-								<label
-									for="token-{repo.id}"
-									class="text-[11px] font-medium text-[var(--text-secondary)] block mb-1"
-								>
-									{t('settings.repositories.apiToken')}
-								</label>
-								<div class="flex items-center gap-2">
-									<Input
-										id="token-{repo.id}"
-										type="password"
-										bind:value={editingTokens[repo.id]}
-										placeholder={t('settings.repositories.apiTokenPlaceholder')}
-									/>
-									<Button
-										variant="secondary"
-										size="sm"
-										onclick={() => saveRepoSettings(repo)}
-										disabled={savingRepoId === repo.id}
-										title={t('common.save')}
+							{#if repo.repo_type === 'huggingface'}
+								<div class="mt-2 space-y-2">
+									<button
+										type="button"
+										class="text-[11px] text-[var(--primary)] hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 font-medium"
+										onclick={() => (showTokenGuide[repo.id] = !showTokenGuide[repo.id])}
 									>
-										{#if savingRepoId === repo.id}
-											<Spinner size={13} />
-										{:else}
-											<Save size={13} />
-										{/if}
-									</Button>
+										<KeyRound size={12} />
+										<span>{t('settings.repositories.howToTokenTitle')}</span>
+									</button>
+
+									{#if showTokenGuide[repo.id]}
+										<div
+											class="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg p-3 space-y-2 text-xs text-[var(--text-secondary)] max-w-xl"
+										>
+											<div class="flex items-center justify-between gap-2">
+												<span class="font-medium text-[var(--text-primary)]">
+													{t('settings.repositories.howToTokenDesc')}
+												</span>
+												<a
+													href="https://huggingface.co/settings/tokens"
+													target="_blank"
+													rel="noreferrer"
+													class="inline-flex items-center gap-1 text-[11px] text-[var(--primary)] hover:underline no-underline shrink-0"
+												>
+													<span>{t('settings.repositories.openHfTokens')}</span>
+													<ExternalLink size={11} />
+												</a>
+											</div>
+											<ol class="space-y-1 pl-4 m-0 list-decimal text-[11px]">
+												<li>{t('settings.repositories.howToTokenStep1')}</li>
+												<li>{t('settings.repositories.howToTokenStep2')}</li>
+												<li>{t('settings.repositories.howToTokenStep3')}</li>
+												<li>{t('settings.repositories.howToTokenStep4')}</li>
+											</ol>
+										</div>
+									{/if}
 								</div>
-							</div>
+							{/if}
 						</div>
 					</div>
 				{/each}
@@ -356,20 +370,6 @@
 					id="new-repo-url"
 					bind:value={newRepo.base_url}
 					placeholder="https://huggingface.co"
-				/>
-			</div>
-
-			<div>
-				<label
-					for="new-repo-mirror"
-					class="text-xs font-medium text-[var(--text-secondary)] block mb-1"
-				>
-					{t('settings.repositories.mirrorUrl')}
-				</label>
-				<Input
-					id="new-repo-mirror"
-					bind:value={newRepo.mirror_url}
-					placeholder="Optional mirror URL"
 				/>
 			</div>
 

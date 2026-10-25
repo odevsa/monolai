@@ -1,6 +1,7 @@
 import { api } from './client';
 import { listModels } from './openai';
 import { runtimesApi } from './runtimes';
+import { formatCanonicalModelString } from '$lib/utils/model';
 import type {
 	ModelRecord,
 	ModelPreset,
@@ -35,8 +36,13 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 		let matchedRuntime = 'llama-cpp';
 		let matchedFlags = '';
 
-		// Match direct model ID or preset ID
-		const directMatch = (backendModels || []).find((bm) => bm.id === om.id);
+		// Match direct model ID, preset ID, or canonical string
+		const directMatch = (backendModels || []).find((bm) => {
+			if (bm.id === om.id) return true;
+			const canonical = formatCanonicalModelString(bm);
+			return canonical === om.id || bm.relative_path === om.id;
+		});
+
 		if (directMatch) {
 			const def = directMatch.presets?.find((p) => p.is_default) || directMatch.presets?.[0];
 			matchedRuntime = def?.runtime_id || directMatch.runtime || 'llama-cpp';
@@ -57,8 +63,12 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 			}
 		}
 
+		const canonicalId = directMatch
+			? formatCanonicalModelString(directMatch)
+			: formatCanonicalModelString(om.id);
+
 		return {
-			id: om.id,
+			id: canonicalId || om.id,
 			runtime: matchedRuntime,
 			flags: matchedFlags
 		};
@@ -100,8 +110,8 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 }
 
 export const modelsApi = {
-	list: async (all: boolean = true) => {
-		const models = await api.get<ModelRecord[]>('/api/models', { all });
+	list: async (all: boolean = true, sync: boolean = false) => {
+		const models = await api.get<ModelRecord[]>('/api/models', { all, sync });
 		return models.map((m) => {
 			const defaultPreset = m.presets?.find((p) => p.is_default) || m.presets?.[0];
 			const rawFlags = defaultPreset?.flags ?? m.flags;

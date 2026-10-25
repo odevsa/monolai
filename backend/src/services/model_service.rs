@@ -13,6 +13,7 @@ use crate::infrastructure::process::manifests::get_runtime_manifests;
 use crate::infrastructure::scanner::scan_models;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct ModelService {
     setting_repo: SettingRepository,
     process_manager: ProcessManager,
     config: Arc<RwLock<AppConfig>>,
+    last_synced: Arc<RwLock<Option<Instant>>>,
 }
 
 impl ModelService {
@@ -35,6 +37,7 @@ impl ModelService {
             setting_repo,
             process_manager,
             config,
+            last_synced: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -62,47 +65,70 @@ impl ModelService {
         }
     }
 
+    pub async fn invalidate_cache(&self) {
+        let mut ls = self.last_synced.write().await;
+        *ls = None;
+    }
+
     pub async fn sync_local_models(&self) -> AppResult<()> {
         self.setup_canonical_folders().await;
         let models_dir = self.resolve_models_dir().await;
-        let scanned = scan_models(&models_dir);
+        
+        let dir_clone = models_dir.clone();
+        let scanned = tokio::task::spawn_blocking(move || scan_models(&dir_clone))
+            .await
+            .map_err(|e| AppError::internal(format!("Model scanner task failed: {}", e)))?;
 
         for item in scanned {
             let existing = self.repo.find_by_relative_path(&item.relative_path).await?;
-            if existing.is_none() {
-                // Register newly detected model
-                let model_id = item
-                    .filename
-                    .strip_suffix(".gguf")
-                    .or_else(|| item.filename.strip_suffix(".safetensors"))
-                    .unwrap_or(&item.filename)
-                    .to_string();
+            let norm_path = item.relative_path.replace('\\', "/");
+            let parts: Vec<&str> = norm_path.split('/').collect();
 
+            // Canonical structure: {type}/{user}/{model}:{filename}
+            let (canonical_id, display_name, source_repo) = if parts.len() >= 4 {
+                let user = parts[1];
+                let repo = parts[2];
+                let repo_slug = format!("{}/{}", user, repo);
+                let id = format!("{}/{}:{}", user, repo, item.filename);
+                (id, repo_slug.clone(), Some(repo_slug))
+            } else if parts.len() == 3 {
+                let folder = parts[1];
+                let id = format!("{}:{}", folder, item.filename);
+                (id, folder.to_string(), Some(folder.to_string()))
+            } else {
+                (item.filename.clone(), item.name.clone(), None)
+            };
+
+            if let Some(existing_record) = existing {
+                // If model has an outdated ID, migrate it to the canonical {user}/{model}:{filename} pattern
+                if existing_record.id != canonical_id {
+                    let _ = self
+                        .repo
+                        .update_model_id(
+                            &existing_record.id,
+                            &canonical_id,
+                            &display_name,
+                            source_repo.as_deref(),
+                        )
+                        .await;
+                }
+            } else {
                 let record = ModelRecord {
-                    id: model_id.clone(),
-                    name: item.name.clone(),
+                    id: canonical_id.clone(),
+                    name: display_name,
                     filename: item.filename.clone(),
                     relative_path: item.relative_path.clone(),
                     size_bytes: item.size_bytes as i64,
                     format: item.format.clone(),
                     modality: item.modality.clone(),
                     architecture: item.architecture.clone(),
-                    source_repo: None,
+                    source_repo,
                     created_at: String::new(),
                     presets: Vec::new(),
                     file_exists: true,
                 };
 
-                // Check if ID is unique; if not, suffix with hash/random
-                let unique_id = if self.repo.get_by_id(&model_id).await?.is_some() {
-                    format!("{}-{}", model_id, &uuid::Uuid::new_v4().to_string()[..6])
-                } else {
-                    model_id
-                };
-
-                let mut to_insert = record;
-                to_insert.id = unique_id.clone();
-                let _ = self.repo.insert_model(&to_insert).await;
+                let _ = self.repo.insert_model(&record).await;
 
                 // Create default preset with compatible runtime
                 let runtime_id = if item.modality == "text-to-image" {
@@ -112,8 +138,8 @@ impl ModelService {
                 };
 
                 let default_preset = ModelPreset {
-                    id: format!("{}:default", unique_id),
-                    model_id: unique_id,
+                    id: format!("{}:default", canonical_id),
+                    model_id: canonical_id,
                     name: "Default".to_string(),
                     runtime_id: runtime_id.to_string(),
                     flags: serde_json::json!({ "--model": item.relative_path }).to_string(),
@@ -125,16 +151,32 @@ impl ModelService {
             }
         }
 
+        let mut ls = self.last_synced.write().await;
+        *ls = Some(Instant::now());
+
         Ok(())
     }
 
     pub async fn get_available_models(&self) -> Vec<ModelItem> {
         let models_dir = self.resolve_models_dir().await;
-        scan_models(models_dir)
+        tokio::task::spawn_blocking(move || scan_models(models_dir))
+            .await
+            .unwrap_or_default()
     }
 
-    pub async fn get_models(&self, include_all: bool) -> AppResult<Vec<ModelRecord>> {
-        let _ = self.sync_local_models().await;
+    pub async fn get_models(&self, include_all: bool, force_sync: bool) -> AppResult<Vec<ModelRecord>> {
+        let should_sync = {
+            let ls = self.last_synced.read().await;
+            match *ls {
+                Some(inst) => force_sync || inst.elapsed() > Duration::from_secs(30),
+                None => true,
+            }
+        };
+
+        if should_sync {
+            let _ = self.sync_local_models().await;
+        }
+
         let mut models = self.repo.get_all().await?;
         let models_dir = self.resolve_models_dir().await;
 
@@ -178,6 +220,7 @@ impl ModelService {
         }
 
         self.repo.delete_model(id).await?;
+        self.invalidate_cache().await;
         tracing::info!(target: "monolai", "Model '{}' removed from repository", id);
         Ok(())
     }
