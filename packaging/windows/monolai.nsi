@@ -32,6 +32,8 @@ RequestExecutionLevel admin
 ; Includes
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
+!include "x64.nsh"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
@@ -152,11 +154,40 @@ LangString DESC_SecCore ${LANG_ITALIAN} "File binari principali dell'applicazion
 LangString DESC_SecGroupShortcuts ${LANG_ITALIAN} "Crea collegamenti per avviare facilmente Monolai."
 LangString DESC_SecStartMenu ${LANG_ITALIAN} "Aggiungi i collegamenti di Monolai al Menu Start di Windows."
 LangString DESC_SecDesktop ${LANG_ITALIAN} "Aggiungi un collegamento sul Desktop per avviare direttamente Monolai."
+
+; Macro to terminate any running Monolai processes (GUI and CLI backend)
+; Works in both installer and uninstaller contexts.
+!macro CloseMonolaiProcessesHelper UN
+Function ${UN}CloseMonolaiProcesses
+  DetailPrint "Closing running Monolai instances..."
+  ${If} ${RunningX64}
+    ${DisableX64FSRedirection}
+    nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM "monolai-gui.exe"'
+    Pop $0
+    nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM "monolai.exe"'
+    Pop $0
+    ${EnableX64FSRedirection}
+  ${Else}
+    nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM "monolai-gui.exe"'
+    Pop $0
+    nsExec::Exec '"$SYSDIR\taskkill.exe" /F /T /IM "monolai.exe"'
+    Pop $0
+  ${EndIf}
+  Sleep 1000
+FunctionEnd
+!macroend
+
+!insertmacro CloseMonolaiProcessesHelper ""
+!insertmacro CloseMonolaiProcessesHelper "un."
+
 Section $(SEC_CORE) SecCore
   SectionIn RO
   SetShellVarContext all
   SetOutPath "$INSTDIR"
   
+  ; Terminate running processes before installing new files
+  Call CloseMonolaiProcesses
+
   ; Write installed files
   File "${BIN_DIR}\monolai-gui.exe"
   File "${BIN_DIR}\monolai.exe"
@@ -212,6 +243,9 @@ SectionEnd
 
 Section "Uninstall"
   SetShellVarContext all
+
+  ; Terminate running processes before removing files
+  Call un.CloseMonolaiProcesses
 
   ; Clean up autostart registry entries
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "Monolai"
