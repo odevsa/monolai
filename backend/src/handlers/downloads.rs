@@ -129,9 +129,7 @@ pub async fn delete_download_handler(
         (status = 200, description = "Cleared inactive downloads successfully")
     )
 )]
-pub async fn clear_downloads_handler(
-    State(state): State<AppState>,
-) -> AppResult<StatusCode> {
+pub async fn clear_downloads_handler(State(state): State<AppState>) -> AppResult<StatusCode> {
     state.download_service.clear_inactive_downloads().await?;
     Ok(StatusCode::OK)
 }

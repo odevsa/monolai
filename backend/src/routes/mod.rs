@@ -174,7 +174,10 @@ fn api_router() -> Router<AppState> {
             put(update_repository_handler).delete(delete_repository_handler),
         )
         .route("/hub/models", get(search_hub_models_handler))
-        .route("/hub/models/:repo_id/*model_id", get(get_hub_model_details_handler))
+        .route(
+            "/hub/models/:repo_id/*model_id",
+            get(get_hub_model_details_handler),
+        )
         // Background Downloads
         .route(
             "/downloads",
@@ -187,7 +190,10 @@ fn api_router() -> Router<AppState> {
         .route("/downloads/:id/pause", post(pause_download_handler))
         .route("/downloads/:id/resume", post(resume_download_handler))
         .route("/downloads/:id/cancel", post(cancel_download_handler))
-        .route("/downloads/:id", axum::routing::delete(delete_download_handler))
+        .route(
+            "/downloads/:id",
+            axum::routing::delete(delete_download_handler),
+        )
         .route("/downloads/stream", get(downloads_stream_handler))
         // Models & Presets
         .route("/models/available", get(available_models_handler))
@@ -238,10 +244,7 @@ fn api_router() -> Router<AppState> {
             put(update_chat_message_handler).delete(delete_chat_message_handler),
         )
         // Logs
-        .route(
-            "/logs",
-            get(get_logs_handler).delete(clear_logs_handler),
-        )
+        .route("/logs", get(get_logs_handler).delete(clear_logs_handler))
         .route("/logs/services", get(get_log_services_handler))
         .route("/logs/stream", get(logs_stream_handler))
         .route("/logs/download", get(download_logs_handler))

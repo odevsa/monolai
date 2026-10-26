@@ -393,8 +393,6 @@
 		"repositoriesTab": "Repositories",
 		"aboutTab": "About",
 		"repositories": {
-			"title": "Model Repositories",
-			"subtitle": "Configure model sources and hubs for discovery, direct downloads, and quant extraction.",
 			"configuredRepositories": "Configured Repositories",
 			"groupAdd": "Add Repository",
 			"addCustomRepoTitle": "Add Custom Repository",

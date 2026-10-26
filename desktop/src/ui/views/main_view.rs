@@ -199,7 +199,8 @@ pub fn show_main_screen(
 
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     let copied_active = feedback.is_copied_active();
-                                    let copy_btn_text = if copied_active { "Copied!" } else { "Copy" };
+                                    let copy_btn_text =
+                                        if copied_active { "Copied!" } else { "Copy" };
                                     if ui
                                         .add_sized(
                                             [65.0, 26.0],

@@ -63,7 +63,10 @@ impl HubService {
             name: payload.name.trim().to_string(),
             repo_type: payload.repo_type.trim().to_string(),
             base_url: payload.base_url.trim().trim_end_matches('/').to_string(),
-            api_token: payload.api_token.map(|t| t.trim().to_string()).filter(|t| !t.is_empty()),
+            api_token: payload
+                .api_token
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty()),
             enabled: payload.enabled,
             is_builtin: false,
             config_json: config_val.to_string(),
@@ -156,8 +159,14 @@ impl HubService {
         }
 
         match target_repo.repo_type.as_str() {
-            "huggingface" => self.search_huggingface(&target_repo, query, modality, sort).await,
-            _ => self.search_huggingface(&target_repo, query, modality, sort).await,
+            "huggingface" => {
+                self.search_huggingface(&target_repo, query, modality, sort)
+                    .await
+            }
+            _ => {
+                self.search_huggingface(&target_repo, query, modality, sort)
+                    .await
+            }
         }
     }
 
@@ -222,9 +231,10 @@ impl HubService {
             }
         }
 
-        let resp = req.send().await.map_err(|e| {
-            AppError::internal(format!("Failed to reach Hugging Face Hub: {}", e))
-        })?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| AppError::internal(format!("Failed to reach Hugging Face Hub: {}", e)))?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -236,11 +246,19 @@ impl HubService {
         }
 
         let raw_items: Vec<Value> = resp.json().await.unwrap_or_default();
-        let has_token = repo.api_token.as_ref().map(|t| !t.trim().is_empty()).unwrap_or(false);
+        let has_token = repo
+            .api_token
+            .as_ref()
+            .map(|t| !t.trim().is_empty())
+            .unwrap_or(false);
         let mut results = Vec::new();
 
         for item in raw_items {
-            let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let id = item
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             if id.is_empty() {
                 continue;
             }
@@ -249,7 +267,10 @@ impl HubService {
                 Some(Value::Bool(b)) => *b,
                 Some(Value::String(s)) => !s.eq_ignore_ascii_case("false") && !s.is_empty(),
                 _ => false,
-            } || item.get("private").and_then(|v| v.as_bool()).unwrap_or(false);
+            } || item
+                .get("private")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
             let requires_auth = is_gated && !has_token;
 
@@ -260,7 +281,10 @@ impl HubService {
                 .map(|s| s.to_string())
                 .or_else(|| {
                     if id.contains('/') {
-                        id.split('/').next().filter(|s| !s.is_empty()).map(|s| s.to_string())
+                        id.split('/')
+                            .next()
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
                     } else {
                         None
                     }
@@ -293,7 +317,8 @@ impl HubService {
                         let lower = rfilename.to_lowercase();
                         if lower.ends_with(".gguf") || lower.ends_with(".safetensors") {
                             let size = s.get("size").and_then(|v| v.as_u64());
-                            let download_url = format!("{}/{}/resolve/main/{}", effective_base, id, rfilename);
+                            let download_url =
+                                format!("{}/{}/resolve/main/{}", effective_base, id, rfilename);
                             siblings.push(HubModelSibling {
                                 rfilename: rfilename.to_string(),
                                 size,
@@ -353,8 +378,15 @@ impl HubService {
         }
 
         let item: Value = resp.json().await.unwrap_or_default();
-        let id = item.get("id").and_then(|v| v.as_str()).unwrap_or(model_id).to_string();
-        let author = item.get("author").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let id = item
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(model_id)
+            .to_string();
+        let author = item
+            .get("author")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
         let downloads = item.get("downloads").and_then(|v| v.as_u64());
         let likes = item.get("likes").and_then(|v| v.as_u64());
         let pipeline_tag = item
@@ -378,7 +410,10 @@ impl HubService {
         // Fetch exact file sizes from /tree/main endpoint for Hugging Face repositories
         let mut size_map = std::collections::HashMap::new();
         if repo.repo_type == "huggingface" {
-            let tree_url = format!("{}/api/models/{}/tree/main?recursive=true", base_url, model_id);
+            let tree_url = format!(
+                "{}/api/models/{}/tree/main?recursive=true",
+                base_url, model_id
+            );
             let mut tree_req = self.http_client.get(&tree_url);
             if let Some(ref token) = repo.api_token {
                 if !token.is_empty() {
@@ -414,7 +449,8 @@ impl HubService {
                             .get("size")
                             .and_then(|v| v.as_u64())
                             .or_else(|| size_map.get(rfilename).copied());
-                        let download_url = format!("{}/{}/resolve/main/{}", effective_base, id, rfilename);
+                        let download_url =
+                            format!("{}/{}/resolve/main/{}", effective_base, id, rfilename);
                         siblings.push(HubModelSibling {
                             rfilename: rfilename.to_string(),
                             size,
@@ -440,12 +476,19 @@ impl HubService {
             siblings.sort_by(|a, b| a.rfilename.cmp(&b.rfilename));
         }
 
-        let has_token = repo.api_token.as_ref().map(|t| !t.trim().is_empty()).unwrap_or(false);
+        let has_token = repo
+            .api_token
+            .as_ref()
+            .map(|t| !t.trim().is_empty())
+            .unwrap_or(false);
         let is_gated = match item.get("gated") {
             Some(Value::Bool(b)) => *b,
             Some(Value::String(s)) => !s.eq_ignore_ascii_case("false") && !s.is_empty(),
             _ => false,
-        } || item.get("private").and_then(|v| v.as_bool()).unwrap_or(false);
+        } || item
+            .get("private")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
         let requires_auth = is_gated && !has_token;
 

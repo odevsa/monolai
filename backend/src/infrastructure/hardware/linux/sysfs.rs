@@ -154,8 +154,14 @@ pub fn detect_linux_pci_gpus() -> Vec<GpuInfo> {
 pub fn find_intel_rc6_path(card_path: &Path) -> Option<PathBuf> {
     let card_name = card_path.file_name()?;
     let candidates = [
-        card_path.join("device/drm").join(card_name).join("gt/gt0/rc6_residency_ms"),
-        card_path.join("device/drm").join(card_name).join("gt/rc6_residency_ms"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt/gt0/rc6_residency_ms"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt/rc6_residency_ms"),
         card_path.join("gt/gt0/rc6_residency_ms"),
         card_path.join("gt/rc6_residency_ms"),
         card_path.join("power/rc6_residency_ms"),
@@ -171,8 +177,14 @@ pub fn find_intel_rc6_path(card_path: &Path) -> Option<PathBuf> {
 pub fn find_intel_max_freq(card_path: &Path) -> Option<u32> {
     let card_name = card_path.file_name()?;
     let candidates = [
-        card_path.join("device/drm").join(card_name).join("gt_max_freq_mhz"),
-        card_path.join("device/drm").join(card_name).join("gt_RP0_freq_mhz"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt_max_freq_mhz"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt_RP0_freq_mhz"),
         card_path.join("gt_max_freq_mhz"),
         card_path.join("gt_RP0_freq_mhz"),
     ];
@@ -191,8 +203,14 @@ pub fn find_intel_max_freq(card_path: &Path) -> Option<u32> {
 pub fn read_intel_act_freq(card_path: &Path) -> Option<u32> {
     let card_name = card_path.file_name()?;
     let freq_paths = [
-        card_path.join("device/drm").join(card_name).join("gt_act_freq_mhz"),
-        card_path.join("device/drm").join(card_name).join("gt_cur_freq_mhz"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt_act_freq_mhz"),
+        card_path
+            .join("device/drm")
+            .join(card_name)
+            .join("gt_cur_freq_mhz"),
         card_path.join("gt_act_freq_mhz"),
         card_path.join("gt_cur_freq_mhz"),
     ];

@@ -1,3 +1,4 @@
+use async_stream::stream;
 use axum::{
     extract::{Query, State},
     http::header,
@@ -7,7 +8,6 @@ use axum::{
     },
     Json,
 };
-use async_stream::stream;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
@@ -57,9 +57,7 @@ pub async fn get_logs_handler(
         (status = 200, description = "List of services with available logs", body = Vec<String>)
     )
 )]
-pub async fn get_log_services_handler(
-    State(state): State<AppState>,
-) -> Json<Vec<String>> {
+pub async fn get_log_services_handler(State(state): State<AppState>) -> Json<Vec<String>> {
     let services = state.log_service.get_services().await;
     Json(services)
 }

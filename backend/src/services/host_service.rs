@@ -94,7 +94,8 @@ impl HostService {
                     let name = std::fs::read_to_string(path.join("name"))
                         .unwrap_or_default()
                         .to_lowercase();
-                    if name.contains("coretemp") || name.contains("k10temp") || name.contains("cpu") {
+                    if name.contains("coretemp") || name.contains("k10temp") || name.contains("cpu")
+                    {
                         if let Ok(val) = std::fs::read_to_string(path.join("temp1_input")) {
                             if let Ok(mdeg) = val.trim().parse::<f32>() {
                                 let deg = mdeg / 1000.0;
@@ -136,8 +137,15 @@ impl HostService {
                         }
 
                         // Match base block devices (sda, sdb, nvme0n1, vda, mmcblk0)
-                        let is_base_dev = if dev_name.starts_with("sd") || dev_name.starts_with("vd") || dev_name.starts_with("hd") {
-                            dev_name.len() == 3 && dev_name.chars().nth(2).map_or(false, |c| c.is_ascii_alphabetic())
+                        let is_base_dev = if dev_name.starts_with("sd")
+                            || dev_name.starts_with("vd")
+                            || dev_name.starts_with("hd")
+                        {
+                            dev_name.len() == 3
+                                && dev_name
+                                    .chars()
+                                    .nth(2)
+                                    .map_or(false, |c| c.is_ascii_alphabetic())
                         } else if dev_name.starts_with("nvme") {
                             dev_name.ends_with("n1") && !dev_name.contains('p')
                         } else if dev_name.starts_with("mmcblk") {
@@ -191,7 +199,11 @@ impl HostService {
 
             // Deduplicate devices so multiple subvolumes (e.g. btrfs /home, /var, / on /dev/sda2)
             // or bind mounts are NOT summed multiple times for total disk capacity
-            let device_key = if !name.is_empty() { name.clone() } else { mount.clone() };
+            let device_key = if !name.is_empty() {
+                name.clone()
+            } else {
+                mount.clone()
+            };
             if seen_physical_devices.insert(device_key) {
                 total_bytes += total;
                 available_bytes += avail;
@@ -422,10 +434,22 @@ mod tests {
     fn test_collect_storage_info() {
         let mut disks = Disks::new_with_refreshed_list();
         let storage = HostService::collect_storage_info(&mut disks);
-        println!("STORAGE TOTAL: {} GB", storage.total_bytes as f64 / 1_000_000_000.0);
+        println!(
+            "STORAGE TOTAL: {} GB",
+            storage.total_bytes as f64 / 1_000_000_000.0
+        );
         for d in &storage.disks {
-            println!("  DISK: name='{}', mount='{}', total={} GB", d.name, d.mount_point, d.total_bytes as f64 / 1_000_000_000.0);
+            println!(
+                "  DISK: name='{}', mount='{}', total={} GB",
+                d.name,
+                d.mount_point,
+                d.total_bytes as f64 / 1_000_000_000.0
+            );
         }
-        assert!(storage.total_bytes < 300_000_000_000, "Storage should not duplicate partitions! Got {}", storage.total_bytes);
+        assert!(
+            storage.total_bytes < 300_000_000_000,
+            "Storage should not duplicate partitions! Got {}",
+            storage.total_bytes
+        );
     }
 }

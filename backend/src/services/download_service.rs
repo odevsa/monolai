@@ -78,15 +78,21 @@ impl DownloadService {
         }
     }
 
-    pub async fn enqueue_download(&self, payload: EnqueueDownloadPayload) -> AppResult<DownloadRecord> {
-        let url = if let Some(raw_url) = payload.url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+    pub async fn enqueue_download(
+        &self,
+        payload: EnqueueDownloadPayload,
+    ) -> AppResult<DownloadRecord> {
+        let url = if let Some(raw_url) = payload
+            .url
+            .as_deref()
+            .map(str::trim)
+            .filter(|u| !u.is_empty())
+        {
             raw_url.to_string()
         } else {
             let rid = payload.repo_id.as_deref().unwrap_or("huggingface");
             if let Ok(Some(repo)) = self.repo_repo.get_by_id(rid).await {
-                let base = repo
-                    .get_mirror_url()
-                    .unwrap_or(repo.base_url);
+                let base = repo.get_mirror_url().unwrap_or(repo.base_url);
                 format!(
                     "{}/{}/resolve/main/{}",
                     base.trim_end_matches('/'),
@@ -109,7 +115,11 @@ impl DownloadService {
         let mut filename = payload.filename.trim().to_string();
         if filename.is_empty() {
             if let Some(last_seg) = url.split('/').last() {
-                filename = last_seg.split('?').next().unwrap_or("model.gguf").to_string();
+                filename = last_seg
+                    .split('?')
+                    .next()
+                    .unwrap_or("model.gguf")
+                    .to_string();
             } else {
                 filename = "model.gguf".to_string();
             }
@@ -162,7 +172,14 @@ impl DownloadService {
         self.notify_broadcast().await;
 
         // Spawn background worker
-        self.spawn_download_task(id.clone(), absolute_path, url, payload.repo_id, Some(model_name.to_string())).await;
+        self.spawn_download_task(
+            id.clone(),
+            absolute_path,
+            url,
+            payload.repo_id,
+            Some(model_name.to_string()),
+        )
+        .await;
 
         self.download_repo
             .get_by_id(&id)
@@ -227,7 +244,10 @@ impl DownloadService {
         mut pause_rx: tokio::sync::watch::Receiver<bool>,
         speed_ref: Arc<Mutex<u64>>,
     ) {
-        let _ = self.download_repo.update_status(&task_id, "downloading", None).await;
+        let _ = self
+            .download_repo
+            .update_status(&task_id, "downloading", None)
+            .await;
         self.notify_broadcast().await;
 
         let part_path = PathBuf::from(format!("{}.part", target_path.display()));
@@ -295,7 +315,10 @@ impl DownloadService {
             } else {
                 format!("HTTP server returned error: {}", status)
             };
-            let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+            let _ = self
+                .download_repo
+                .update_status(&task_id, "failed", Some(&err_msg))
+                .await;
             return;
         }
 
@@ -310,7 +333,11 @@ impl DownloadService {
         };
 
         let file_open_res = if is_range_accepted && existing_bytes > 0 {
-            OpenOptions::new().create(true).append(true).open(&part_path).await
+            OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&part_path)
+                .await
         } else {
             OpenOptions::new()
                 .create(true)
@@ -324,7 +351,10 @@ impl DownloadService {
             Ok(f) => f,
             Err(e) => {
                 let err_msg = format!("Failed to create or open file on disk: {}", e);
-                let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+                let _ = self
+                    .download_repo
+                    .update_status(&task_id, "failed", Some(&err_msg))
+                    .await;
                 return;
             }
         };
@@ -363,14 +393,20 @@ impl DownloadService {
                 Ok(c) => c,
                 Err(e) => {
                     let err_msg = format!("Error streaming chunk: {}", e);
-                    let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+                    let _ = self
+                        .download_repo
+                        .update_status(&task_id, "failed", Some(&err_msg))
+                        .await;
                     return;
                 }
             };
 
             if let Err(e) = file.write_all(&chunk).await {
                 let err_msg = format!("Failed to write chunk to disk: {}", e);
-                let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+                let _ = self
+                    .download_repo
+                    .update_status(&task_id, "failed", Some(&err_msg))
+                    .await;
                 return;
             }
 
@@ -404,7 +440,10 @@ impl DownloadService {
         // Rename .part to target path
         if let Err(e) = tokio::fs::rename(&part_path, &target_path).await {
             let err_msg = format!("Failed to finalize downloaded file: {}", e);
-            let _ = self.download_repo.update_status(&task_id, "failed", Some(&err_msg)).await;
+            let _ = self
+                .download_repo
+                .update_status(&task_id, "failed", Some(&err_msg))
+                .await;
             return;
         }
 
@@ -413,10 +452,14 @@ impl DownloadService {
             .download_repo
             .update_progress(&task_id, downloaded_bytes as i64, downloaded_bytes as i64)
             .await;
-        let _ = self.download_repo.update_status(&task_id, "completed", None).await;
+        let _ = self
+            .download_repo
+            .update_status(&task_id, "completed", None)
+            .await;
 
         // Auto-register model in DB and create default preset
-        self.auto_register_completed_model(&target_path, repo_id.as_deref(), model_name.as_deref()).await;
+        self.auto_register_completed_model(&target_path, repo_id.as_deref(), model_name.as_deref())
+            .await;
         self.notify_broadcast().await;
     }
 
@@ -443,20 +486,33 @@ impl DownloadService {
         let parts: Vec<&str> = norm_path.split('/').collect();
 
         // Canonical ID pattern: {user}/{model}:{filename}
-        let (id, display_name, source_repo) = if let Some(mn) = model_name.filter(|s| !s.trim().is_empty()) {
-            let clean_mn = mn.trim().trim_matches('/');
-            (format!("{}:{}", clean_mn, filename), clean_mn.to_string(), Some(clean_mn.to_string()))
-        } else if parts.len() >= 4 {
-            let user = parts[1];
-            let repo = parts[2];
-            let repo_slug = format!("{}/{}", user, repo);
-            (format!("{}/{}:{}", user, repo, filename), repo_slug.clone(), Some(repo_slug))
-        } else if parts.len() == 3 {
-            let folder = parts[1];
-            (format!("{}:{}", folder, filename), folder.to_string(), Some(folder.to_string()))
-        } else {
-            (filename.clone(), filename.clone(), None)
-        };
+        let (id, display_name, source_repo) =
+            if let Some(mn) = model_name.filter(|s| !s.trim().is_empty()) {
+                let clean_mn = mn.trim().trim_matches('/');
+                (
+                    format!("{}:{}", clean_mn, filename),
+                    clean_mn.to_string(),
+                    Some(clean_mn.to_string()),
+                )
+            } else if parts.len() >= 4 {
+                let user = parts[1];
+                let repo = parts[2];
+                let repo_slug = format!("{}/{}", user, repo);
+                (
+                    format!("{}/{}:{}", user, repo, filename),
+                    repo_slug.clone(),
+                    Some(repo_slug),
+                )
+            } else if parts.len() == 3 {
+                let folder = parts[1];
+                (
+                    format!("{}:{}", folder, filename),
+                    folder.to_string(),
+                    Some(folder.to_string()),
+                )
+            } else {
+                (filename.clone(), filename.clone(), None)
+            };
 
         let metadata = tokio::fs::metadata(target_path).await.ok();
         let size_bytes = metadata.map(|m| m.len()).unwrap_or(0) as i64;
@@ -476,7 +532,13 @@ impl DownloadService {
             file_exists: true,
         };
 
-        if self.model_repo.get_by_id(&id).await.unwrap_or(None).is_none() {
+        if self
+            .model_repo
+            .get_by_id(&id)
+            .await
+            .unwrap_or(None)
+            .is_none()
+        {
             let _ = self.model_repo.insert_model(&model_record).await;
 
             let runtime_id = if inspect.modality == "text-to-image" {
@@ -559,10 +621,14 @@ impl DownloadService {
             let record = self.download_repo.get_by_id(id).await?;
             if let Some(r) = record {
                 let models_dir = self.resolve_models_dir().await;
-                let part_path = PathBuf::from(format!("{}/{}.part", models_dir.display(), r.file_path));
+                let part_path =
+                    PathBuf::from(format!("{}/{}.part", models_dir.display(), r.file_path));
                 let _ = tokio::fs::remove_file(&part_path).await;
             }
-            let _ = self.download_repo.update_status(id, "cancelled", None).await;
+            let _ = self
+                .download_repo
+                .update_status(id, "cancelled", None)
+                .await;
         }
         self.notify_broadcast().await;
         Ok(())

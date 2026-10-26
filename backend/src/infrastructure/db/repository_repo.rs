@@ -76,7 +76,9 @@ impl RepositoryRepository {
         let existing = self.get_by_id(id).await?;
         if let Some(r) = existing {
             if r.is_builtin {
-                return Err(AppError::bad_request("Built-in repositories cannot be deleted. You can disable them instead."));
+                return Err(AppError::bad_request(
+                    "Built-in repositories cannot be deleted. You can disable them instead.",
+                ));
             }
         }
         sqlx::query("DELETE FROM repositories WHERE id = ?1")

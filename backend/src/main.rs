@@ -155,7 +155,8 @@ fn handle_config_command(config_path: Option<&str>, args: ConfigArgs) {
         ConfigAction::Show(show_args) => {
             let (full_cfg, path) = core::config::get_full_config(config_path);
             if show_args.json {
-                let json = serde_json::to_string_pretty(&full_cfg).unwrap_or_else(|_| "{}".to_string());
+                let json =
+                    serde_json::to_string_pretty(&full_cfg).unwrap_or_else(|_| "{}".to_string());
                 println!("{}", json);
             } else {
                 let yaml = serde_yaml::to_string(&full_cfg).unwrap_or_default();
@@ -165,7 +166,10 @@ fn handle_config_command(config_path: Option<&str>, args: ConfigArgs) {
         }
         ConfigAction::Init(init_args) => {
             match core::config::init_config(config_path, init_args.force) {
-                Ok(path) => println!("Configuration initialized successfully at {}", path.display()),
+                Ok(path) => println!(
+                    "Configuration initialized successfully at {}",
+                    path.display()
+                ),
                 Err(e) => {
                     eprintln!("Error initializing configuration: {}", e);
                     std::process::exit(1);
@@ -180,8 +184,12 @@ fn handle_config_command(config_path: Option<&str>, args: ConfigArgs) {
             let host = set_args.host.unwrap_or(current.host);
             let port = set_args.port.unwrap_or(current.port);
 
-            let min_start = set_args.minimize_on_start.unwrap_or(current.gui.minimize_on_start);
-            let auto_srv = set_args.autostart_server.unwrap_or(current.gui.autostart_server);
+            let min_start = set_args
+                .minimize_on_start
+                .unwrap_or(current.gui.minimize_on_start);
+            let auto_srv = set_args
+                .autostart_server
+                .unwrap_or(current.gui.autostart_server);
             let auto_app = set_args.autostart_app.unwrap_or(current.gui.autostart_app);
 
             match core::config::save_config(
@@ -205,9 +213,15 @@ fn handle_config_command(config_path: Option<&str>, args: ConfigArgs) {
                         },
                     };
                     if set_args.json {
-                        println!("{}", serde_json::to_string_pretty(&updated).unwrap_or_default());
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&updated).unwrap_or_default()
+                        );
                     } else {
-                        println!("Configuration saved successfully at {}", target_path.display());
+                        println!(
+                            "Configuration saved successfully at {}",
+                            target_path.display()
+                        );
                     }
                 }
                 Err(e) => {

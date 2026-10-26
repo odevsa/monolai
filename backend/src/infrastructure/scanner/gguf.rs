@@ -237,8 +237,8 @@ pub fn map_architecture_to_modality(arch: &str) -> &'static str {
         // Text-to-text architectures
         "llama" | "qwen" | "qwen2" | "qwen2.5" | "mistral" | "mixtral" | "phi" | "phi3"
         | "gemma" | "gemma2" | "deepseek" | "deepseek2" | "starcoder" | "starcoder2"
-        | "command-r" | "bloom" | "falcon" | "mpt" | "baichuan" | "gpt2" | "gptj"
-        | "gptneox" | "chatglm" | "internlm" | "nemotron" | "olmo" => "text-to-text",
+        | "command-r" | "bloom" | "falcon" | "mpt" | "baichuan" | "gpt2" | "gptj" | "gptneox"
+        | "chatglm" | "internlm" | "nemotron" | "olmo" => "text-to-text",
 
         // Text-to-image / Diffusion architectures
         "flux" | "sd1" | "sd2" | "sdxl" | "sd3" | "sd3.5" | "stable-diffusion"

@@ -6,9 +6,9 @@ mod supervisor;
 mod tray;
 mod ui;
 
-use std::sync::Arc;
 use eframe::egui::{self, IconData};
 use platform::single_instance;
+use std::sync::Arc;
 use ui::{theme, DesktopApp};
 
 fn load_window_icon() -> Option<IconData> {

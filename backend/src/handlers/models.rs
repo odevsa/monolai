@@ -1,7 +1,7 @@
 use crate::core::error::AppResult;
 use crate::domain::{
-    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus,
-    RuntimeManifest, UpdatePresetPayload,
+    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus, RuntimeManifest,
+    UpdatePresetPayload,
 };
 use crate::state::AppState;
 use async_stream::stream;
@@ -68,7 +68,10 @@ pub async fn get_models_handler(
 ) -> AppResult<Json<Vec<ModelRecord>>> {
     let include_all = query.all.unwrap_or(false) || query.include_missing.unwrap_or(false);
     let force_sync = query.sync.unwrap_or(false);
-    let models = state.model_service.get_models(include_all, force_sync).await?;
+    let models = state
+        .model_service
+        .get_models(include_all, force_sync)
+        .await?;
     Ok(Json(models))
 }
 
@@ -111,10 +114,7 @@ pub async fn delete_model_handler(
     Query(query): Query<DeleteModelQuery>,
 ) -> AppResult<StatusCode> {
     let delete_file = query.delete_file.unwrap_or(true);
-    state
-        .model_service
-        .delete_model(&id, delete_file)
-        .await?;
+    state.model_service.delete_model(&id, delete_file).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -178,7 +178,10 @@ pub async fn update_model_preset_handler(
     Path(preset_id): Path<String>,
     Json(payload): Json<UpdatePresetPayload>,
 ) -> AppResult<Json<ModelPreset>> {
-    let preset = state.model_service.update_preset(&preset_id, payload).await?;
+    let preset = state
+        .model_service
+        .update_preset(&preset_id, payload)
+        .await?;
     Ok(Json(preset))
 }
 
@@ -219,7 +222,10 @@ pub async fn set_default_model_preset_handler(
     State(state): State<AppState>,
     Path((id, preset_id)): Path<(String, String)>,
 ) -> AppResult<StatusCode> {
-    state.model_service.set_default_preset(&id, &preset_id).await?;
+    state
+        .model_service
+        .set_default_preset(&id, &preset_id)
+        .await?;
     Ok(StatusCode::OK)
 }
 

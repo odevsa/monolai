@@ -74,10 +74,11 @@ mod tests {
     async fn test_default_builtin_repositories() {
         let pool = setup_test_db().await;
 
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM repositories WHERE is_builtin = 1")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM repositories WHERE is_builtin = 1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
 
         assert_eq!(count, 1);
     }
@@ -111,11 +112,12 @@ mod tests {
             .await
             .unwrap();
 
-        let preset_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
-            .bind(model_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let preset_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
+                .bind(model_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(preset_count, 1);
 
         // Test cascade deletion
@@ -125,11 +127,12 @@ mod tests {
             .await
             .unwrap();
 
-        let after_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
-            .bind(model_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let after_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM model_presets WHERE model_id = ?")
+                .bind(model_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(after_count, 0);
     }
 }

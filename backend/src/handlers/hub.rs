@@ -138,6 +138,9 @@ pub async fn get_hub_model_details_handler(
     State(state): State<AppState>,
     Path((repo_id, model_id)): Path<(String, String)>,
 ) -> AppResult<Json<HubModelItem>> {
-    let details = state.hub_service.get_model_details(&repo_id, &model_id).await?;
+    let details = state
+        .hub_service
+        .get_model_details(&repo_id, &model_id)
+        .await?;
     Ok(Json(details))
 }

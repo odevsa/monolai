@@ -1,5 +1,5 @@
-use std::time::Instant;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Rounding, Stroke, Ui};
+use std::time::Instant;
 
 use crate::core::config::GuiConfig;
 use crate::platform::autostart;

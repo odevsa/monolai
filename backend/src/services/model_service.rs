@@ -1,8 +1,8 @@
 use crate::core::config::AppConfig;
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{
-    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus,
-    RuntimeManifest, UpdatePresetPayload,
+    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus, RuntimeManifest,
+    UpdatePresetPayload,
 };
 use crate::infrastructure::db::{ModelRepository, SettingRepository};
 use crate::infrastructure::process::manager::{
@@ -73,7 +73,7 @@ impl ModelService {
     pub async fn sync_local_models(&self) -> AppResult<()> {
         self.setup_canonical_folders().await;
         let models_dir = self.resolve_models_dir().await;
-        
+
         let dir_clone = models_dir.clone();
         let scanned = tokio::task::spawn_blocking(move || scan_models(&dir_clone))
             .await
@@ -164,7 +164,11 @@ impl ModelService {
             .unwrap_or_default()
     }
 
-    pub async fn get_models(&self, include_all: bool, force_sync: bool) -> AppResult<Vec<ModelRecord>> {
+    pub async fn get_models(
+        &self,
+        include_all: bool,
+        force_sync: bool,
+    ) -> AppResult<Vec<ModelRecord>> {
         let should_sync = {
             let ls = self.last_synced.read().await;
             match *ls {
@@ -328,7 +332,10 @@ impl ModelService {
         // If the deleted preset was default, promote the first remaining preset to default
         if preset.is_default {
             if let Some(next) = all_presets.into_iter().find(|p| p.id != preset_id) {
-                let _ = self.repo.set_default_preset(&preset.model_id, &next.id).await;
+                let _ = self
+                    .repo
+                    .set_default_preset(&preset.model_id, &next.id)
+                    .await;
             }
         }
 
@@ -350,14 +357,20 @@ impl ModelService {
             .filter(|m| {
                 if let Some(target_mod) = modality {
                     if !m.supported_modalities.is_empty()
-                        && !m.supported_modalities.iter().any(|sm| sm.eq_ignore_ascii_case(target_mod))
+                        && !m
+                            .supported_modalities
+                            .iter()
+                            .any(|sm| sm.eq_ignore_ascii_case(target_mod))
                     {
                         return false;
                     }
                 }
                 if let Some(target_fmt) = format {
                     if !m.supported_formats.is_empty()
-                        && !m.supported_formats.iter().any(|sf| sf.eq_ignore_ascii_case(target_fmt))
+                        && !m
+                            .supported_formats
+                            .iter()
+                            .any(|sf| sf.eq_ignore_ascii_case(target_fmt))
                     {
                         return false;
                     }

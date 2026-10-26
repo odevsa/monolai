@@ -187,7 +187,10 @@ pub async fn resolve_model_and_preset(
         m.id.eq_ignore_ascii_case(target)
             || m.filename.eq_ignore_ascii_case(target)
             || m.relative_path.eq_ignore_ascii_case(target)
-            || m.source_repo.as_deref().map(|s| s.eq_ignore_ascii_case(target)).unwrap_or(false)
+            || m.source_repo
+                .as_deref()
+                .map(|s| s.eq_ignore_ascii_case(target))
+                .unwrap_or(false)
     }) {
         let preset = m
             .presets
@@ -333,7 +336,11 @@ pub async fn load_model_process(
         }
     }
     if !has_model_flag {
-        let flag_name = if is_sd_server { "--checkpoint" } else { "--model" };
+        let flag_name = if is_sd_server {
+            "--checkpoint"
+        } else {
+            "--model"
+        };
         parsed_flags.insert(
             flag_name.to_string(),
             full_model_path.to_string_lossy().to_string(),

@@ -73,12 +73,14 @@ pub fn calculate_drm_fdinfo_usage(
                         } else if let Some(rest) = line.strip_prefix("drm-engine-") {
                             if let Some((eng, val_part)) = rest.split_once(':') {
                                 let eng_name = eng.trim();
-                                let val_str = val_part.split_whitespace().next().unwrap_or_default();
+                                let val_str =
+                                    val_part.split_whitespace().next().unwrap_or_default();
                                 if let Ok(val) = val_str.parse::<u64>() {
                                     engines.insert(eng_name.to_string(), val);
                                 }
                             }
-                        } else if let Some(rest) = line.strip_prefix("drm-resident-system0:")
+                        } else if let Some(rest) = line
+                            .strip_prefix("drm-resident-system0:")
                             .or_else(|| line.strip_prefix("drm-resident-vram:"))
                             .or_else(|| line.strip_prefix("drm-total-system0:"))
                         {

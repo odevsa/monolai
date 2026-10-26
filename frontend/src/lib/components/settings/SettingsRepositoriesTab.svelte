@@ -191,10 +191,7 @@
 		{:else}
 			<!-- Group 1: Configured Repositories -->
 			<div class="relative z-20">
-				<SettingGroup
-					title={t('settings.repositories.configuredRepositories')}
-					description={t('settings.repositories.subtitle')}
-				>
+				<SettingGroup title={t('settings.repositories.configuredRepositories')}>
 					{#if repositories.length === 0}
 						<div
 							class="p-5 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-hover)] rounded-2xl"
@@ -347,7 +344,7 @@
 						title={t('settings.repositories.addCustomRepoTitle')}
 						subtitle={t('settings.repositories.addCustomRepoSubtitle')}
 					>
-						<Button variant="secondary" size="sm" onclick={() => (showAddModal = true)}>
+						<Button variant="primary" size="sm" onclick={() => (showAddModal = true)}>
 							<Plus size={14} />
 							<span>{t('common.add')}</span>
 						</Button>

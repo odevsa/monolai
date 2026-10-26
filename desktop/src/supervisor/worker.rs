@@ -46,7 +46,9 @@ impl SupervisorWorker {
 
     fn emit_status(&mut self, new_status: ServerStatus) {
         self.status = new_status.clone();
-        let _ = self.event_tx.send(SupervisorEvent::StatusChanged(new_status));
+        let _ = self
+            .event_tx
+            .send(SupervisorEvent::StatusChanged(new_status));
         self.egui_ctx.request_repaint();
     }
 

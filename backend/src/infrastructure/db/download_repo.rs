@@ -48,7 +48,12 @@ impl DownloadRepository {
         Ok(())
     }
 
-    pub async fn update_progress(&self, id: &str, downloaded_bytes: i64, total_bytes: i64) -> AppResult<()> {
+    pub async fn update_progress(
+        &self,
+        id: &str,
+        downloaded_bytes: i64,
+        total_bytes: i64,
+    ) -> AppResult<()> {
         sqlx::query(
             "UPDATE downloads SET downloaded_bytes = ?1, total_bytes = ?2, updated_at = datetime('now') WHERE id = ?3",
         )
@@ -60,7 +65,12 @@ impl DownloadRepository {
         Ok(())
     }
 
-    pub async fn update_status(&self, id: &str, status: &str, error_message: Option<&str>) -> AppResult<()> {
+    pub async fn update_status(
+        &self,
+        id: &str,
+        status: &str,
+        error_message: Option<&str>,
+    ) -> AppResult<()> {
         sqlx::query(
             "UPDATE downloads SET status = ?1, error_message = ?2, updated_at = datetime('now') WHERE id = ?3",
         )
@@ -81,9 +91,10 @@ impl DownloadRepository {
     }
 
     pub async fn delete_inactive(&self) -> AppResult<u64> {
-        let res = sqlx::query("DELETE FROM downloads WHERE status NOT IN ('downloading', 'queued')")
-            .execute(&self.pool)
-            .await?;
+        let res =
+            sqlx::query("DELETE FROM downloads WHERE status NOT IN ('downloading', 'queued')")
+                .execute(&self.pool)
+                .await?;
         Ok(res.rows_affected())
     }
 }

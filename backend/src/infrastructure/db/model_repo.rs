@@ -53,7 +53,10 @@ impl ModelRepository {
         Ok(model)
     }
 
-    pub async fn find_by_relative_path(&self, relative_path: &str) -> AppResult<Option<ModelRecord>> {
+    pub async fn find_by_relative_path(
+        &self,
+        relative_path: &str,
+    ) -> AppResult<Option<ModelRecord>> {
         let mut model = sqlx::query_as::<_, ModelRecord>(
             "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, created_at FROM models WHERE relative_path = ?1",
         )

@@ -714,10 +714,8 @@ mod tests {
 
     #[test]
     fn test_save_config_includes_comments_and_gui() {
-        let temp_file = std::env::temp_dir().join(format!(
-            "monolai_test_config_{}.yaml",
-            uuid::Uuid::new_v4()
-        ));
+        let temp_file =
+            std::env::temp_dir().join(format!("monolai_test_config_{}.yaml", uuid::Uuid::new_v4()));
         let path_str = temp_file.to_string_lossy().to_string();
 
         save_config(
@@ -731,7 +729,9 @@ mod tests {
         .unwrap();
 
         let content = fs::read_to_string(&temp_file).unwrap();
-        assert!(content.contains("# =============================================================================="));
+        assert!(content.contains(
+            "# =============================================================================="
+        ));
         assert!(content.contains("# 1. Models Directory:"));
         assert!(content.contains("models: /custom/models"));
         assert!(content.contains("# 2. Runtimes Directory:"));

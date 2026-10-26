@@ -111,16 +111,17 @@ impl ProxyService {
     }
 
     pub async fn get_v1_model(&self, id: &str) -> AppResult<OpenAiModelItem> {
-        let (model, _preset) = crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, id)
-            .await
-            .map_err(|_| {
-                AppError::openai(
-                    StatusCode::NOT_FOUND,
-                    format!("Model or preset '{}' not found", id),
-                    "invalid_request_error",
-                    "model_not_found",
-                )
-            })?;
+        let (model, _preset) =
+            crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, id)
+                .await
+                .map_err(|_| {
+                    AppError::openai(
+                        StatusCode::NOT_FOUND,
+                        format!("Model or preset '{}' not found", id),
+                        "invalid_request_error",
+                        "model_not_found",
+                    )
+                })?;
 
         let cfg = self.config.read().await;
         let models_dir = if let Some(ref dir) = cfg.models {
@@ -180,7 +181,12 @@ impl ProxyService {
         }
 
         let target_port: u16 = if let Some(model_id) = model_id_opt {
-            match crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, &model_id).await {
+            match crate::infrastructure::process::manager::resolve_model_and_preset(
+                &self.model_repo,
+                &model_id,
+            )
+            .await
+            {
                 Ok(_) => {}
                 Err(_) => {
                     return AppError::openai(
@@ -337,9 +343,10 @@ impl ProxyService {
                 m.port
             } else {
                 let all_models = self.model_repo.get_all().await.unwrap_or_default();
-                let sd_model = all_models
-                    .into_iter()
-                    .find(|m| m.modality == "text-to-image" || m.presets.iter().any(|p| p.runtime_id.contains("sd")));
+                let sd_model = all_models.into_iter().find(|m| {
+                    m.modality == "text-to-image"
+                        || m.presets.iter().any(|p| p.runtime_id.contains("sd"))
+                });
                 if let Some(m) = sd_model {
                     let cfg = self.config.read().await.clone();
                     match swap_model_process(

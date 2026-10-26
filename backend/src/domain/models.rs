@@ -66,7 +66,11 @@ impl RepositoryRecord {
     pub fn get_mirror_url(&self) -> Option<String> {
         serde_json::from_str::<serde_json::Value>(&self.config_json)
             .ok()
-            .and_then(|v| v.get("mirror_url").and_then(|m| m.as_str()).map(|s| s.to_string()))
+            .and_then(|v| {
+                v.get("mirror_url")
+                    .and_then(|m| m.as_str())
+                    .map(|s| s.to_string())
+            })
             .filter(|s| !s.trim().is_empty())
     }
 }
