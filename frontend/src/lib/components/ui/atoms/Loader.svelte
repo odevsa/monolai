@@ -31,9 +31,10 @@
 	{...restProps}
 >
 	<circle cx="5" cy="9.5" r="3" fill={color} opacity="0.4">
-		<animate
-			attributeName="cy"
-			values="9.5; 4.5; 9.5; 9.5"
+		<animateTransform
+			attributeName="transform"
+			type="translate"
+			values="0 0; 0 -5; 0 0; 0 0"
 			keyTimes="0; 0.3; 0.6; 1"
 			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
 			calcMode="spline"
@@ -53,9 +54,10 @@
 		/>
 	</circle>
 	<circle cx="16" cy="9.5" r="3" fill={color} opacity="0.4">
-		<animate
-			attributeName="cy"
-			values="9.5; 4.5; 9.5; 9.5"
+		<animateTransform
+			attributeName="transform"
+			type="translate"
+			values="0 0; 0 -5; 0 0; 0 0"
 			keyTimes="0; 0.3; 0.6; 1"
 			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
 			calcMode="spline"
@@ -75,9 +77,10 @@
 		/>
 	</circle>
 	<circle cx="27" cy="9.5" r="3" fill={color} opacity="0.4">
-		<animate
-			attributeName="cy"
-			values="9.5; 4.5; 9.5; 9.5"
+		<animateTransform
+			attributeName="transform"
+			type="translate"
+			values="0 0; 0 -5; 0 0; 0 0"
 			keyTimes="0; 0.3; 0.6; 1"
 			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
 			calcMode="spline"
