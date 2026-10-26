@@ -13,8 +13,7 @@
 		Input,
 		Modal,
 		Select,
-		Spinner,
-		Tabs
+		Spinner
 	} from '$lib/components/ui';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
@@ -28,6 +27,7 @@
 		RepositoryRecord
 	} from '$lib/types/models';
 	import { formatBytes } from '$lib/utils/format';
+	import { getModalityBadgeVariant, getModalityLabel, getModalityOptions } from '$lib/utils/model';
 	import {
 		ArrowDownToLine,
 		Box,
@@ -40,6 +40,7 @@
 		Trash
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import Divider from '../ui/atoms/Divider.svelte';
 
 	let repositories = $state<RepositoryRecord[]>([]);
 	let selectedRepoId = $state<string>('');
@@ -73,19 +74,13 @@
 		lastCompletedCount = current;
 	});
 
-	const modalityTabItems = [
-		{ id: 'all', label: 'All' },
-		{ id: 'text-to-text', label: 'Text' },
-		{ id: 'text-to-image', label: 'Image' },
-		{ id: 'text-to-speech', label: 'TTS' },
-		{ id: 'speech-to-text', label: 'ASR' }
-	];
+	let modalityOptions = $derived(getModalityOptions());
 
-	const sortOptions = [
-		{ value: 'downloads', label: 'Most Downloads' },
-		{ value: 'likes', label: 'Most Likes' },
-		{ value: 'lastModified', label: 'Recently Updated' }
-	];
+	let sortOptions = $derived([
+		{ value: 'downloads', label: t('models.discover.sortDownloads') },
+		{ value: 'likes', label: t('models.discover.sortLikes') },
+		{ value: 'lastModified', label: t('models.discover.sortUpdated') }
+	]);
 
 	async function loadRepos() {
 		isLoadingRepos = true;
@@ -463,18 +458,9 @@
 	{:else}
 		<!-- Search and Filter Controls -->
 		<Card padding="sm">
-			<div class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-				<!-- Repo Selector -->
-				<div class="w-full md:w-56 shrink-0">
-					<Select
-						bind:value={selectedRepoId}
-						onchange={executeSearch}
-						options={enabledRepos.map((r) => ({ value: r.id, label: r.name }))}
-					/>
-				</div>
-
+			<div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-2">
 				<!-- Search Input -->
-				<div class="flex-1">
+				<div class="flex-1 min-w-[200px]">
 					<Input
 						bind:value={searchQuery}
 						onkeydown={(e) => e.key === 'Enter' && executeSearch()}
@@ -487,29 +473,33 @@
 					</Input>
 				</div>
 
-				<!-- Sort Selector -->
-				<div class="w-full md:w-44 shrink-0">
-					<Select bind:value={selectedSort} onchange={executeSearch} options={sortOptions} />
-				</div>
+				<!-- Filter Dropdowns & Action Button -->
+				<div class="flex flex-col sm:flex-row gap-2">
+					<!-- Modality Filter -->
+					<div class="grow-1">
+						<Select
+							bind:value={selectedModality}
+							onchange={executeSearch}
+							options={modalityOptions}
+						/>
+					</div>
 
-				<Button variant="primary" size="md" onclick={executeSearch} disabled={isSearching}>
-					{#if isSearching}
-						<Spinner size={14} />
-					{:else}
-						<Search size={14} />
-					{/if}
-					<span>{t('models.discover.search')}</span>
-				</Button>
+					<!-- Repo Filter -->
+					<div class="grow-1">
+						<Select
+							bind:value={selectedRepoId}
+							onchange={executeSearch}
+							options={enabledRepos.map((r) => ({ value: r.id, label: r.name }))}
+						/>
+					</div>
+
+					<!-- Sort Filter -->
+					<div class="grow-1">
+						<Select bind:value={selectedSort} onchange={executeSearch} options={sortOptions} />
+					</div>
+				</div>
 			</div>
 		</Card>
-
-		<!-- Modality Filter Pills -->
-		<Tabs
-			variant="pills"
-			items={modalityTabItems}
-			bind:value={selectedModality}
-			onchange={() => executeSearch()}
-		/>
 
 		<!-- Results Grid -->
 		{#if isSearching}
@@ -526,15 +516,18 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
 				{#each searchResults as model (model.id)}
-					<Card padding="md" class="relative overflow-hidden flex flex-col justify-between h-full">
+					<Card>
 						{#if isModelInstalled(model)}
 							<DiagonalLabel text={t('common.installed')} />
 						{:else if model.requires_auth}
 							<DiagonalLabel variant="warning" text={t('models.discover.authRequired')} />
 						{/if}
 
-						<div class="flex flex-col gap-4">
-							<div class="flex items-start justify-between gap-2 pr-12">
+						<div class="flex h-full flex-col justify-between gap-2">
+							<div class="flex items-center justify-start gap-2 pr-12">
+								<div class="w-5 h-5 flex items-center justify-center">
+									<Box class="text-[var(--primary)]" />
+								</div>
 								<div
 									class="text-sm font-semibold text-[var(--text-primary)] leading-tight m-0 line-clamp-2"
 									title={model.id}
@@ -549,34 +542,40 @@
 								</div>
 							</div>
 
-							<div class="flex gap-2 flex-wrap">
-								<Badge variant="primary" rounded="rounded-md">
+							<div class="flex gap-1 flex-wrap">
+								<Badge
+									variant={getModalityBadgeVariant(model.modality)}
+									rounded="rounded-md"
+									size="sm"
+								>
 									{model.modality}
 								</Badge>
 								{#if model.pipeline_tag}
-									<Badge variant="muted" rounded="rounded-md">
+									<Badge variant="muted" rounded="rounded-md" size="sm">
 										{model.pipeline_tag}
 									</Badge>
 								{/if}
 							</div>
 
-							<div class="flex justify-between items-center gap-4 text-xs text-[var(--text-muted)]">
-								<span class="flex items-center gap-1.5" title="Likes">
-									<Heart size={13} class="text-[var(--danger-text)]" />
-									<span class="font-medium">{(model.likes ?? 0).toLocaleString()}</span>
-								</span>
-								<span class="flex items-center gap-1.5" title="Downloads">
-									<Download size={13} class="text-[var(--primary)]" />
-									<span class="font-medium">{(model.downloads ?? 0).toLocaleString()}</span>
-								</span>
-							</div>
-						</div>
+							<Divider class="mt-auto" />
 
-						<div class="pt-3 mt-3 border-t border-[var(--border-color)]/60 flex justify-end">
-							<Button variant="secondary" size="sm" onclick={() => inspectFiles(model)}>
-								<FileDown size={13} />
-								<span>{t('models.discover.inspectFiles')}</span>
-							</Button>
+							<div class="flex justify-between gap-2">
+								<div class="flex justify-start items-center gap-3 text-xs text-[var(--text-muted)]">
+									<span class="flex items-center gap-1" title="Likes">
+										<Heart size={13} class="text-[var(--danger-text)]" />
+										<span class="font-medium">{(model.likes ?? 0).toLocaleString()}</span>
+									</span>
+									<span class="flex items-center gap-1" title="Downloads">
+										<Download size={13} class="text-[var(--primary)]" />
+										<span class="font-medium">{(model.downloads ?? 0).toLocaleString()}</span>
+									</span>
+								</div>
+
+								<Button variant="primary" size="sm" onclick={() => inspectFiles(model)}>
+									<FileDown size={13} />
+									<span>{t('models.discover.inspectFiles')}</span>
+								</Button>
+							</div>
 						</div>
 					</Card>
 				{/each}

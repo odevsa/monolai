@@ -5,10 +5,12 @@
 	import { t } from '$lib/i18n';
 	import type { ModelPreset, ModelRecord, RunningModelStatus } from '$lib/types/models';
 	import { formatBytes } from '$lib/utils/format';
+	import { getModalityBadgeVariant } from '$lib/utils/model';
 	import {
 		Box,
 		Check,
 		Copy,
+		FolderOpen,
 		Layers,
 		Pencil,
 		Plus,
@@ -70,82 +72,67 @@
 			console.error('Failed to delete preset:', err);
 		}
 	}
-
-	function getModalityVariant(
-		modality: string
-	): 'primary' | 'info' | 'success' | 'warning' | 'muted' {
-		switch (modality) {
-			case 'text-to-text':
-				return 'primary';
-			case 'text-to-image':
-				return 'info';
-			case 'text-to-speech':
-			case 'speech-to-text':
-				return 'warning';
-			default:
-				return 'muted';
-		}
-	}
 </script>
 
 <Card class="flex flex-col justify-between gap-3.5 h-full" padding="md">
 	<!-- Top: Avatar + Title + Badges + Real-time Status -->
-	<div class="flex items-start justify-between gap-3 min-w-0">
-		<div class="flex items-start gap-2.5 min-w-0 flex-1">
-			<Box size={22} class="text-[var(--primary)] shrink-0 mt-0.5" />
+	<div class="flex items-start justify-between gap-3">
+		<div class="flex flex-col gap-1.5 min-w-0 flex-1">
+			<div class="flex justify-start items-center gap-1">
+				<Box size={18} class="text-[var(--primary)] shrink-0" />
 
-			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-1.5 flex-wrap">
-					<h4
-						class="m-0 text-sm font-semibold text-[var(--text-primary)] truncate"
-						title={model.name || model.id}
-					>
-						{model.name || model.id}
-					</h4>
+				<h4
+					class="mr-auto text-sm font-semibold text-[var(--text-primary)] truncate"
+					title={model.name || model.id}
+				>
+					{model.name || model.id}
+				</h4>
 
-					<Button
-						variant="ghost"
-						size="icon-xs"
-						onclick={() => onCopyId?.(model.id)}
-						title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-						ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-					>
-						{#if isCopied}
-							<Check size={12} class="text-[var(--success-text)]" />
-						{:else}
-							<Copy size={12} />
-						{/if}
-					</Button>
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					onclick={() => onCopyId?.(model.id)}
+					title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+					ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+				>
+					{#if isCopied}
+						<Check size={12} class="text-[var(--success-text)]" />
+					{:else}
+						<Copy size={12} />
+					{/if}
+				</Button>
+			</div>
 
-					<!-- Modality Badge -->
-					<Badge variant={getModalityVariant(model.modality)}>
-						{model.modality}
+			<div class="flex items-center gap-1 truncate">
+				<!-- Modality Badge -->
+				<Badge variant={getModalityBadgeVariant(model.modality)} rounded="rounded-md" size="sm">
+					{model.modality}
+				</Badge>
+
+				<!-- Format & Architecture -->
+				{#if model.format}
+					<Badge variant="muted" rounded="rounded-md" size="sm" class="uppercase">
+						{model.format}
 					</Badge>
+				{/if}
+				{#if model.architecture}
+					<Badge variant="muted" rounded="rounded-md" size="sm">
+						{model.architecture}
+					</Badge>
+				{/if}
+			</div>
 
-					<!-- Format & Architecture -->
-					{#if model.format}
-						<Badge variant="muted" class="uppercase font-mono text-[10px]">
-							{model.format}
-						</Badge>
-					{/if}
-					{#if model.architecture}
-						<Badge variant="muted" class="font-mono text-[10px]">
-							{model.architecture}
-						</Badge>
-					{/if}
-				</div>
-
-				<div class="flex items-center gap-2 mt-1 text-[11px] text-[var(--text-muted)]">
-					<span class="font-mono truncate">{displayPath}</span>
-					{#if model.size_bytes > 0}
-						<span class="shrink-0">• {formatBytes(model.size_bytes)}</span>
-					{/if}
-				</div>
+			<div class="flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
+				<FolderOpen size={12} class="text-[var(--text-muted)] shrink-0" />
+				<span title={displayPath} class="truncate">{displayPath}</span>
+				{#if model.size_bytes > 0}
+					<span class="shrink-0">• {formatBytes(model.size_bytes)}</span>
+				{/if}
 			</div>
 		</div>
 
 		<!-- Status Badge -->
-		<div class="flex items-center gap-1.5 shrink-0">
+		<div class="flex items-center gap-1 shrink-0">
 			{#if isRunning}
 				<Badge variant="success" pulse={true}>
 					{t('models.runningPort', { port: runningInfo?.port ?? 0 })}

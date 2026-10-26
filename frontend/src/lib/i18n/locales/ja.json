@@ -225,7 +225,7 @@
 			"enableHuggingFace": "Hugging Face Hub を有効化",
 			"searchPlaceholder": "Hub上のモデルを検索（例: qwen, llama, flux）...",
 			"search": "検索",
-			"inspectFiles": "ファイルと量子化",
+			"inspectFiles": "ファイル",
 			"selectQuantPrompt": "モデルディレクトリに直接ダウンロードする量子化重みファイルを選択してください:",
 			"noFilesAvailable": "このリポジトリに互換性のあるモデルファイルが見つかりません。",
 			"authRequired": "認証が必要",
@@ -235,7 +235,10 @@
 			"fitModerate": "中程度: システムRAMに収まります（CPU推論）",
 			"fitPartialGpu": "中程度: 一部GPUオフロード（RAMに収まり、VRAMを超過）",
 			"fitLow": "低 / OOMのリスク: システムRAMを超過（大幅な速度低下やクラッシュのリスク）",
-			"fitUnknown": "パフォーマンス適合性不明: ファイルサイズが報告されていません"
+			"fitUnknown": "パフォーマンス適合性不明: ファイルサイズが報告されていません",
+			"sortDownloads": "最多ダウンロード",
+			"sortLikes": "最多いいね",
+			"sortUpdated": "最近更新された順"
 		},
 		"presets": {
 			"title": "実行プリセット",
@@ -315,7 +318,14 @@
 		"copyFullCommand": "バイナリパス付きの完全なコマンドをコピー",
 		"noFilesFound": "モデルディレクトリ内にファイルが見つかりません",
 		"errorLoading": "サーバーからモデルデータを読み込めませんでした",
-		"deleteError": "モデルの削除に失敗しました"
+		"deleteError": "モデルの削除に失敗しました",
+		"modalities": {
+			"textToText": "テキスト (LLM)",
+			"textToImage": "画像 (Diffusion)",
+			"textToSpeech": "音声 TTS",
+			"speechToText": "音声 SST",
+			"embeddings": "埋め込み (Embeddings)"
+		}
 	},
 	"runtimes": {
 		"pageTitle": "ランタイム管理",

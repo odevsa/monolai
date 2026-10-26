@@ -225,7 +225,7 @@
 			"enableHuggingFace": "Hugging Face Hub aktivieren",
 			"searchPlaceholder": "Modelle im Hub suchen (z. B. qwen, llama, flux)...",
 			"search": "Suchen",
-			"inspectFiles": "Dateien & Quants",
+			"inspectFiles": "Dateien",
 			"selectQuantPrompt": "Wählen Sie eine quantisierte Gewichtsdatei aus, um sie direkt in Ihr Modellverzeichnis herunterzuladen:",
 			"noFilesAvailable": "Keine kompatiblen Modelldateien in diesem Repository gefunden.",
 			"authRequired": "Authentifizierung erforderlich",
@@ -235,7 +235,10 @@
 			"fitModerate": "Moderat: Passt in den Systemspeicher (CPU-Inferenz)",
 			"fitPartialGpu": "Moderat: Teilweises GPU-Offloading (passt in RAM, übersteigt VRAM)",
 			"fitLow": "Gering / OOM-Risiko: Übersteigt den Systemspeicher (hohes Risiko von Verzögerungen oder Abstürzen)",
-			"fitUnknown": "Leistungseignung unbekannt: Dateigröße nicht gemeldet"
+			"fitUnknown": "Leistungseignung unbekannt: Dateigröße nicht gemeldet",
+			"sortDownloads": "Meiste Downloads",
+			"sortLikes": "Meiste Likes",
+			"sortUpdated": "Kürzlich aktualisiert"
 		},
 		"presets": {
 			"title": "Ausführungsvorlagen",
@@ -315,7 +318,14 @@
 		"copyFullCommand": "Vollständige Befehlszeile mit Binärpfad kopieren",
 		"noFilesFound": "Keine Dateien im Modellverzeichnis gefunden",
 		"errorLoading": "Fehler beim Laden der Modelldaten vom Server",
-		"deleteError": "Fehler beim Löschen des Modells"
+		"deleteError": "Fehler beim Löschen des Modells",
+		"modalities": {
+			"textToText": "Text (LLM)",
+			"textToImage": "Bild (Diffusion)",
+			"textToSpeech": "Audio TTS",
+			"speechToText": "Audio SST",
+			"embeddings": "Embeddings"
+		}
 	},
 	"runtimes": {
 		"pageTitle": "Laufzeitumgebungen verwalten",

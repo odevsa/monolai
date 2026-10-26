@@ -225,7 +225,7 @@
 			"enableHuggingFace": "Activer Hugging Face Hub",
 			"searchPlaceholder": "Rechercher des modèles sur le hub (ex. qwen, llama, flux)...",
 			"search": "Rechercher",
-			"inspectFiles": "Fichiers et quants",
+			"inspectFiles": "Fichiers",
 			"selectQuantPrompt": "Sélectionnez un fichier de poids quantifiés à télécharger directement dans votre dossier de modèles :",
 			"noFilesAvailable": "Aucun fichier de modèle compatible trouvé dans ce dépôt.",
 			"authRequired": "Authentification requise",
@@ -235,7 +235,10 @@
 			"fitModerate": "Modéré : Tient dans la RAM système (inférence sur CPU)",
 			"fitPartialGpu": "Modéré : Déchargement partiel sur GPU (tient en RAM, déborde de la VRAM)",
 			"fitLow": "Faible / Risque de saturation mémoire : Dépasse la RAM système (risque élevé de ralentissement ou crash)",
-			"fitUnknown": "Compatibilité des performances inconnue : taille de fichier non signalée"
+			"fitUnknown": "Compatibilité des performances inconnue : taille de fichier non signalée",
+			"sortDownloads": "Plus téléchargés",
+			"sortLikes": "Plus aimés",
+			"sortUpdated": "Récemment mis à jour"
 		},
 		"presets": {
 			"title": "Préréglages d'exécution",
@@ -315,7 +318,14 @@
 		"copyFullCommand": "Copier la ligne de commande complète avec le binaire",
 		"noFilesFound": "Aucun fichier trouvé dans le répertoire des modèles",
 		"errorLoading": "Impossible de charger les données des modèles depuis le serveur",
-		"deleteError": "Échec de la suppression du modèle"
+		"deleteError": "Échec de la suppression du modèle",
+		"modalities": {
+			"textToText": "Texte (LLM)",
+			"textToImage": "Image (Diffusion)",
+			"textToSpeech": "Audio TTS",
+			"speechToText": "Audio SST",
+			"embeddings": "Plongements (Embeddings)"
+		}
 	},
 	"runtimes": {
 		"pageTitle": "Gestion des Moteurs (Runtimes)",

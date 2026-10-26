@@ -1,6 +1,72 @@
 /**
  * Model parsing, flag formatting and model inspection utilities
  */
+import { t } from '$lib/i18n';
+
+export const MODEL_MODALITIES = [
+	'text-to-text',
+	'text-to-image',
+	'text-to-speech',
+	'speech-to-text',
+	'embeddings'
+] as const;
+
+export type ModelModality = (typeof MODEL_MODALITIES)[number];
+
+/**
+ * Returns canonical modality filter options with localized labels (SSoT)
+ */
+export function getModalityOptions(): { value: string; label: string }[] {
+	return [
+		{ value: 'all', label: t('models.allModalities') },
+		{ value: 'text-to-text', label: t('models.modalities.textToText') },
+		{ value: 'text-to-image', label: t('models.modalities.textToImage') },
+		{ value: 'text-to-speech', label: t('models.modalities.textToSpeech') },
+		{ value: 'speech-to-text', label: t('models.modalities.speechToText') },
+		{ value: 'embeddings', label: t('models.modalities.embeddings') }
+	];
+}
+
+/**
+ * Returns localized label for a given modality (SSoT)
+ */
+export function getModalityLabel(modality: string): string {
+	switch (modality) {
+		case 'text-to-text':
+			return t('models.modalities.textToText');
+		case 'text-to-image':
+			return t('models.modalities.textToImage');
+		case 'text-to-speech':
+			return t('models.modalities.textToSpeech');
+		case 'speech-to-text':
+			return t('models.modalities.speechToText');
+		case 'embeddings':
+			return t('models.modalities.embeddings');
+		default:
+			return modality;
+	}
+}
+
+/**
+ * Returns canonical badge variant for a given modality (SSoT)
+ */
+export function getModalityBadgeVariant(
+	modality: string
+): 'primary' | 'info' | 'success' | 'warning' | 'muted' {
+	switch (modality) {
+		case 'text-to-text':
+			return 'primary';
+		case 'text-to-image':
+			return 'info';
+		case 'text-to-speech':
+		case 'speech-to-text':
+			return 'warning';
+		case 'embeddings':
+			return 'success';
+		default:
+			return 'muted';
+	}
+}
 
 export interface ParsedModelDetails {
 	name: string;

@@ -225,7 +225,7 @@
 			"enableHuggingFace": "Enable Hugging Face Hub",
 			"searchPlaceholder": "Search models on hub (e.g. qwen, llama, flux)...",
 			"search": "Search",
-			"inspectFiles": "Files & Quants",
+			"inspectFiles": "Files",
 			"selectQuantPrompt": "Select a quantized weights file to download directly to your models directory:",
 			"noFilesAvailable": "No compatible model files found in this repository.",
 			"authRequired": "Auth Required",
@@ -235,7 +235,10 @@
 			"fitModerate": "Moderate: Fits in system RAM (CPU inference)",
 			"fitPartialGpu": "Moderate: Partial GPU offload (fits in RAM, spills over VRAM)",
 			"fitLow": "Low / Risk of OOM: Exceeds system RAM (high risk of slowdown or crash)",
-			"fitUnknown": "Performance fit unknown: file size not reported"
+			"fitUnknown": "Performance fit unknown: file size not reported",
+			"sortDownloads": "Most Downloads",
+			"sortLikes": "Most Likes",
+			"sortUpdated": "Recently Updated"
 		},
 		"presets": {
 			"title": "Execution Presets",
@@ -315,7 +318,14 @@
 		"copyFullCommand": "Copy full command line with binary path",
 		"noFilesFound": "No files found in models directory",
 		"errorLoading": "Failed to load models data from server",
-		"deleteError": "Failed to delete model"
+		"deleteError": "Failed to delete model",
+		"modalities": {
+			"textToText": "Text (LLM)",
+			"textToImage": "Image (Diffusion)",
+			"textToSpeech": "Audio TTS",
+			"speechToText": "Audio SST",
+			"embeddings": "Embeddings"
+		}
 	},
 	"runtimes": {
 		"pageTitle": "Runtimes Management",

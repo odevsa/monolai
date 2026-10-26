@@ -94,7 +94,7 @@
 		{#if downloadStore.hasInactive}
 			<div class="ml-auto">
 				<Button variant="secondary" size="sm" onclick={handleClearInactive}>
-					<Trash size={14} class="text-[var(--danger-text)]" />
+					<Trash size={14} />
 					<span>{t('models.downloads.clearCompleted')}</span>
 				</Button>
 			</div>
@@ -155,77 +155,85 @@
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--warning-text)]"
 									onclick={() => downloadStore.pause(d.id)}
 									title={t('models.downloads.pause')}
 									ariaLabel={t('models.downloads.pause')}
 								>
-									<Pause size={14} />
+									<Pause size={14} class="transition-colors group-hover:text-[var(--warning-text)]" />
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--danger-text)]"
 									onclick={() => downloadStore.cancel(d.id)}
 									title={t('common.cancel')}
 									ariaLabel={t('common.cancel')}
 								>
-									<X size={14} class="text-[var(--danger-text)]" />
+									<X size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
 								</Button>
 							{:else if d.status === 'paused'}
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--success-text)]"
 									onclick={() => downloadStore.resume(d.id)}
 									title={t('models.downloads.resume')}
 									ariaLabel={t('models.downloads.resume')}
 								>
-									<Play size={14} class="text-[var(--success-text)]" />
+									<Play size={14} class="transition-colors group-hover:text-[var(--success-text)]" />
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--danger-text)]"
 									onclick={() => downloadStore.cancel(d.id)}
 									title={t('common.cancel')}
 									ariaLabel={t('common.cancel')}
 								>
-									<X size={14} class="text-[var(--danger-text)]" />
+									<X size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
 								</Button>
 							{:else if d.status === 'failed'}
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--primary)]"
 									onclick={() => downloadStore.resume(d.id)}
 									title={t('common.retry')}
 									ariaLabel={t('common.retry')}
 								>
-									<RotateCcw size={14} class="text-[var(--primary)]" />
+									<RotateCcw size={14} class="transition-colors group-hover:text-[var(--primary)]" />
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--danger-text)]"
 									onclick={() => handleDelete(d)}
 									title={t('common.delete')}
 									ariaLabel={t('common.delete')}
 								>
-									<Trash size={14} class="text-[var(--danger-text)]" />
+									<Trash size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
 								</Button>
 							{:else}
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--primary)]"
 									onclick={() => downloadStore.resume(d.id)}
 									title={t('common.retry')}
 									ariaLabel={t('common.retry')}
 								>
-									<RotateCcw size={14} class="text-[var(--primary)]" />
+									<RotateCcw size={14} class="transition-colors group-hover:text-[var(--primary)]" />
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									class="group hover:text-[var(--danger-text)]"
 									onclick={() => handleDelete(d)}
 									title={t('common.delete')}
 									ariaLabel={t('common.delete')}
 								>
-									<Trash size={14} class="text-[var(--danger-text)]" />
+									<Trash size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
 								</Button>
 							{/if}
 						</div>

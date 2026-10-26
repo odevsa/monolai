@@ -22,6 +22,7 @@
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import type { ModelRecord, RunningModelStatus } from '$lib/types/models';
 	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { getModalityOptions } from '$lib/utils/model';
 	import { ArrowDownToLine, Box, HardDrive, RefreshCw, Search, Sparkles } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -54,14 +55,7 @@
 		}
 	]);
 
-	const modalityOptions = [
-		{ value: 'all', label: t('models.allModalities') },
-		{ value: 'text-to-text', label: 'Text (LLM)' },
-		{ value: 'text-to-image', label: 'Image (Diffusion)' },
-		{ value: 'text-to-speech', label: 'Audio TTS' },
-		{ value: 'speech-to-text', label: 'Audio ASR' },
-		{ value: 'embeddings', label: 'Embeddings' }
-	];
+	let modalityOptions = $derived(getModalityOptions());
 
 	const statusOptions = [
 		{ value: 'all', label: t('models.allStatuses') },
@@ -295,8 +289,9 @@
 	{:else if activeTab === 'installed'}
 		<!-- Filter & Search Bar for Installed Models -->
 		<Card padding="sm">
-			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-				<div class="flex-1">
+			<div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-2">
+				<!-- Search Input -->
+				<div class="flex-1 min-w-[200px]">
 					<Input
 						bind:value={searchQuery}
 						oninput={updateInstalledUrlParams}
@@ -309,8 +304,10 @@
 					</Input>
 				</div>
 
-				<div class="flex items-center gap-2">
-					<div class="w-44">
+				<!-- Filter Dropdowns & Action Button -->
+				<div class="flex flex-col sm:flex-row gap-2">
+					<!-- Modality Filter -->
+					<div class="grow-1">
 						<Select
 							bind:value={selectedModalityFilter}
 							onchange={updateInstalledUrlParams}
@@ -318,7 +315,8 @@
 						/>
 					</div>
 
-					<div class="w-44">
+					<!-- Status Filter -->
+					<div class="grow-1">
 						<Select
 							bind:value={selectedStatusFilter}
 							onchange={updateInstalledUrlParams}
