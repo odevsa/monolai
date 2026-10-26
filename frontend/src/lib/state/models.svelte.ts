@@ -1,7 +1,9 @@
 import { modelsApi } from '$lib/api/models';
 import type { RunningModelStatus, RunningModelStateType } from '$lib/types/models';
 
-export function getStatusType(stateObj: any): RunningModelStateType {
+export function getStatusType(
+	stateObj: { status: string; message?: string } | string | null | undefined
+): RunningModelStateType {
 	if (!stateObj) return 'idle';
 	if (typeof stateObj === 'string') {
 		const lower = stateObj.toLowerCase();

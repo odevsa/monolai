@@ -64,11 +64,9 @@
 	});
 
 	let displayModels = $derived(models !== undefined ? models : internalModels);
-	let resolvedPlaceholder = $derived(placeholder || t('common.selectModel') || 'Select Model');
-	let resolvedLabel = $derived(label || t('common.selectActiveModel') || 'SELECT ACTIVE MODEL');
-	let resolvedEmptyText = $derived(
-		emptyText || t('common.noModelsRegistered') || 'No models registered'
-	);
+	let resolvedPlaceholder = $derived(placeholder || t('common.selectModel'));
+	let resolvedLabel = $derived(label || t('common.selectActiveModel'));
+	let resolvedEmptyText = $derived(emptyText || t('common.noModelsRegistered'));
 
 	function toggleOpen(e?: MouseEvent) {
 		if (e) e.stopPropagation();
@@ -325,16 +323,24 @@
 		left: auto;
 		right: 0;
 		width: max-content;
-		min-width: 220px;
-		max-width: min(320px, calc(100vw - 2rem));
+		min-width: 280px;
+		max-width: min(380px, calc(100vw - 2rem));
 	}
 
 	.popover-menu.align-left.variant-pill {
 		left: 0;
 		right: auto;
 		width: max-content;
-		min-width: 220px;
-		max-width: min(320px, calc(100vw - 2rem));
+		min-width: 280px;
+		max-width: min(380px, calc(100vw - 2rem));
+	}
+
+	@media (min-width: 640px) {
+		.popover-menu.align-right,
+		.popover-menu.align-left.variant-pill {
+			min-width: 440px;
+			max-width: min(640px, calc(100vw - 4rem));
+		}
 	}
 
 	.menu-label {

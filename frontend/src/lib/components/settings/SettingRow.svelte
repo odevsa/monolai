@@ -5,8 +5,9 @@
 	let {
 		icon = undefined,
 		iconSnippet = undefined,
-		title,
+		title = '',
 		subtitle = undefined,
+		titleSnippet = undefined,
 		href = undefined,
 		onclick = undefined,
 		vertical = false,
@@ -16,8 +17,9 @@
 	}: {
 		icon?: Component<{ size?: number; class?: string }>;
 		iconSnippet?: Snippet;
-		title: string;
+		title?: string;
 		subtitle?: string;
+		titleSnippet?: Snippet;
 		href?: string;
 		onclick?: () => void;
 		vertical?: boolean;
@@ -44,13 +46,17 @@
 					<IconComponent size={17} class="text-[var(--primary)] shrink-0" />
 				{/if}
 				<div class="flex flex-col min-w-0">
-					<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
-						{title}
-					</span>
-					{#if subtitle}
-						<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
-							{subtitle}
+					{#if titleSnippet}
+						{@render titleSnippet()}
+					{:else}
+						<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
+							{title}
 						</span>
+						{#if subtitle}
+							<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
+								{subtitle}
+							</span>
+						{/if}
 					{/if}
 				</div>
 			</div>
@@ -76,13 +82,17 @@
 					<IconComponent size={17} class="text-[var(--primary)] shrink-0" />
 				{/if}
 				<div class="flex flex-col min-w-0">
-					<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
-						{title}
-					</span>
-					{#if subtitle}
-						<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
-							{subtitle}
+					{#if titleSnippet}
+						{@render titleSnippet()}
+					{:else}
+						<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
+							{title}
 						</span>
+						{#if subtitle}
+							<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
+								{subtitle}
+							</span>
+						{/if}
 					{/if}
 				</div>
 			</div>
@@ -107,13 +117,17 @@
 						<IconComponent size={17} class="text-[var(--primary)] shrink-0" />
 					{/if}
 					<div class="flex flex-col min-w-0">
-						<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
-							{title}
-						</span>
-						{#if subtitle}
-							<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
-								{subtitle}
+						{#if titleSnippet}
+							{@render titleSnippet()}
+						{:else}
+							<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
+								{title}
 							</span>
+							{#if subtitle}
+								<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
+									{subtitle}
+								</span>
+							{/if}
 						{/if}
 					</div>
 				</div>
@@ -141,13 +155,17 @@
 					<IconComponent size={17} class="text-[var(--primary)] shrink-0" />
 				{/if}
 				<div class="flex flex-col min-w-0">
-					<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
-						{title}
-					</span>
-					{#if subtitle}
-						<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
-							{subtitle}
+					{#if titleSnippet}
+						{@render titleSnippet()}
+					{:else}
+						<span class="text-xs sm:text-sm font-medium text-[var(--text-primary)] leading-tight">
+							{title}
 						</span>
+						{#if subtitle}
+							<span class="text-[11px] text-[var(--text-muted)] leading-tight mt-0.5 truncate">
+								{subtitle}
+							</span>
+						{/if}
 					{/if}
 				</div>
 			</div>

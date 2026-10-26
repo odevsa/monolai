@@ -1,97 +1,99 @@
-<div class="wrapper">
-	<div class="circle"></div>
-	<div class="circle"></div>
-	<div class="circle"></div>
-	<div class="shadow"></div>
-	<div class="shadow"></div>
-	<div class="shadow"></div>
-</div>
-
-<style>
-	.wrapper {
-		width: 40px;
-		height: 26px;
-		position: relative;
-		z-index: 1;
+<script lang="ts">
+	interface Props {
+		class?: string;
+		size?: number | string;
+		color?: string;
+		style?: string;
+		[key: string]: unknown;
 	}
 
-	.circle {
-		width: 7px;
-		height: 7px;
-		position: absolute;
-		border-radius: 50%;
-		background-color: var(--primary);
-		transform-origin: 50%;
-		animation: circle7124 0.5s alternate infinite ease;
-		opacity: 0;
-	}
+	let {
+		class: className = '',
+		size,
+		color = 'var(--primary)',
+		style = '',
+		...restProps
+	}: Props = $props();
 
-	@keyframes circle7124 {
-		0% {
-			top: 10px;
-			height: 7px;
-			border-radius: 50px 50px 25px 25px;
-			opacity: 1;
-		}
+	let width = $derived(size != null ? (typeof size === 'number' ? `${size}px` : size) : '32px');
 
-		40% {
-			height: 8px;
-			border-radius: 50%;
-			opacity: 1;
-		}
+	let inlineStyle = $derived(`width: ${width}; height: auto; aspect-ratio: 16/7; ${style}`.trim());
+</script>
 
-		100% {
-			top: 0%;
-			opacity: 1;
-		}
-	}
-
-	.circle:nth-child(2) {
-		left: 50%;
-		transform: translateX(-50%);
-		transform-origin: 50;
-		animation-delay: 0.2s;
-	}
-
-	.circle:nth-child(3) {
-		left: auto;
-		right: 0;
-		animation-delay: 0.3s;
-	}
-
-	.shadow {
-		width: 5px;
-		height: 1px;
-		border-radius: 50%;
-		background-color: rgba(0, 0, 0, 0.9);
-		position: absolute;
-		top: 15px;
-		z-index: -1;
-		left: 0;
-		filter: blur(1px);
-		animation: shadow046 0.5s alternate infinite ease;
-		opacity: 0;
-	}
-
-	@keyframes shadow046 {
-		40% {
-			opacity: 0.7;
-		}
-
-		100% {
-			opacity: 0.4;
-		}
-	}
-
-	.shadow:nth-child(4) {
-		left: 50%;
-		transform: translateX(-50%);
-		animation-delay: 0.2s;
-	}
-
-	.shadow:nth-child(5) {
-		left: auto;
-		right: 0%;
-		animation-delay: 0.3s;
-	}
-</style>
+<svg
+	viewBox="0 0 32 14"
+	fill="none"
+	xmlns="http://www.w3.org/2000/svg"
+	class="inline-block shrink-0 {className}"
+	style={inlineStyle}
+	aria-hidden="true"
+	role="status"
+	{...restProps}
+>
+	<circle cx="5" cy="9.5" r="3" fill={color} opacity="0.4">
+		<animate
+			attributeName="cy"
+			values="9.5; 4.5; 9.5; 9.5"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0s"
+		/>
+		<animate
+			attributeName="opacity"
+			values="0.4; 1; 0.4; 0.4"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0s"
+		/>
+	</circle>
+	<circle cx="16" cy="9.5" r="3" fill={color} opacity="0.4">
+		<animate
+			attributeName="cy"
+			values="9.5; 4.5; 9.5; 9.5"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0.16s"
+		/>
+		<animate
+			attributeName="opacity"
+			values="0.4; 1; 0.4; 0.4"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0.16s"
+		/>
+	</circle>
+	<circle cx="27" cy="9.5" r="3" fill={color} opacity="0.4">
+		<animate
+			attributeName="cy"
+			values="9.5; 4.5; 9.5; 9.5"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0.32s"
+		/>
+		<animate
+			attributeName="opacity"
+			values="0.4; 1; 0.4; 0.4"
+			keyTimes="0; 0.3; 0.6; 1"
+			keySplines="0.33 0 0.67 1; 0.33 0 0.67 1; 0 0 1 1"
+			calcMode="spline"
+			dur="1.2s"
+			repeatCount="indefinite"
+			begin="0.32s"
+		/>
+	</circle>
+</svg>

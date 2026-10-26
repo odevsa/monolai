@@ -21,17 +21,28 @@ use crate::{
             get_chats_handler, update_chat_handler, update_chat_message_handler,
         },
         config::{config_status_handler, hardware_detect_handler, save_setup_config_handler},
+        downloads::{
+            cancel_download_handler, clear_downloads_handler, delete_download_handler,
+            downloads_stream_handler, enqueue_download_handler, get_downloads_handler,
+            pause_download_handler, resume_download_handler,
+        },
         health::health_handler,
         host::{sysinfo_handler, sysinfo_stream_handler},
+        hub::{
+            create_repository_handler, delete_repository_handler, get_hub_model_details_handler,
+            get_repositories_handler, search_hub_models_handler, update_repository_handler,
+        },
         logs::{
             clear_logs_handler, download_logs_handler, get_log_services_handler, get_logs_handler,
             logs_stream_handler,
         },
         models::{
-            available_models_handler, create_model_handler, delete_model_handler,
-            get_models_handler, get_running_models_handler, load_model_handler,
-            running_models_stream_handler, swap_model_handler, unload_all_models_handler,
-            unload_model_handler, update_model_handler,
+            available_models_handler, create_model_preset_handler, delete_model_handler,
+            delete_model_preset_handler, get_compatible_runtimes_handler, get_model_by_id_handler,
+            get_model_presets_handler, get_models_handler, get_running_models_handler,
+            load_model_handler, running_models_stream_handler, set_default_model_preset_handler,
+            swap_model_handler, unload_all_models_handler, unload_model_handler,
+            update_model_preset_handler,
         },
         openai_proxy::{
             sdcpp_proxy_handler, v1_model_by_id_handler, v1_models_handler, v1_proxy_handler,
@@ -147,21 +158,62 @@ fn api_router() -> Router<AppState> {
             "/runtimes/:id",
             axum::routing::delete(uninstall_runtime_handler),
         )
+        .route("/runtimes/compatible", get(get_compatible_runtimes_handler))
         .route("/runtime-manifests", get(get_runtime_manifests_handler))
         .route(
             "/runtime-manifests/:id",
             get(get_runtime_manifest_by_id_handler),
         )
-        // Models
-        .route("/models/available", get(available_models_handler))
+        // Hub Repositories & Search
         .route(
-            "/models",
-            get(get_models_handler).post(create_model_handler),
+            "/hub/repositories",
+            get(get_repositories_handler).post(create_repository_handler),
         )
+        .route(
+            "/hub/repositories/:id",
+            put(update_repository_handler).delete(delete_repository_handler),
+        )
+        .route("/hub/models", get(search_hub_models_handler))
+        .route(
+            "/hub/models/:repo_id/*model_id",
+            get(get_hub_model_details_handler),
+        )
+        // Background Downloads
+        .route(
+            "/downloads",
+            get(get_downloads_handler).post(enqueue_download_handler),
+        )
+        .route(
+            "/downloads/clear",
+            post(clear_downloads_handler).delete(clear_downloads_handler),
+        )
+        .route("/downloads/:id/pause", post(pause_download_handler))
+        .route("/downloads/:id/resume", post(resume_download_handler))
+        .route("/downloads/:id/cancel", post(cancel_download_handler))
+        .route(
+            "/downloads/:id",
+            axum::routing::delete(delete_download_handler),
+        )
+        .route("/downloads/stream", get(downloads_stream_handler))
+        // Models & Presets
+        .route("/models/available", get(available_models_handler))
+        .route("/models", get(get_models_handler))
         .route("/models/unload-all", post(unload_all_models_handler))
         .route(
             "/models/:id",
-            put(update_model_handler).delete(delete_model_handler),
+            get(get_model_by_id_handler).delete(delete_model_handler),
+        )
+        .route(
+            "/models/:id/presets",
+            get(get_model_presets_handler).post(create_model_preset_handler),
+        )
+        .route(
+            "/models/presets/:preset_id",
+            put(update_model_preset_handler).delete(delete_model_preset_handler),
+        )
+        .route(
+            "/models/:id/presets/:preset_id/set-default",
+            post(set_default_model_preset_handler),
         )
         .route("/models/:id/load", post(load_model_handler))
         .route("/models/:id/swap", post(swap_model_handler))
@@ -192,10 +244,7 @@ fn api_router() -> Router<AppState> {
             put(update_chat_message_handler).delete(delete_chat_message_handler),
         )
         // Logs
-        .route(
-            "/logs",
-            get(get_logs_handler).delete(clear_logs_handler),
-        )
+        .route("/logs", get(get_logs_handler).delete(clear_logs_handler))
         .route("/logs/services", get(get_log_services_handler))
         .route("/logs/stream", get(logs_stream_handler))
         .route("/logs/download", get(download_logs_handler))

@@ -14,7 +14,7 @@
 		onclick,
 		children
 	}: {
-		variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass';
+		variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'glass';
 		size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'icon-xs';
 		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
@@ -36,7 +36,9 @@
 		ghost:
 			'bg-transparent text-[var(--text-secondary)] border border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]',
 		glass:
-			'bg-[var(--bg-surface)]/50 backdrop-blur-md text-[var(--text-primary)] border border-[var(--border-color)]/70 hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)]'
+			'bg-[var(--bg-surface)]/50 backdrop-blur-md text-[var(--text-primary)] border border-[var(--border-color)]/70 hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)]',
+		success:
+			'bg-[var(--success-light)] text-[var(--success-text)] border border-[var(--success-border)] hover:bg-[var(--success-focus)] hover:border-[var(--success)]'
 	};
 
 	const sizeClasses = {

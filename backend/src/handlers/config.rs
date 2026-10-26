@@ -136,9 +136,10 @@ pub async fn save_setup_config_handler(
         return Err(AppError::bad_request("Runtimes directory cannot be empty"));
     }
 
-    let gui_tuple = payload.gui.as_ref().map(|g| {
-        (g.minimize_on_start, g.autostart_server, g.autostart_app)
-    });
+    let gui_tuple = payload
+        .gui
+        .as_ref()
+        .map(|g| (g.minimize_on_start, g.autostart_server, g.autostart_app));
 
     save_config(
         state.cli_config_path.as_deref(),
@@ -174,7 +175,8 @@ mod tests {
 
     #[test]
     fn test_deserialize_save_config_request() {
-        let json = r#"{"models":"/path/models","runtimes":"/path/runtimes","host":"0.0.0.0","port":8080}"#;
+        let json =
+            r#"{"models":"/path/models","runtimes":"/path/runtimes","host":"0.0.0.0","port":8080}"#;
         let req: SaveConfigRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.models, "/path/models");
         assert_eq!(req.runtimes, "/path/runtimes");
@@ -182,4 +184,3 @@ mod tests {
         assert_eq!(req.port, Some(8080));
     }
 }
-

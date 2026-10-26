@@ -5,6 +5,7 @@ export { default as Divider } from './Divider.svelte';
 export { default as Heading } from './Heading.svelte';
 export { default as Input } from './Input.svelte';
 export { default as Label } from './Label.svelte';
+export { default as Loader } from './Loader.svelte';
 export { default as Logo } from './Logo.svelte';
 export { default as ProgressBar } from './ProgressBar.svelte';
 export { default as Spinner } from './Spinner.svelte';

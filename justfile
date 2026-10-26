@@ -58,9 +58,9 @@ test:
 lint:
     npm --prefix frontend run lint
 
-# Check for missing translation keys in en.json
-i18n-check:
-    node scripts/check-i18n.mjs
+# Check for missing translation keys in en.json (or specified locale, e.g. pt-BR)
+i18n-check locale="en":
+    node scripts/check-i18n.mjs {{locale}}
 
 # Auto-format code across the monorepo (Prettier and rustfmt)
 format:

@@ -3,8 +3,8 @@ pub mod health;
 pub mod process;
 pub mod worker;
 
-use std::sync::mpsc::{channel, Receiver, Sender};
 use eframe::egui;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::core::config::GuiConfig;
 use crate::core::events::{SupervisorEvent, UiCommand};

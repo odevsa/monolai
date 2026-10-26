@@ -80,7 +80,10 @@ impl GuiConfig {
     /// Falls back to default values if the CLI command fails.
     pub fn load() -> Self {
         Self::load_via_cli().unwrap_or_else(|e| {
-            eprintln!("Warning: failed to load config via CLI: {}. Using default.", e);
+            eprintln!(
+                "Warning: failed to load config via CLI: {}. Using default.",
+                e
+            );
             Self::default()
         })
     }

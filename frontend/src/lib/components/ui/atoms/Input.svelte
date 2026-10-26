@@ -21,11 +21,13 @@
 		max = undefined,
 		step = undefined,
 		tabindex = undefined,
+		spellcheck = undefined,
 		oninput,
 		onchange,
 		onkeydown,
 		prefix,
-		suffix
+		suffix,
+		...restProps
 	}: {
 		value?: string | number;
 		type?: string;
@@ -39,6 +41,7 @@
 		id?: string;
 		name?: string;
 		autocomplete?: HTMLInputAttributes['autocomplete'];
+		spellcheck?: boolean;
 		min?: number | string;
 		max?: number | string;
 		step?: number | string;
@@ -48,6 +51,7 @@
 		onkeydown?: (e: KeyboardEvent) => void;
 		prefix?: Snippet;
 		suffix?: Snippet;
+		[key: string]: any;
 	} = $props();
 
 	const variantClasses = {
@@ -103,10 +107,12 @@
 		{placeholder}
 		{disabled}
 		{autocomplete}
+		{spellcheck}
 		{oninput}
 		{onchange}
 		{onkeydown}
 		{tabindex}
+		{...restProps}
 		class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] font-normal border-0 outline-none select-text min-w-0 {prefix
 			? 'pl-1.5'
 			: ''} {sizeClasses[size]}"

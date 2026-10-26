@@ -7,7 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const frontendSrc = path.join(rootDir, 'frontend', 'src');
-const enJsonPath = path.join(frontendSrc, 'lib', 'i18n', 'locales', 'en.json');
+const localesDir = path.join(frontendSrc, 'lib', 'i18n', 'locales');
+const enJsonPath = path.join(localesDir, 'en.json');
 
 function getAllSourceFiles(dir) {
 	let results = [];
@@ -47,12 +48,52 @@ function escapeRegex(str) {
 }
 
 if (!fs.existsSync(enJsonPath)) {
-	console.error(`Error: en.json not found at ${enJsonPath}`);
+	console.error(`Error: Canonical en.json not found at ${enJsonPath}`);
+	process.exit(1);
+}
+
+const availableFiles = fs.existsSync(localesDir)
+	? fs.readdirSync(localesDir).filter((f) => f.endsWith('.json'))
+	: [];
+
+const rawArg = process.argv[2]?.trim() || 'en';
+const cleanArg = rawArg.endsWith('.json') ? rawArg.slice(0, -5) : rawArg;
+
+// Find matching file (exact match first, then case-insensitive / normalized underscore-to-hyphen match)
+let targetFileName = availableFiles.find(
+	(f) => f === `${cleanArg}.json` || f.replace(/\.json$/, '') === cleanArg
+);
+
+if (!targetFileName) {
+	const normalizedArg = cleanArg.toLowerCase().replace(/_/g, '-');
+	targetFileName = availableFiles.find(
+		(f) => f.replace(/\.json$/, '').toLowerCase().replace(/_/g, '-') === normalizedArg
+	);
+}
+
+if (!targetFileName) {
+	targetFileName = cleanArg.endsWith('.json') ? cleanArg : `${cleanArg}.json`;
+}
+
+const targetJsonPath = path.isAbsolute(targetFileName)
+	? targetFileName
+	: path.join(localesDir, targetFileName);
+
+if (!fs.existsSync(targetJsonPath)) {
+	console.error(`Error: Locale file not found at ${targetJsonPath}`);
+	const available = availableFiles.map((f) => f.replace(/\.json$/, ''));
+	console.error(`Available locales: ${available.join(', ')}`);
 	process.exit(1);
 }
 
 const enContent = JSON.parse(fs.readFileSync(enJsonPath, 'utf8'));
 const enKeys = flattenKeys(enContent);
+
+const targetContent = JSON.parse(fs.readFileSync(targetJsonPath, 'utf8'));
+const targetKeys = flattenKeys(targetContent);
+const targetLocaleName = path.basename(targetJsonPath);
+const isDefaultEn = targetLocaleName === 'en.json';
+
 const sourceFiles = getAllSourceFiles(frontendSrc);
 
 // 1. Scan for direct t('key') and t("key") calls
@@ -100,17 +141,29 @@ for (const file of sourceFiles) {
 
 const joinedContents = allSourceContents.join('\n');
 
-// Find missing keys (called with t() but absent in en.json)
+// Find missing keys (called with t() or defined in en.json but absent in target locale)
 const missing = [];
 for (const [key, locations] of keyOccurrences.entries()) {
-	if (!enKeys.has(key)) {
+	if (!targetKeys.has(key)) {
 		missing.push({ key, locations });
 	}
 }
 
-// Find unused keys (defined in en.json but not used in frontend source)
+// When checking a non-English locale, also check if keys defined in canonical en.json are missing
+if (!isDefaultEn) {
+	for (const key of enKeys) {
+		if (!targetKeys.has(key) && !keyOccurrences.has(key)) {
+			missing.push({
+				key,
+				locations: [{ file: path.relative(rootDir, enJsonPath), line: '(canonical key in en.json)' }]
+			});
+		}
+	}
+}
+
+// Find unused keys (defined in target file but not used in frontend source)
 const unused = [];
-for (const key of enKeys) {
+for (const key of targetKeys) {
 	// 1. Used in static t('key')
 	if (keyOccurrences.has(key)) {
 		continue;
@@ -135,19 +188,31 @@ unused.sort();
 missing.sort((a, b) => a.key.localeCompare(b.key));
 
 console.log('='.repeat(70));
-console.log(' Monolai i18n Verification & Audit (en.json)');
+console.log(` Monolai i18n Verification & Audit (${targetLocaleName})`);
 console.log('='.repeat(70));
 console.log(`Scanned ${sourceFiles.length} source files.`);
 console.log(`Found ${keyOccurrences.size} unique t() calls.`);
-console.log(`Defined ${enKeys.size} keys in en.json.\n`);
+if (isDefaultEn) {
+	console.log(`Defined ${targetKeys.size} keys in ${targetLocaleName}.\n`);
+} else {
+	console.log(`Defined ${targetKeys.size} keys in ${targetLocaleName} (canonical en.json has ${enKeys.size} keys).\n`);
+}
 
 // Section 1: Missing Keys
 if (missing.length === 0) {
 	console.log(' [1] Missing Keys: 0');
-	console.log('     ✓ All t() calls exist in en.json!\n');
+	console.log(
+		isDefaultEn
+			? `     ✓ All t() calls exist in ${targetLocaleName}!\n`
+			: `     ✓ All keys exist in ${targetLocaleName}!\n`
+	);
 } else {
 	console.log(` [1] Missing Keys: ${missing.length}`);
-	console.log('     ✗ The following keys are called in views but MISSING from en.json:');
+	console.log(
+		isDefaultEn
+			? `     ✗ The following keys are called in views but MISSING from ${targetLocaleName}:`
+			: `     ✗ The following keys are MISSING from ${targetLocaleName}:`
+	);
 	for (const item of missing) {
 		console.log(`     - "${item.key}"`);
 		for (const loc of item.locations) {
@@ -160,10 +225,10 @@ if (missing.length === 0) {
 // Section 2: Unused Keys
 if (unused.length === 0) {
 	console.log(' [2] Unused Keys: 0');
-	console.log('     ✓ All keys defined in en.json are actively used!\n');
+	console.log(`     ✓ All keys defined in ${targetLocaleName} are actively used!\n`);
 } else {
 	console.log(` [2] Unused Keys: ${unused.length}`);
-	console.log('     ℹ The following keys are defined in en.json but NOT used in code:');
+	console.log(`     ℹ The following keys are defined in ${targetLocaleName} but NOT used in code:`);
 	for (const key of unused) {
 		console.log(`     - "${key}"`);
 	}
@@ -175,7 +240,7 @@ console.log(`Audit Summary: ${missing.length} missing, ${unused.length} unused.`
 console.log('='.repeat(70) + '\n');
 
 if (missing.length > 0) {
-	console.error('ERROR: Missing translation keys detected in en.json. Please add them.');
+	console.error(`ERROR: Missing translation keys detected in ${targetLocaleName}. Please add them.`);
 	process.exit(1);
 } else {
 	process.exit(0);

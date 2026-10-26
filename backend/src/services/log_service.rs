@@ -292,7 +292,10 @@ impl LogService {
                 let file_name = format!("{}.log", sanitize_service_filename(&svc));
                 let path = logs_dir.join(&file_name);
                 let bytes = std::fs::read(&path).unwrap_or_default();
-                (format!("monolai-{}.log", sanitize_service_filename(&svc)), bytes)
+                (
+                    format!("monolai-{}.log", sanitize_service_filename(&svc)),
+                    bytes,
+                )
             }
         })
         .await
@@ -312,17 +315,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_service_record_and_filtering() {
-        let temp_dir = std::env::temp_dir().join(format!("monolai_test_logs_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("monolai_test_logs_{}", uuid::Uuid::new_v4()));
         let logs_path = temp_dir.join("logs");
         let pool = init_db("sqlite::memory:").await.unwrap();
         let setting_repo = SettingRepository::new(pool).await;
 
         let service = LogService::new(logs_path.clone(), setting_repo);
 
-        service.record("monolai", "INFO", "Server started on port 8080").await;
-        service.record("monolai", "WARN", "Config key missing").await;
-        service.record("llama.cpp: model-1", "INFO", "main: model loaded").await;
-        service.record("llama.cpp: model-1", "ERROR", "cuda out of memory").await;
+        service
+            .record("monolai", "INFO", "Server started on port 8080")
+            .await;
+        service
+            .record("monolai", "WARN", "Config key missing")
+            .await;
+        service
+            .record("llama.cpp: model-1", "INFO", "main: model loaded")
+            .await;
+        service
+            .record("llama.cpp: model-1", "ERROR", "cuda out of memory")
+            .await;
 
         let all_entries = service.get_entries(&LogFilterQuery::default()).await;
         assert_eq!(all_entries.len(), 4);
@@ -369,7 +381,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_service_enable_log_flag() {
-        let temp_dir = std::env::temp_dir().join(format!("monolai_test_logs_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("monolai_test_logs_{}", uuid::Uuid::new_v4()));
         let logs_path = temp_dir.join("logs");
         let pool = init_db("sqlite::memory:").await.unwrap();
         let setting_repo = SettingRepository::new(pool).await;
@@ -377,21 +390,26 @@ mod tests {
         let service = LogService::new(logs_path.clone(), setting_repo.clone());
 
         // Default: enabled
-        service.record("monolai", "INFO", "Should be recorded 1").await;
+        service
+            .record("monolai", "INFO", "Should be recorded 1")
+            .await;
         let entries = service.get_entries(&LogFilterQuery::default()).await;
         assert_eq!(entries.len(), 1);
 
         // Disable logging
         setting_repo.set("enable_log", "false").await.unwrap();
-        service.record("monolai", "INFO", "Should NOT be recorded").await;
+        service
+            .record("monolai", "INFO", "Should NOT be recorded")
+            .await;
         let entries_after = service.get_entries(&LogFilterQuery::default()).await;
         assert_eq!(entries_after.len(), 1);
 
         // Re-enable logging
         setting_repo.set("enable_log", "true").await.unwrap();
-        service.record("monolai", "INFO", "Should be recorded 2").await;
+        service
+            .record("monolai", "INFO", "Should be recorded 2")
+            .await;
         let entries_re_enabled = service.get_entries(&LogFilterQuery::default()).await;
         assert_eq!(entries_re_enabled.len(), 2);
     }
 }
-

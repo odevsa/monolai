@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
 use eframe::egui::{self, Margin};
+use std::time::{Duration, Instant};
 
 use crate::core::config::GuiConfig;
 use crate::core::events::{SupervisorEvent, TrayAction};
@@ -219,12 +219,10 @@ impl DesktopApp {
                                 self.config = GuiConfig::default();
                                 let _ = self.config.save();
                             }
-                            self.maintenance.status_message =
-                                Some((msg, true, Instant::now()));
+                            self.maintenance.status_message = Some((msg, true, Instant::now()));
                         }
                         Err(err) => {
-                            self.maintenance.status_message =
-                                Some((err, false, Instant::now()));
+                            self.maintenance.status_message = Some((err, false, Instant::now()));
                         }
                     }
                 }
@@ -327,9 +325,8 @@ impl eframe::App for DesktopApp {
         // - Close button ("X") on the active window: ALWAYS minimizes to system tray/taskbar.
         // - Taskbar context menu (Right Click -> Close) or external quit: closes the application immediately on first click.
         if ctx.input(|i| i.viewport().close_requested()) && !self.is_quitting {
-            let is_external_taskbar_close = !self.window_visible
-                || is_minimized
-                || is_focused == Some(false);
+            let is_external_taskbar_close =
+                !self.window_visible || is_minimized || is_focused == Some(false);
 
             if is_external_taskbar_close {
                 self.quit_app(ctx);
@@ -359,12 +356,9 @@ impl eframe::App for DesktopApp {
             .show(ctx, |ui| match self.current_screen {
                 Screen::Main => {
                     let mut go_to_settings = false;
-                    main_view::show_main_header(
-                        ui,
-                        &self.theme,
-                        &self.status,
-                        || go_to_settings = true,
-                    );
+                    main_view::show_main_header(ui, &self.theme, &self.status, || {
+                        go_to_settings = true
+                    });
                     if go_to_settings {
                         self.current_screen = Screen::Settings;
                     }

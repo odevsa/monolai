@@ -1,9 +1,15 @@
 <script lang="ts">
-	import { SettingsAboutTab, SettingsChatTab, SettingsGeneralTab } from '$lib/components/settings';
+	import {
+		SettingsAboutTab,
+		SettingsChatTab,
+		SettingsGeneralTab,
+		SettingsRepositoriesTab
+	} from '$lib/components/settings';
 	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import { settingsDialogState, type SettingsTab } from '$lib/state';
 	import type { ThemeId } from '$lib/themes';
-	import { Info, MessageSquare, SlidersVertical, X } from '@lucide/svelte';
+	import { Database, Info, MessageSquare, SlidersVertical, X } from '@lucide/svelte';
 
 	let {
 		open = $bindable(false),
@@ -15,10 +21,18 @@
 		effectiveTheme: 'dark' | 'light';
 	} = $props();
 
-	let activeTab = $state<'general' | 'chat' | 'about'>('general');
+	let activeTab = $state<SettingsTab>('general');
+
+	$effect(() => {
+		if (settingsDialogState.isOpen) {
+			open = true;
+			activeTab = settingsDialogState.activeTab;
+		}
+	});
 
 	function close() {
 		open = false;
+		settingsDialogState.isOpen = false;
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
@@ -91,6 +105,18 @@
 					<button
 						type="button"
 						class="flex items-center justify-center sm:justify-start gap-2.5 px-3.5 py-2.5 text-xs font-medium border-0 rounded-xl cursor-pointer transition-all duration-150 text-left shrink-0 sm:shrink flex-1 sm:flex-none text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] {activeTab ===
+						'repositories'
+							? '!text-[var(--primary)] !bg-[var(--primary-light)] font-semibold shadow-xs'
+							: ''}"
+						onclick={() => (activeTab = 'repositories')}
+					>
+						<Database size={16} />
+						<span>{t('settings.repositoriesTab')}</span>
+					</button>
+
+					<button
+						type="button"
+						class="flex items-center justify-center sm:justify-start gap-2.5 px-3.5 py-2.5 text-xs font-medium border-0 rounded-xl cursor-pointer transition-all duration-150 text-left shrink-0 sm:shrink flex-1 sm:flex-none text-[var(--text-secondary)] bg-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] {activeTab ===
 						'chat'
 							? '!text-[var(--primary)] !bg-[var(--primary-light)] font-semibold shadow-xs'
 							: ''}"
@@ -117,6 +143,8 @@
 				<div class="flex-1 overflow-hidden min-h-0 flex flex-col bg-[var(--bg-surface)]">
 					{#if activeTab === 'general'}
 						<SettingsGeneralTab bind:themeMode />
+					{:else if activeTab === 'repositories'}
+						<SettingsRepositoriesTab />
 					{:else if activeTab === 'chat'}
 						<SettingsChatTab />
 					{:else if activeTab === 'about'}

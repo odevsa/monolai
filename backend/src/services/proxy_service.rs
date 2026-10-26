@@ -3,7 +3,6 @@ use crate::core::error::{AppError, AppResult};
 use crate::domain::{ModelState, OpenAiModelItem, OpenAiModelList};
 use crate::infrastructure::db::{ModelRepository, SettingRepository};
 use crate::infrastructure::process::manager::{swap_model_process, ProcessManager};
-use crate::infrastructure::scanner::check_model_file_exists;
 use axum::{
     body::{Body, Bytes},
     http::{HeaderMap, Method, StatusCode, Uri},
@@ -54,19 +53,56 @@ impl ProxyService {
             crate::core::config::get_default_models_dir()
         };
 
-        let data = models
-            .into_iter()
-            .filter(|m| {
-                let (exists, _) = check_model_file_exists(&models_dir, &m.flags);
-                exists
-            })
-            .map(|m| OpenAiModelItem {
-                id: m.id,
-                object: "model",
-                created: 1680000000,
-                owned_by: "monolai",
-            })
-            .collect();
+        let mut data = Vec::new();
+
+        for m in models {
+            let full_path = models_dir.join(&m.relative_path);
+            if !full_path.is_file() {
+                continue;
+            }
+
+            if m.presets.is_empty() {
+                data.push(OpenAiModelItem {
+                    id: m.id.clone(),
+                    object: "model",
+                    created: 1680000000,
+                    owned_by: "monolai",
+                });
+            } else if m.presets.len() == 1 {
+                data.push(OpenAiModelItem {
+                    id: m.id.clone(),
+                    object: "model",
+                    created: 1680000000,
+                    owned_by: "monolai",
+                });
+                let p = &m.presets[0];
+                if p.name.to_lowercase() != "default" {
+                    let slug = p.name.to_lowercase().replace(' ', "-");
+                    data.push(OpenAiModelItem {
+                        id: format!("{}:{}", m.id, slug),
+                        object: "model",
+                        created: 1680000000,
+                        owned_by: "monolai",
+                    });
+                }
+            } else {
+                for p in &m.presets {
+                    let slug = p.name.to_lowercase().replace(' ', "-");
+                    data.push(OpenAiModelItem {
+                        id: format!("{}:{}", m.id, slug),
+                        object: "model",
+                        created: 1680000000,
+                        owned_by: "monolai",
+                    });
+                }
+                data.push(OpenAiModelItem {
+                    id: m.id.clone(),
+                    object: "model",
+                    created: 1680000000,
+                    owned_by: "monolai",
+                });
+            }
+        }
 
         Ok(OpenAiModelList {
             object: "list",
@@ -75,40 +111,41 @@ impl ProxyService {
     }
 
     pub async fn get_v1_model(&self, id: &str) -> AppResult<OpenAiModelItem> {
-        let model = self.model_repo.get_by_id(id).await?;
+        let (model, _preset) =
+            crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, id)
+                .await
+                .map_err(|_| {
+                    AppError::openai(
+                        StatusCode::NOT_FOUND,
+                        format!("Model or preset '{}' not found", id),
+                        "invalid_request_error",
+                        "model_not_found",
+                    )
+                })?;
 
-        if let Some(m) = model {
-            let cfg = self.config.read().await;
-            let models_dir = if let Some(ref dir) = cfg.models {
-                crate::core::config::expand_tilde(dir)
-            } else {
-                crate::core::config::get_default_models_dir()
-            };
-
-            let (exists, _) = check_model_file_exists(&models_dir, &m.flags);
-            if !exists {
-                return Err(AppError::openai(
-                    StatusCode::NOT_FOUND,
-                    format!("Model file for '{}' not found on disk", id),
-                    "invalid_request_error",
-                    "model_file_not_found",
-                ));
-            }
-
-            Ok(OpenAiModelItem {
-                id: m.id,
-                object: "model",
-                created: 1680000000,
-                owned_by: "monolai",
-            })
+        let cfg = self.config.read().await;
+        let models_dir = if let Some(ref dir) = cfg.models {
+            crate::core::config::expand_tilde(dir)
         } else {
-            Err(AppError::openai(
+            crate::core::config::get_default_models_dir()
+        };
+
+        let full_path = models_dir.join(&model.relative_path);
+        if !full_path.is_file() {
+            return Err(AppError::openai(
                 StatusCode::NOT_FOUND,
-                format!("Model '{}' not found in database", id),
+                format!("Model file for '{}' not found on disk", id),
                 "invalid_request_error",
-                "model_not_found",
-            ))
+                "model_file_not_found",
+            ));
         }
+
+        Ok(OpenAiModelItem {
+            id: id.to_string(),
+            object: "model",
+            created: 1680000000,
+            owned_by: "monolai",
+        })
     }
 
     pub async fn forward_v1(
@@ -144,23 +181,19 @@ impl ProxyService {
         }
 
         let target_port: u16 = if let Some(model_id) = model_id_opt {
-            match self.model_repo.get_by_id(&model_id).await {
-                Ok(Some(_)) => {}
-                Ok(None) => {
+            match crate::infrastructure::process::manager::resolve_model_and_preset(
+                &self.model_repo,
+                &model_id,
+            )
+            .await
+            {
+                Ok(_) => {}
+                Err(_) => {
                     return AppError::openai(
                         StatusCode::NOT_FOUND,
-                        format!("Model '{}' not found in database", model_id),
+                        format!("Model or preset '{}' not found in database", model_id),
                         "invalid_request_error",
                         "model_not_found",
-                    )
-                    .into_response();
-                }
-                Err(e) => {
-                    return AppError::openai(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Database error checking model: {}", e),
-                        "server_error",
-                        "internal_error",
                     )
                     .into_response();
                 }
@@ -310,9 +343,10 @@ impl ProxyService {
                 m.port
             } else {
                 let all_models = self.model_repo.get_all().await.unwrap_or_default();
-                let sd_model = all_models
-                    .into_iter()
-                    .find(|m| m.runtime == "sd-cpp" || m.runtime.contains("sd"));
+                let sd_model = all_models.into_iter().find(|m| {
+                    m.modality == "text-to-image"
+                        || m.presets.iter().any(|p| p.runtime_id.contains("sd"))
+                });
                 if let Some(m) = sd_model {
                     let cfg = self.config.read().await.clone();
                     match swap_model_process(

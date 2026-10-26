@@ -39,10 +39,12 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
                     let metadata = entry.metadata().ok();
                     let size_bytes = metadata.map(|m| m.len()).unwrap_or(0);
 
-                    let name = path
-                        .file_stem()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .unwrap_or_else(|| filename.clone());
+                    let inspect = super::gguf::inspect_model_file(path);
+                    let name = inspect.model_name.unwrap_or_else(|| {
+                        path.file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_else(|| filename.clone())
+                    });
 
                     models.push(ModelItem {
                         name,
@@ -50,6 +52,8 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
                         relative_path,
                         absolute_path: path.to_string_lossy().to_string(),
                         format: ext_lower,
+                        modality: inspect.modality,
+                        architecture: inspect.architecture,
                         size_bytes,
                     });
                 }
@@ -79,6 +83,7 @@ pub fn parse_flags_map(flags_str: &str) -> std::collections::HashMap<String, Str
     }
 }
 
+#[allow(dead_code)]
 pub fn check_model_file_exists<P: AsRef<Path>>(
     models_dir: P,
     flags_json: &str,
