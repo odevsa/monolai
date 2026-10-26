@@ -2,7 +2,9 @@ use crate::core::config::AppConfig;
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{ModelState, OpenAiModelItem, OpenAiModelList};
 use crate::infrastructure::db::{ModelRepository, SettingRepository};
-use crate::infrastructure::process::manager::{swap_model_process, ProcessManager};
+use crate::infrastructure::process::manager::{
+    swap_model_process, ModelRequestGuard, ProcessManager,
+};
 use axum::{
     body::{Body, Bytes},
     http::{HeaderMap, Method, StatusCode, Uri},
@@ -180,7 +182,7 @@ impl ProxyService {
             }
         }
 
-        let target_port: u16 = if let Some(model_id) = model_id_opt {
+        let (target_port, target_model_id): (u16, Option<String>) = if let Some(model_id) = model_id_opt {
             match crate::infrastructure::process::manager::resolve_model_and_preset(
                 &self.model_repo,
                 &model_id,
@@ -219,8 +221,7 @@ impl ProxyService {
                         )
                         .into_response();
                     }
-                    self.process_manager.mark_model_active(&model_id).await;
-                    running_status.port
+                    (running_status.port, Some(model_id))
                 }
                 Err(err) => {
                     return AppError::openai(
@@ -238,10 +239,7 @@ impl ProxyService {
                 .into_iter()
                 .find(|m| m.state == ModelState::Ready && m.port > 0);
             match ready {
-                Some(m) => {
-                    self.process_manager.mark_model_active(&m.model_id).await;
-                    m.port
-                }
+                Some(m) => (m.port, Some(m.model_id)),
                 None => {
                     return AppError::openai(
                         StatusCode::BAD_REQUEST,
@@ -252,6 +250,12 @@ impl ProxyService {
                     .into_response();
                 }
             }
+        };
+
+        let request_guard = if let Some(ref mid) = target_model_id {
+            self.process_manager.acquire_request_guard(mid).await
+        } else {
+            None
         };
 
         let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
@@ -318,7 +322,7 @@ impl ProxyService {
             }
         }
 
-        self.forward_http(upstream_url, method, headers, final_body_bytes, true)
+        self.forward_http(upstream_url, method, headers, final_body_bytes, true, request_guard)
             .await
     }
 
@@ -330,7 +334,7 @@ impl ProxyService {
         uri: Uri,
         body_bytes: Bytes,
     ) -> Response {
-        let target_port: u16 = {
+        let (target_port, target_model_id): (u16, Option<String>) = {
             let running_list = self.process_manager.get_all_running_status().await;
             let ready_sd = running_list.into_iter().find(|m| {
                 (m.runtime_id == "sd-cpp" || m.runtime_id.contains("sd"))
@@ -339,8 +343,7 @@ impl ProxyService {
             });
 
             if let Some(m) = ready_sd {
-                self.process_manager.mark_model_active(&m.model_id).await;
-                m.port
+                (m.port, Some(m.model_id))
             } else {
                 let all_models = self.model_repo.get_all().await.unwrap_or_default();
                 let sd_model = all_models.into_iter().find(|m| {
@@ -358,7 +361,7 @@ impl ProxyService {
                     )
                     .await
                     {
-                        Ok(running) => running.port,
+                        Ok(running) => (running.port, Some(m.id)),
                         Err(e) => {
                             return (
                                 StatusCode::BAD_GATEWAY,
@@ -381,13 +384,19 @@ impl ProxyService {
             }
         };
 
+        let request_guard = if let Some(ref mid) = target_model_id {
+            self.process_manager.acquire_request_guard(mid).await
+        } else {
+            None
+        };
+
         let query_suffix = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
         let upstream_url = format!(
             "http://127.0.0.1:{}/sdcpp/{}{}",
             target_port, path, query_suffix
         );
 
-        self.forward_http(upstream_url, method, headers, body_bytes, false)
+        self.forward_http(upstream_url, method, headers, body_bytes, false, request_guard)
             .await
     }
 
@@ -398,6 +407,7 @@ impl ProxyService {
         headers: HeaderMap,
         body_bytes: Bytes,
         retry_loading: bool,
+        guard: Option<ModelRequestGuard>,
     ) -> Response {
         let max_retries = if retry_loading { 60 } else { 0 };
         let mut retry_count = 0;
@@ -497,7 +507,17 @@ impl ProxyService {
         }
 
         let body_stream = upstream_res.bytes_stream();
-        let response_body = Body::from_stream(body_stream);
+        let response_body = if let Some(g) = guard {
+            let stream = async_stream::stream! {
+                let _guard = g;
+                for await chunk in body_stream {
+                    yield chunk;
+                }
+            };
+            Body::from_stream(stream)
+        } else {
+            Body::from_stream(body_stream)
+        };
 
         response_builder.body(response_body).unwrap_or_else(|_| {
             (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response()

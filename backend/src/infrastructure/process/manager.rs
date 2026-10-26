@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -21,7 +22,30 @@ pub struct RunningModel {
     pub port: u16,
     pub state: ModelState,
     pub last_active: Instant,
+    pub active_requests: Arc<AtomicUsize>,
     pub child: Option<Arc<Mutex<Child>>>,
+}
+
+/// Single-owner RAII guard tracking an in-flight request on a running model.
+/// While at least one guard is alive, `active_requests > 0` and the model
+/// will never be considered idle or auto-unloaded.
+pub struct ModelRequestGuard {
+    model_id: String,
+    active_requests: Arc<AtomicUsize>,
+    pm: ProcessManager,
+}
+
+impl Drop for ModelRequestGuard {
+    fn drop(&mut self) {
+        self.active_requests.fetch_sub(1, Ordering::SeqCst);
+        let pm = self.pm.clone();
+        let model_id = self.model_id.clone();
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                pm.mark_model_active(&model_id).await;
+            });
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,13 +127,20 @@ impl ProcessManager {
         let map = self.running.lock().await;
         map.values()
             .filter(|m| !matches!(m.state, ModelState::Error(_) | ModelState::Idle))
-            .map(|m| RunningModelStatus {
-                model_id: m.model_id.clone(),
-                runtime_id: m.runtime_id.clone(),
-                pid: m.pid,
-                port: m.port,
-                state: m.state.clone(),
-                idle_seconds: m.last_active.elapsed().as_secs(),
+            .map(|m| {
+                let is_busy = m.active_requests.load(Ordering::Relaxed) > 0;
+                RunningModelStatus {
+                    model_id: m.model_id.clone(),
+                    runtime_id: m.runtime_id.clone(),
+                    pid: m.pid,
+                    port: m.port,
+                    state: m.state.clone(),
+                    idle_seconds: if is_busy {
+                        0
+                    } else {
+                        m.last_active.elapsed().as_secs()
+                    },
+                }
             })
             .collect()
     }
@@ -127,6 +158,21 @@ impl ProcessManager {
         let mut map = self.running.lock().await;
         if let Some(m) = map.get_mut(model_id) {
             m.last_active = Instant::now();
+        }
+    }
+
+    pub async fn acquire_request_guard(&self, model_id: &str) -> Option<ModelRequestGuard> {
+        let mut map = self.running.lock().await;
+        if let Some(m) = map.get_mut(model_id) {
+            m.last_active = Instant::now();
+            m.active_requests.fetch_add(1, Ordering::SeqCst);
+            Some(ModelRequestGuard {
+                model_id: model_id.to_string(),
+                active_requests: m.active_requests.clone(),
+                pm: self.clone(),
+            })
+        } else {
+            None
         }
     }
 }
@@ -257,6 +303,7 @@ pub async fn load_model_process(
         if let Some(existing) = map.get_mut(model_id) {
             match &existing.state {
                 ModelState::Ready => {
+                    let is_busy = existing.active_requests.load(Ordering::Relaxed) > 0;
                     existing.last_active = Instant::now();
                     return Ok(RunningModelStatus {
                         model_id: existing.model_id.clone(),
@@ -264,7 +311,11 @@ pub async fn load_model_process(
                         pid: existing.pid,
                         port: existing.port,
                         state: existing.state.clone(),
-                        idle_seconds: existing.last_active.elapsed().as_secs(),
+                        idle_seconds: if is_busy {
+                            0
+                        } else {
+                            existing.last_active.elapsed().as_secs()
+                        },
                     });
                 }
                 ModelState::Loading => {
@@ -290,6 +341,7 @@ pub async fn load_model_process(
                 port: 0,
                 state: ModelState::Loading,
                 last_active: Instant::now(),
+                active_requests: Arc::new(AtomicUsize::new(0)),
                 child: None,
             },
         );
@@ -397,6 +449,11 @@ pub async fn load_model_process(
 
     {
         let mut map = pm.running.lock().await;
+        let active_requests = if let Some(existing) = map.get(model_id) {
+            existing.active_requests.clone()
+        } else {
+            Arc::new(AtomicUsize::new(0))
+        };
         map.insert(
             model_id.to_string(),
             RunningModel {
@@ -406,6 +463,7 @@ pub async fn load_model_process(
                 port: allocated_port,
                 state: ModelState::Loading,
                 last_active: Instant::now(),
+                active_requests,
                 child: Some(child_ref.clone()),
             },
         );
@@ -773,6 +831,7 @@ pub fn start_idle_auto_unload_loop(pm: ProcessManager, setting_repo: SettingRepo
                 map.values()
                     .filter(|m| {
                         m.state == ModelState::Ready
+                            && m.active_requests.load(Ordering::Relaxed) == 0
                             && m.last_active.elapsed().as_secs() >= timeout_secs
                     })
                     .map(|m| m.model_id.clone())
@@ -852,6 +911,7 @@ pub async fn adopt_or_clean_orphans(pm: &ProcessManager) {
                     port,
                     state: ModelState::Ready,
                     last_active: Instant::now(),
+                    active_requests: Arc::new(AtomicUsize::new(0)),
                     child: None,
                 },
             );
@@ -939,4 +999,74 @@ pub async fn swap_model_process(
 
     unload_all_model_processes(pm, setting_repo).await?;
     load_model_process(pm, model_repo, setting_repo, config, model_id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_request_guard_prevents_idle_timeout() {
+        let temp_dir = std::env::temp_dir().join(format!("monolai_test_{}", uuid::Uuid::new_v4()));
+        let pm = ProcessManager::new(temp_dir.clone(), None);
+
+        // Simulate an active model in Ready state with last_active 10 minutes ago
+        let old_time = Instant::now() - Duration::from_secs(600);
+        {
+            let mut map = pm.running.lock().await;
+            map.insert(
+                "test-model".to_string(),
+                RunningModel {
+                    model_id: "test-model".to_string(),
+                    runtime_id: "llama-cpp".to_string(),
+                    pid: 1234,
+                    port: 8080,
+                    state: ModelState::Ready,
+                    last_active: old_time,
+                    active_requests: Arc::new(AtomicUsize::new(0)),
+                    child: None,
+                },
+            );
+        }
+
+        // Before acquiring guard: active_requests is 0, idle_seconds > 500
+        let status = pm.get_all_running_status().await;
+        assert_eq!(status.len(), 1);
+        assert!(status[0].idle_seconds >= 500);
+
+        // Acquire guard for in-flight request
+        let guard = pm.acquire_request_guard("test-model").await;
+        assert!(guard.is_some());
+
+        // While guard is alive: active_requests is 1, idle_seconds reports 0 (busy)
+        let status = pm.get_all_running_status().await;
+        assert_eq!(status[0].idle_seconds, 0);
+
+        // Verification of idle-unload logic filter:
+        let timeout_secs = 300;
+        let expired: Vec<String> = {
+            let map = pm.running.lock().await;
+            map.values()
+                .filter(|m| {
+                    m.state == ModelState::Ready
+                        && m.active_requests.load(Ordering::Relaxed) == 0
+                        && m.last_active.elapsed().as_secs() >= timeout_secs
+                })
+                .map(|m| m.model_id.clone())
+                .collect()
+        };
+        // The model MUST NOT be marked expired because it has an active request!
+        assert!(expired.is_empty());
+
+        // Drop guard (request completed or stream ended)
+        drop(guard);
+
+        // Give the spawned task a few milliseconds to update last_active
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let status = pm.get_all_running_status().await;
+        assert_eq!(status[0].idle_seconds, 0); // Reset to 0 since it just finished
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
 }
