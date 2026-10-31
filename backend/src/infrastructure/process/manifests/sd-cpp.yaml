@@ -1,8 +1,8 @@
 id: sd-cpp
 name: "Stable Diffusion C++ Server"
-version: "master-945-a1ded76"
+version: "master-1031-c6dfa9d"
 variables:
-  commit: "a1ded76"
+  commit: "c6dfa9d"
 website: "https://github.com/leejet/stable-diffusion.cpp"
 description: |
   Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image,

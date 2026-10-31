@@ -1,6 +1,6 @@
 id: llama-cpp
 name: "LLaMA C++ Server"
-version: "b11476"
+version: "b12023"
 website: "https://github.com/ggml-org/llama.cpp"
 description: |
   High-performance LLM inference engine in C/C++ supporting text generation,

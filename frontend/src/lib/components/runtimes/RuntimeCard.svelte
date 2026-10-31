@@ -36,7 +36,7 @@
 
 <Card class="relative overflow-hidden">
 	{#if runtime.is_installed}
-		<DiagonalLabel text={runtime.has_update ? t('common.update') : t('common.installed')} />
+		<DiagonalLabel variant={runtime.has_update ? 'warning' : 'success'} text={runtime.has_update ? t('common.update') : t('common.installed')} />
 	{/if}
 
 	<div class="flex flex-col gap-4 justify-between h-full">

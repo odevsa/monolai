@@ -56,13 +56,13 @@
 
 				<div class="flex items-center gap-1.5 text-[var(--text-muted)] text-xs flex-wrap font-mono">
 					{#if runtime.is_installed && runtime.installed_version}
-						<span>v{runtime.installed_version}</span>
+						<span>{runtime.installed_version}</span>
 						{#if runtime.has_update}
 							<span class="text-[var(--text-muted)]">&rarr;</span>
-							<span class="text-[var(--primary)]">v{runtime.version}</span>
+							<span class="text-[var(--primary)]">{runtime.version}</span>
 						{/if}
 					{:else}
-						<span>v{runtime.version}</span>
+						<span>{runtime.version}</span>
 					{/if}
 				</div>
 			</div>
