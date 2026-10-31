@@ -215,11 +215,29 @@ pub async fn resolve_model_and_preset(
 
     // 3. Match model_id:preset_name
     if let Some((m_id, p_name)) = target.rsplit_once(':') {
-        if let Some(m) = model_repo.get_by_id(m_id).await? {
+        let m_opt = if let Some(m) = model_repo.get_by_id(m_id).await? {
+            Some(m)
+        } else {
+            let all = model_repo.get_all().await?;
+            all.into_iter().find(|m| {
+                m.id.eq_ignore_ascii_case(m_id)
+                    || m.filename.eq_ignore_ascii_case(m_id)
+                    || m.relative_path.eq_ignore_ascii_case(m_id)
+                    || m.source_repo
+                        .as_deref()
+                        .map(|s| s.eq_ignore_ascii_case(m_id))
+                        .unwrap_or(false)
+            })
+        };
+        if let Some(m) = m_opt {
             let found = m
                 .presets
                 .iter()
-                .find(|p| p.name.eq_ignore_ascii_case(p_name) || p.id == target)
+                .find(|p| {
+                    p.name.eq_ignore_ascii_case(p_name)
+                        || p.name.to_lowercase().replace(' ', "-") == p_name.to_lowercase()
+                        || p.id == target
+                })
                 .cloned();
             if let Some(p) = found {
                 return Ok((m, p));

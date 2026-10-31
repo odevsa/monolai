@@ -54,6 +54,8 @@ pub fn scan_models<P: AsRef<Path>>(root_dir: P) -> Vec<ModelItem> {
                         format: ext_lower,
                         modality: inspect.modality,
                         architecture: inspect.architecture,
+                        is_auxiliary: inspect.is_auxiliary,
+                        auxiliary_type: inspect.auxiliary_type,
                         size_bytes,
                     });
                 }

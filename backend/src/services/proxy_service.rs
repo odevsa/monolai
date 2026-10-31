@@ -58,6 +58,10 @@ impl ProxyService {
         let mut data = Vec::new();
 
         for m in models {
+            if m.is_auxiliary {
+                continue;
+            }
+
             let full_path = models_dir.join(&m.relative_path);
             if !full_path.is_file() {
                 continue;
@@ -77,16 +81,6 @@ impl ProxyService {
                     created: 1680000000,
                     owned_by: "monolai",
                 });
-                let p = &m.presets[0];
-                if p.name.to_lowercase() != "default" {
-                    let slug = p.name.to_lowercase().replace(' ', "-");
-                    data.push(OpenAiModelItem {
-                        id: format!("{}:{}", m.id, slug),
-                        object: "model",
-                        created: 1680000000,
-                        owned_by: "monolai",
-                    });
-                }
             } else {
                 for p in &m.presets {
                     let slug = p.name.to_lowercase().replace(' ', "-");
@@ -97,12 +91,6 @@ impl ProxyService {
                         owned_by: "monolai",
                     });
                 }
-                data.push(OpenAiModelItem {
-                    id: m.id.clone(),
-                    object: "model",
-                    created: 1680000000,
-                    owned_by: "monolai",
-                });
             }
         }
 

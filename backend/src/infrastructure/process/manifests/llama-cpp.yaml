@@ -188,7 +188,7 @@ flags:
   - flag: "--mmproj"
     name: "Multimodal Projector"
     description: "Path to the mmproj GGUF file for vision models"
-    type: "file"
+    type: "file-auxiliary"
     important: false
     default_value: ""
   - flag: "--threads"

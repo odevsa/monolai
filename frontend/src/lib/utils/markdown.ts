@@ -23,6 +23,67 @@ markedInstance.use({
 	}
 });
 
+export function stripMarkdownFrontmatter(content: string): string {
+	if (!content) return '';
+	return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+}
+
+export function resolveMarkdownRelativeUrls(content: string, baseUrl: string): string {
+	if (!content || !baseUrl) return content;
+	const trimmedBase = baseUrl.replace(/\/+$/, '');
+
+	const isRelative = (url: string) => {
+		if (!url) return false;
+		const trimmed = url.trim();
+		return !/^(?:https?:|\/\/|data:|mailto:|#|javascript:)/i.test(trimmed);
+	};
+
+	const resolve = (url: string) => {
+		if (!isRelative(url)) return url;
+		const clean = url
+			.trim()
+			.replace(/^(\.\.?\/)+/, '')
+			.replace(/^\/+/, '');
+		return `${trimmedBase}/${clean}`;
+	};
+
+	// 1. Markdown images: ![alt](url "optional title")
+	let result = content.replace(
+		/!\[([^\]]*)\]\(([^)\s]+)(?:\s+("[^"]*"|'[^']*'))?\)/g,
+		(_match, alt, url, title) => {
+			const resolved = resolve(url);
+			return title ? `![${alt}](${resolved} ${title})` : `![${alt}](${resolved})`;
+		}
+	);
+
+	// 2. Markdown links: [text](url "optional title") (negative lookbehind for !)
+	result = result.replace(
+		/(?<!!)\[([^\]]+)\]\(([^)\s]+)(?:\s+("[^"]*"|'[^']*'))?\)/g,
+		(_match, text, url, title) => {
+			const resolved = resolve(url);
+			return title ? `[${text}](${resolved} ${title})` : `[${text}](${resolved})`;
+		}
+	);
+
+	// 3. HTML tags with src="..." or src='...'
+	result = result.replace(
+		/(<(?:img|video|audio|source)\b[^>]*?\bsrc=["'])([^"'>]+)(["'])/gi,
+		(_match, prefix, url, suffix) => {
+			return `${prefix}${resolve(url)}${suffix}`;
+		}
+	);
+
+	// 4. HTML a tags with href="..." or href='...'
+	result = result.replace(
+		/(<a\b[^>]*?\bhref=["'])([^"'>]+)(["'])/gi,
+		(_match, prefix, url, suffix) => {
+			return `${prefix}${resolve(url)}${suffix}`;
+		}
+	);
+
+	return result;
+}
+
 export function sanitizeHtml(rawHtml: string): string {
 	if (!rawHtml) return '';
 	if (typeof window !== 'undefined' && DOMPurify.sanitize) {

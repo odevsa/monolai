@@ -34,7 +34,7 @@
 	});
 </script>
 
-<Card class="relative">
+<Card class="relative overflow-hidden">
 	{#if runtime.is_installed}
 		<DiagonalLabel text={runtime.has_update ? t('common.update') : t('common.installed')} />
 	{/if}

@@ -169,7 +169,7 @@
 							loading={rechecking}
 							title={t('common.refresh')}
 						>
-							<RefreshCw size={12} class={rechecking ? 'animate-spin' : ''} />
+							<RefreshCw size={12} />
 							<span>{t('common.refresh')}</span>
 						</Button>
 					</div>

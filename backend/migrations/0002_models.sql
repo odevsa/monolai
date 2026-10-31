@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS models (
     modality TEXT NOT NULL,
     architecture TEXT,
     source_repo TEXT,
+    is_auxiliary INTEGER NOT NULL DEFAULT 0,
+    auxiliary_type TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

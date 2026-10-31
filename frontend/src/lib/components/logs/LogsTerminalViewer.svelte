@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Button, EmptyState } from '$lib/components/ui';
+	import { Button, EmptyState, Spinner } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { LogEntry } from '$lib/types/logs';
-	import { ChevronDown, RefreshCw, ScrollText } from '@lucide/svelte';
+	import { ChevronDown, ScrollText } from '@lucide/svelte';
 	import LogsEntryRow from './LogsEntryRow.svelte';
 
 	interface LogsTerminalViewerProps {
@@ -52,7 +52,7 @@
 			<div
 				class="h-full min-h-[200px] flex items-center justify-center text-[var(--text-muted)] gap-2"
 			>
-				<RefreshCw size={16} class="animate-spin text-[var(--primary)]" />
+				<Spinner size={16} class="text-[var(--primary)]" />
 				<span>{t('common.loading')}</span>
 			</div>
 		{:else if entries.length === 0}

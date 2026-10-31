@@ -35,6 +35,10 @@ monolai/
    - **Single Source of Truth**: Every piece of information should have a single, canonical source.
    - **Avoid Duplication**: Don't store the same information in multiple places.
    - **Traceability**: You should be able to trace any piece of information back to its source.
+5. **Proactive Refactoring & Complexity Reduction**:
+   - Whenever you encounter complex, monolithic, or repetitive code that can be refactored into smaller, cohesive, reusable subcomponents or extended without altering the design, you **MUST** do so.
+   - Prefer extending an existing component (e.g., adding a `writable` prop to `<Select>`) rather than introducing redundant, competing components.
+   - Deconstruct complex forms and views into dedicated subcomponents (e.g., flag row editors, specialized item cards) to keep individual files lean, readable, and maintainable.
 
 ---
 

@@ -3,7 +3,7 @@
 	import { Alert, Badge, Button, Card, ModelSelect, Select, Textarea } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { formatElapsedTime } from '$lib/utils/format';
-	import { Dices, RefreshCw, Sparkles } from '@lucide/svelte';
+	import { Dices, Sparkles } from '@lucide/svelte';
 	import ImageAdvancedParams from './ImageAdvancedParams.svelte';
 
 	interface ImagePromptStudioProps {
@@ -187,11 +187,11 @@
 				variant="primary"
 				size="lg"
 				class="w-full"
+				loading={isGenerating}
 				disabled={isGenerating || !prompt.trim() || !selectedModel}
 				onclick={onGenerate}
 			>
 				{#if isGenerating}
-					<RefreshCw size={16} class="animate-spin" />
 					<span
 						>{t('image.generatingWithTime', { time: formatElapsedTime(generationElapsed) })}</span
 					>

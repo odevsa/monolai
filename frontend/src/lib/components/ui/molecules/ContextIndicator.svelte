@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { formatTokenCount, type PreparedContext } from '$lib/utils/context';
 	import { ChevronDown, ChevronUp } from '@lucide/svelte';
+	import Divider from '../atoms/Divider.svelte';
 
 	let {
 		contextInfo
@@ -134,93 +135,101 @@
 				>
 			</div>
 
-			<div class="h-px bg-[var(--border-color)] my-1 opacity-70"></div>
-
-			<!-- Collapsible Token Usage Details -->
-			<button
-				type="button"
-				class="bg-transparent border-0 text-[var(--text-muted)] text-xs flex items-center justify-between py-1 cursor-pointer transition-colors duration-150 hover:text-[var(--text-primary)]"
-				onclick={toggleDetails}
+			<div
+				class="flex flex-col gap-4 p-2 text-xs bg-[var(--bg-primary)]/20 border-t border-b border-[var(--border-color)]"
 			>
-				<span>{t('chat.tokenUsageDetails')}</span>
-				{#if showDetails}
-					<ChevronUp size={13} />
-				{:else}
-					<ChevronDown size={13} />
-				{/if}
-			</button>
+				<!-- Collapsible Token Usage Details -->
+				<button
+					type="button"
+					class="bg-transparent border-0 text-[var(--text-muted)] text-xs flex items-center justify-between cursor-pointer transition-colors duration-150 hover:text-[var(--text-primary)]"
+					onclick={toggleDetails}
+				>
+					<span>{t('chat.tokenUsageDetails')}</span>
+					{#if showDetails}
+						<ChevronUp size={13} />
+					{:else}
+						<ChevronDown size={13} />
+					{/if}
+				</button>
 
-			{#if showDetails}
-				<div class="flex flex-col gap-2.5 pt-1 text-xs">
+				{#if showDetails}
 					<!-- Across all turns -->
 					<div class="flex flex-col gap-1">
-						<div class="text-[0.6875rem] font-bold text-[var(--primary)] tracking-wider mb-0.5">
+						<div class="text-[0.6875rem] font-bold text-[var(--primary)] tracking-wider">
 							{t('chat.acrossAllTurns')}
 						</div>
-						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-primary)]">{t('chat.promptTokensEvaluated')}</span>
-							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
-								>{details.allPromptEvaluated} {t('chat.tok')}</span
-							>
-						</div>
-						<div class="text-[0.68rem] text-[var(--text-muted)] opacity-80 pl-1 -mt-0.5 mb-0.5">
-							{details.allPromptCached}
-							{t('chat.reusedFromKv')}
-						</div>
-						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-primary)]">{t('chat.tokensGenerated')}</span>
-							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
-								>{details.allTokensGenerated} {t('chat.tok')}</span
-							>
+
+						<div class="flex flex-col gap-1 pl-2.5">
+							<div>
+								<div
+									class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs"
+								>
+									<span class="text-[var(--text-primary)]">{t('chat.promptTokensEvaluated')}</span>
+									<span class="text-[var(--text-secondary)] font-medium tabular-nums"
+										>{details.allPromptEvaluated} {t('chat.tok')}</span
+									>
+								</div>
+								<div class="text-[0.68rem] text-[var(--text-muted)] opacity-80 pl-2.5">
+									{details.allPromptCached}
+									{t('chat.reusedFromKv')}
+								</div>
+							</div>
+
+							<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
+								<span class="text-[var(--text-primary)]">{t('chat.tokensGenerated')}</span>
+								<span class="text-[var(--text-secondary)] font-medium tabular-nums"
+									>{details.allTokensGenerated} {t('chat.tok')}</span
+								>
+							</div>
 						</div>
 					</div>
 
 					<!-- This turn · KV cache -->
 					<div class="flex flex-col gap-1">
-						<div class="text-[0.6875rem] font-bold text-[var(--primary)] tracking-wider mb-0.5">
+						<div class="text-[0.6875rem] font-bold text-[var(--primary)] tracking-wider">
 							{t('chat.thisTurnKv')}
 						</div>
-						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-primary)]">{t('common.prompt')}</span>
-							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
-								>{details.thisTurnPrompt} {t('chat.tok')}</span
-							>
-						</div>
-						<div class="text-[0.68rem] text-[var(--text-muted)] opacity-80 pl-1 -mt-0.5 mb-0.5">
-							{t('chat.freshAndCached', {
-								fresh: details.thisTurnFresh,
-								cached: details.thisTurnCached
-							})}
-						</div>
-						<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
-							<span class="text-[var(--text-primary)]">{t('chat.generated')}</span>
-							<span class="text-[var(--text-secondary)] font-medium tabular-nums"
-								>{details.thisTurnGenerated} {t('chat.tok')}</span
-							>
-						</div>
-						<div
-							class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs mt-0.5"
-						>
-							<span class="font-medium text-[var(--primary)]">{t('chat.kvCacheTotal')}</span>
-							<span class="font-semibold text-[var(--text-primary)] tabular-nums"
-								>{details.kvCacheTotal} {t('chat.tok')}</span
-							>
+
+						<div class="flex flex-col gap-1 pl-2.5">
+							<div>
+								<div
+									class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs"
+								>
+									<span class="text-[var(--text-primary)]">{t('common.prompt')}</span>
+									<span class="text-[var(--text-secondary)] font-medium tabular-nums"
+										>{details.thisTurnPrompt} {t('chat.tok')}</span
+									>
+								</div>
+								<div class="text-[0.68rem] text-[var(--text-muted)] opacity-80 pl-2.5">
+									{t('chat.freshAndCached', {
+										fresh: details.thisTurnFresh,
+										cached: details.thisTurnCached
+									})}
+								</div>
+							</div>
+
+							<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
+								<span class="text-[var(--text-primary)]">{t('chat.generated')}</span>
+								<span class="text-[var(--text-secondary)] font-medium tabular-nums"
+									>{details.thisTurnGenerated} {t('chat.tok')}</span
+								>
+							</div>
+							<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs">
+								<span class="font-semibold text-[var(--warning)]">{t('chat.kvCacheTotal')}</span>
+								<span class="font-semibold text-[var(--warning)] tabular-nums"
+									>{details.kvCacheTotal} {t('chat.tok')}</span
+								>
+							</div>
 						</div>
 					</div>
+				{/if}
+			</div>
 
-					<div class="h-px bg-[var(--border-color)] my-1 opacity-70"></div>
-
-					<!-- Speed -->
-					<div
-						class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs -mt-0.5"
-					>
-						<span class="text-[var(--text-muted)]">{t('chat.avgSpeed')}</span>
-						<span class="text-[var(--text-secondary)] font-medium tabular-nums"
-							>{details.avgSpeed}</span
-						>
-					</div>
-				</div>
-			{/if}
+			<!-- Speed -->
+			<div class="flex justify-between items-baseline text-[var(--text-secondary)] text-xs -mt-0.5">
+				<span class="text-[var(--primary)] font-semibold">{t('chat.avgSpeed')}</span>
+				<span class="text-[var(--primary)] font-semibold tabular-nums">{details.avgSpeed}</span>
+			</div>
 		</div>
 	{/if}
 </div>

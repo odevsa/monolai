@@ -3,7 +3,8 @@ import type {
 	RepositoryRecord,
 	CreateRepositoryPayload,
 	UpdateRepositoryPayload,
-	HubModelItem
+	HubModelItem,
+	HubModelReadme
 } from '$lib/types/models';
 
 export const hubApi = {
@@ -27,5 +28,8 @@ export const hubApi = {
 	}) => api.get<HubModelItem[]>('/api/hub/models', params),
 
 	getModelDetails: (repoId: string, modelId: string) =>
-		api.get<HubModelItem>(`/api/hub/models/${encodeURIComponent(repoId)}/${modelId}`)
+		api.get<HubModelItem>(`/api/hub/models/${encodeURIComponent(repoId)}/${modelId}`),
+
+	getModelReadme: (repoId: string, modelId: string) =>
+		api.get<HubModelReadme>(`/api/hub/readme/${encodeURIComponent(repoId)}/${modelId}`)
 };

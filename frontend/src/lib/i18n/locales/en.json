@@ -33,6 +33,7 @@
 		"new": "New",
 		"add": "Add",
 		"download": "Download",
+		"details": "Details",
 		"unload": "Unload",
 		"unloadAll": "Unload All",
 		"scrollToBottom": "Scroll to bottom",
@@ -46,7 +47,10 @@
 		"ready": "Ready",
 		"downloading": "Downloading...",
 		"show": "Show",
-		"hide": "Hide"
+		"hide": "Hide",
+		"page": "Page",
+		"previous": "Previous",
+		"next": "Next"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -225,7 +229,6 @@
 			"enableHuggingFace": "Enable Hugging Face Hub",
 			"searchPlaceholder": "Search models on hub (e.g. qwen, llama, flux)...",
 			"search": "Search",
-			"inspectFiles": "Files",
 			"selectQuantPrompt": "Select a quantized weights file to download directly to your models directory:",
 			"noFilesAvailable": "No compatible model files found in this repository.",
 			"authRequired": "Auth Required",
@@ -238,7 +241,12 @@
 			"fitUnknown": "Performance fit unknown: file size not reported",
 			"sortDownloads": "Most Downloads",
 			"sortLikes": "Most Likes",
-			"sortUpdated": "Recently Updated"
+			"sortUpdated": "Recently Updated",
+			"tabFiles": "Files & Quants",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "No README Available",
+			"noReadmeDesc": "This repository does not contain a README.md file.",
+			"openInHuggingFace": "Open in Hugging Face"
 		},
 		"presets": {
 			"title": "Execution Presets",
@@ -253,7 +261,40 @@
 			"nameRequired": "Preset name is required.",
 			"runtimeRequired": "A compatible runtime engine must be selected.",
 			"noCompatibleRuntimes": "No installed runtimes support modality '{{modality}}' and format '{{format}}'.",
-			"deleteConfirm": "Are you sure you want to delete preset '{{name}}'?"
+			"deleteConfirm": "Are you sure you want to delete preset '{{name}}'?",
+			"addFlag": "Add Flag",
+			"selectFlagPlaceholder": "--flag-name or type custom...",
+			"flagValuePlaceholder": "Flag value",
+			"changeValueType": "Change value type",
+			"typePrimary": "Primary Model",
+			"typeAuxiliary": "Auxiliary Asset",
+			"typeAnyFile": "Any Model File",
+			"typeText": "Text",
+			"typeNumber": "Number",
+			"typeBool": "Boolean"
+		},
+		"auxiliary": {
+			"title": "Auxiliary Assets & Components",
+			"subtitle": "Secondary components (vision projectors, VAEs, text encoders, LoRAs) used in execution flags",
+			"emptyTitle": "No Auxiliary Files",
+			"emptyDesc": "Auxiliary components like mmproj or VAEs will appear here when detected in your models directory.",
+			"copyPath": "Copy Path",
+			"pathCopied": "Path copied to clipboard",
+			"deleteConfirmTitle": "Delete Auxiliary File",
+			"deleteConfirmMsg": "Are you sure you want to permanently delete '{{filename}}' from disk?"
+		},
+		"picker": {
+			"title": "Select Model File",
+			"filterAll": "All Files",
+			"filterPrimary": "Primary Models",
+			"filterAuxiliary": "Auxiliary Assets",
+			"searchPlaceholder": "Search models or folders...",
+			"currentDirectory": "Current Directory",
+			"root": "Root",
+			"upOneLevel": "Up one level",
+			"noFiles": "No files found in this directory",
+			"selectFilePrompt": "Select a file to continue",
+			"selectButton": "Select File"
 		},
 		"downloads": {
 			"emptyTitle": "No Downloads",

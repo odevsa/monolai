@@ -18,6 +18,8 @@
 	} from '@lucide/svelte';
 
 	let downloads = $derived(downloadStore.downloads);
+	let actionLoading = $state<Record<string, boolean>>({});
+	let isClearingInactive = $state(false);
 
 	function getDisplayName(download: DownloadRecord): string {
 		if (download.filename) return download.filename;
@@ -33,6 +35,33 @@
 		return Math.min(100, Math.round((download.downloaded_bytes / download.total_bytes) * 100));
 	}
 
+	async function handlePause(id: string) {
+		actionLoading[id] = true;
+		try {
+			await downloadStore.pause(id);
+		} finally {
+			delete actionLoading[id];
+		}
+	}
+
+	async function handleResume(id: string) {
+		actionLoading[id] = true;
+		try {
+			await downloadStore.resume(id);
+		} finally {
+			delete actionLoading[id];
+		}
+	}
+
+	async function handleCancel(id: string) {
+		actionLoading[id] = true;
+		try {
+			await downloadStore.cancel(id);
+		} finally {
+			delete actionLoading[id];
+		}
+	}
+
 	async function handleDelete(d: DownloadRecord) {
 		const name = getDisplayName(d);
 		const confirmed = await askConfirm(
@@ -44,10 +73,13 @@
 		);
 		if (!confirmed) return;
 
+		actionLoading[d.id] = true;
 		try {
 			await downloadStore.delete(d.id);
 		} catch (err: unknown) {
 			console.error('Failed to delete download record:', err);
+		} finally {
+			delete actionLoading[d.id];
 		}
 	}
 
@@ -61,10 +93,13 @@
 		);
 		if (!confirmed) return;
 
+		isClearingInactive = true;
 		try {
 			await downloadStore.clearInactive();
 		} catch (err: unknown) {
 			console.error('Failed to clear inactive downloads:', err);
+		} finally {
+			isClearingInactive = false;
 		}
 	}
 </script>
@@ -93,7 +128,12 @@
 
 		{#if downloadStore.hasInactive}
 			<div class="ml-auto">
-				<Button variant="secondary" size="sm" onclick={handleClearInactive}>
+				<Button
+					variant="secondary"
+					size="sm"
+					loading={isClearingInactive}
+					onclick={handleClearInactive}
+				>
 					<Trash size={14} />
 					<span>{t('models.downloads.clearCompleted')}</span>
 				</Button>
@@ -156,17 +196,22 @@
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--warning-text)]"
-									onclick={() => downloadStore.pause(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handlePause(d.id)}
 									title={t('models.downloads.pause')}
 									ariaLabel={t('models.downloads.pause')}
 								>
-									<Pause size={14} class="transition-colors group-hover:text-[var(--warning-text)]" />
+									<Pause
+										size={14}
+										class="transition-colors group-hover:text-[var(--warning-text)]"
+									/>
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--danger-text)]"
-									onclick={() => downloadStore.cancel(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handleCancel(d.id)}
 									title={t('common.cancel')}
 									ariaLabel={t('common.cancel')}
 								>
@@ -177,17 +222,22 @@
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--success-text)]"
-									onclick={() => downloadStore.resume(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handleResume(d.id)}
 									title={t('models.downloads.resume')}
 									ariaLabel={t('models.downloads.resume')}
 								>
-									<Play size={14} class="transition-colors group-hover:text-[var(--success-text)]" />
+									<Play
+										size={14}
+										class="transition-colors group-hover:text-[var(--success-text)]"
+									/>
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--danger-text)]"
-									onclick={() => downloadStore.cancel(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handleCancel(d.id)}
 									title={t('common.cancel')}
 									ariaLabel={t('common.cancel')}
 								>
@@ -198,42 +248,58 @@
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--primary)]"
-									onclick={() => downloadStore.resume(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handleResume(d.id)}
 									title={t('common.retry')}
 									ariaLabel={t('common.retry')}
 								>
-									<RotateCcw size={14} class="transition-colors group-hover:text-[var(--primary)]" />
+									<RotateCcw
+										size={14}
+										class="transition-colors group-hover:text-[var(--primary)]"
+									/>
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--danger-text)]"
+									loading={actionLoading[d.id]}
 									onclick={() => handleDelete(d)}
 									title={t('common.delete')}
 									ariaLabel={t('common.delete')}
 								>
-									<Trash size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
+									<Trash
+										size={14}
+										class="transition-colors group-hover:text-[var(--danger-text)]"
+									/>
 								</Button>
 							{:else}
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--primary)]"
-									onclick={() => downloadStore.resume(d.id)}
+									loading={actionLoading[d.id]}
+									onclick={() => handleResume(d.id)}
 									title={t('common.retry')}
 									ariaLabel={t('common.retry')}
 								>
-									<RotateCcw size={14} class="transition-colors group-hover:text-[var(--primary)]" />
+									<RotateCcw
+										size={14}
+										class="transition-colors group-hover:text-[var(--primary)]"
+									/>
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									class="group hover:text-[var(--danger-text)]"
+									loading={actionLoading[d.id]}
 									onclick={() => handleDelete(d)}
 									title={t('common.delete')}
 									ariaLabel={t('common.delete')}
 								>
-									<Trash size={14} class="transition-colors group-hover:text-[var(--danger-text)]" />
+									<Trash
+										size={14}
+										class="transition-colors group-hover:text-[var(--danger-text)]"
+									/>
 								</Button>
 							{/if}
 						</div>

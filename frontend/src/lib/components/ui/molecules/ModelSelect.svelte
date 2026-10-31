@@ -3,7 +3,7 @@
 	import { ModelBadge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { featuresState } from '$lib/state/features.svelte';
-	import { Box, Check, ChevronDown } from '@lucide/svelte';
+	import { Box, ChevronDown } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
 	let {
@@ -64,6 +64,9 @@
 	});
 
 	let displayModels = $derived(models !== undefined ? models : internalModels);
+	let selectedModel = $derived(
+		displayModels.find((m) => m.id === value) || displayModels.find((m) => m.modelId === value)
+	);
 	let resolvedPlaceholder = $derived(placeholder || t('common.selectModel'));
 	let resolvedLabel = $derived(label || t('common.selectActiveModel'));
 	let resolvedEmptyText = $derived(emptyText || t('common.noModelsRegistered'));
@@ -127,7 +130,14 @@
 	>
 		<div class="model-select-value">
 			{#if value}
-				<ModelBadge model={value} variant="inline" hideTagsOnMobile={variant === 'pill'} />
+				<ModelBadge
+					model={selectedModel?.modelId || value}
+					variant="inline"
+					hideTagsOnMobile={variant === 'pill'}
+				/>
+				{#if selectedModel?.presetName}
+					<span class="preset-badge">{selectedModel.presetName}</span>
+				{/if}
 			{:else}
 				<Box size={14} class="model-box-icon" />
 				<span class="model-placeholder-text">{resolvedPlaceholder}</span>
@@ -140,7 +150,11 @@
 	</button>
 
 	{#if open}
-		<div class="popover-menu placement-{placement} align-{align} variant-{variant}">
+		<div
+			class="popover-menu placement-{placement} align-{align} variant-{variant}"
+			role="listbox"
+			tabindex="-1"
+		>
 			<div class="menu-label">{resolvedLabel}</div>
 			{#if displayModels.length === 0}
 				<div class="empty-menu-text">{resolvedEmptyText}</div>
@@ -148,16 +162,16 @@
 				{#each displayModels as model (model.id)}
 					<button
 						type="button"
+						role="option"
+						aria-selected={value === model.id}
 						class="popover-item {value === model.id ? 'selected' : ''}"
 						onclick={() => selectOption(model.id)}
 					>
 						<div class="item-left">
-							<span class="check-slot">
-								{#if value === model.id}
-									<Check size={14} class="check-icon" />
-								{/if}
-							</span>
-							<ModelBadge model={model.id} variant="inline" />
+							<ModelBadge model={model.modelId || model.id} variant="inline" />
+							{#if model.presetName}
+								<span class="preset-badge">{model.presetName}</span>
+							{/if}
 						</div>
 						<span class="mini-tag">{model.runtime}</span>
 					</button>
@@ -417,18 +431,23 @@
 		white-space: nowrap;
 	}
 
-	.check-slot {
-		width: 14px;
-		height: 14px;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--primary);
+	.preset-badge {
+		font-size: 0.65rem;
+		font-weight: 600;
+		padding: 0.1rem 0.4rem;
+		border-radius: var(--radius-sm, 0.25rem);
+		background: var(--bg-surface-hover);
+		color: var(--text-secondary);
+		border: 1px solid var(--border-color);
+		line-height: 1.2;
+		white-space: nowrap;
 		flex-shrink: 0;
 	}
 
-	:global(.check-icon) {
+	.popover-item.selected .preset-badge {
+		background: var(--primary-light);
 		color: var(--primary);
+		border-color: var(--primary);
 	}
 
 	.mini-tag {

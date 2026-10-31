@@ -71,19 +71,19 @@ flags:
   - flag: "--vae"
     name: "VAE File"
     description: "Path to separate VAE weights file"
-    type: "file"
+    type: "file-auxiliary"
     important: false
     default_value: ""
   - flag: "--clip_l"
     name: "CLIP-L File"
     description: "Path to CLIP-L text encoder file"
-    type: "file"
+    type: "file-auxiliary"
     important: false
     default_value: ""
   - flag: "--t5xxl"
     name: "T5-XXL File"
     description: "Path to T5-XXL text encoder file (FLUX / SD3)"
-    type: "file"
+    type: "file-auxiliary"
     important: false
     default_value: ""
   - flag: "--threads"

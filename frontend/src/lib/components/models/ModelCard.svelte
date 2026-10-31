@@ -11,6 +11,7 @@
 		Check,
 		Copy,
 		FolderOpen,
+		Info,
 		Layers,
 		Pencil,
 		Plus,
@@ -24,14 +25,18 @@
 		model,
 		runningInfo,
 		copiedId = null,
+		isDeleting = false,
 		onCopyId,
+		onDetails,
 		onModelUpdated,
 		onDelete
 	}: {
 		model: ModelRecord;
 		runningInfo?: RunningModelStatus;
 		copiedId?: string | null;
+		isDeleting?: boolean;
 		onCopyId?: (id: string) => void;
+		onDetails?: (model: ModelRecord) => void;
 		onModelUpdated: () => void;
 		onDelete: (id: string, deleteFile?: boolean) => void;
 	} = $props();
@@ -44,6 +49,7 @@
 	// Presets management modal
 	let showPresetModal = $state(false);
 	let editingPreset = $state<ModelPreset | null>(null);
+	let deletingPresetId = $state<string | null>(null);
 
 	function openAddPreset() {
 		editingPreset = null;
@@ -65,11 +71,14 @@
 		);
 		if (!confirmed) return;
 
+		deletingPresetId = preset.id;
 		try {
 			await modelsApi.deletePreset(preset.id);
 			onModelUpdated();
 		} catch (err: unknown) {
 			console.error('Failed to delete preset:', err);
+		} finally {
+			deletingPresetId = null;
 		}
 	}
 </script>
@@ -198,6 +207,7 @@
 								<Button
 									variant="ghost"
 									size="icon-xs"
+									loading={deletingPresetId === preset.id}
 									onclick={() => deletePreset(preset)}
 									title={t('common.delete')}
 									ariaLabel={t('common.delete')}
@@ -213,10 +223,23 @@
 	</div>
 
 	<!-- Card Footer -->
-	<div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]/50">
+	<div
+		class="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-color)]/50"
+	>
+		<Button
+			variant="secondary"
+			size="sm"
+			onclick={() => onDetails?.(model)}
+			title={t('common.details')}
+		>
+			<Info size={13} />
+			<span>{t('common.details')}</span>
+		</Button>
+
 		<Button
 			variant="danger"
 			size="sm"
+			loading={isDeleting}
 			onclick={() => onDelete(model.id)}
 			title={t('common.delete')}
 		>

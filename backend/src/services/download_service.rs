@@ -527,6 +527,8 @@ impl DownloadService {
             modality: inspect.modality.clone(),
             architecture: inspect.architecture,
             source_repo,
+            is_auxiliary: inspect.is_auxiliary,
+            auxiliary_type: inspect.auxiliary_type.clone(),
             created_at: String::new(),
             presets: Vec::new(),
             file_exists: true,
@@ -541,23 +543,25 @@ impl DownloadService {
         {
             let _ = self.model_repo.insert_model(&model_record).await;
 
-            let runtime_id = if inspect.modality == "text-to-image" {
-                "sd-cpp"
-            } else {
-                "llama-cpp"
-            };
+            if !inspect.is_auxiliary {
+                let runtime_id = if inspect.modality == "text-to-image" {
+                    "sd-cpp"
+                } else {
+                    "llama-cpp"
+                };
 
-            let default_preset = ModelPreset {
-                id: format!("{}:default", id),
-                model_id: id,
-                name: "Default".to_string(),
-                runtime_id: runtime_id.to_string(),
-                flags: serde_json::json!({ "--model": relative_path }).to_string(),
-                is_default: true,
-                created_at: String::new(),
-            };
+                let default_preset = ModelPreset {
+                    id: format!("{}:default", id),
+                    model_id: id,
+                    name: "Default".to_string(),
+                    runtime_id: runtime_id.to_string(),
+                    flags: serde_json::json!({ "--model": relative_path }).to_string(),
+                    is_default: true,
+                    created_at: String::new(),
+                };
 
-            let _ = self.model_repo.insert_preset(&default_preset).await;
+                let _ = self.model_repo.insert_preset(&default_preset).await;
+            }
         }
     }
 

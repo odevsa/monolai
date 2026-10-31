@@ -18,6 +18,8 @@
 	} from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
+	import { t } from '$lib/i18n';
+	import Loader from '../atoms/Loader.svelte';
 	import Card from './Card.svelte';
 
 	interface Props {
@@ -167,8 +169,8 @@
 		<div
 			class="flex flex-col items-center justify-center p-8 sm:p-12 gap-3 text-[var(--text-muted)] w-full h-full min-h-[50vh]"
 		>
-			<RefreshCw class="animate-spin text-[var(--primary)]" size={24} />
-			<span class="text-xs font-medium">Verifying feature requirements...</span>
+			<Loader size={48} />
+			<span class="text-xs font-medium">{t('common.loading')}</span>
 		</div>
 	{/if}
 {:else if isSatisfied}

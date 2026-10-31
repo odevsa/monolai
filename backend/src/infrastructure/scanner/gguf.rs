@@ -9,6 +9,8 @@ pub struct ModelFileInfo {
     pub modality: String,
     pub architecture: Option<String>,
     pub model_name: Option<String>,
+    pub is_auxiliary: bool,
+    pub auxiliary_type: Option<String>,
 }
 
 #[derive(Debug)]
@@ -270,6 +272,8 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         modality: "text-to-text".to_string(),
         architecture: None,
         model_name: None,
+        is_auxiliary: false,
+        auxiliary_type: None,
     };
 
     if ext == "gguf" {
@@ -339,6 +343,70 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
             }
         }
     }
+
+    let file_name = path_ref
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    let path_str = path_ref.to_string_lossy().to_lowercase();
+
+    let mut is_auxiliary = false;
+    let mut auxiliary_type = None;
+
+    // 1. mmproj (Multimodal projector for vision)
+    if info.architecture.as_deref().map(|a| a.to_lowercase()) == Some("clip".to_string())
+        || file_name.contains("mmproj")
+        || path_str.contains("mmproj")
+    {
+        is_auxiliary = true;
+        auxiliary_type = Some("mmproj".to_string());
+    }
+    // 2. VAE (Autoencoder)
+    else if file_name.contains("vae")
+        || file_name.ends_with("ae.safetensors")
+        || file_name.ends_with("ae.gguf")
+        || path_str.contains("/vae/")
+        || path_str.contains("\\vae\\")
+    {
+        is_auxiliary = true;
+        auxiliary_type = Some("vae".to_string());
+    }
+    // 3. Text Encoders / CLIP
+    else if file_name.contains("clip_l")
+        || file_name.contains("clip_g")
+        || file_name.contains("t5xxl")
+        || file_name.contains("text_encoder")
+        || path_str.contains("/text_encoders/")
+        || path_str.contains("\\text_encoders\\")
+        || path_str.contains("/clip/")
+        || path_str.contains("\\clip\\")
+    {
+        is_auxiliary = true;
+        auxiliary_type = Some("clip".to_string());
+    }
+    // 4. LoRA / Adapters
+    else if file_name.contains("lora")
+        || file_name.contains("adapter")
+        || path_str.contains("/loras/")
+        || path_str.contains("\\loras\\")
+        || path_str.contains("/adapters/")
+        || path_str.contains("\\adapters\\")
+    {
+        is_auxiliary = true;
+        auxiliary_type = Some("lora".to_string());
+    }
+    // 5. ControlNet
+    else if file_name.contains("controlnet")
+        || path_str.contains("/controlnet/")
+        || path_str.contains("\\controlnet\\")
+    {
+        is_auxiliary = true;
+        auxiliary_type = Some("controlnet".to_string());
+    }
+
+    info.is_auxiliary = is_auxiliary;
+    info.auxiliary_type = auxiliary_type;
 
     info
 }

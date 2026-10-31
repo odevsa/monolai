@@ -11,11 +11,10 @@
 		DiagonalLabel,
 		EmptyState,
 		Input,
-		Modal,
 		Select,
 		Spinner
 	} from '$lib/components/ui';
-	import { askConfirm, showAlert } from '$lib/confirmStore';
+	import { showAlert } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import { hostState } from '$lib/state/host.svelte';
@@ -26,27 +25,28 @@
 		ModelRecord,
 		RepositoryRecord
 	} from '$lib/types/models';
-	import { formatBytes } from '$lib/utils/format';
-	import { getModalityBadgeVariant, getModalityLabel, getModalityOptions } from '$lib/utils/model';
+	import { getModalityBadgeVariant, getModalityOptions } from '$lib/utils/model';
 	import {
-		ArrowDownToLine,
 		Box,
+		ChevronLeft,
+		ChevronRight,
 		Download,
-		FileDown,
 		Globe,
 		Heart,
+		Info,
 		Search,
-		Sparkles,
-		Trash
+		Sparkles
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import Divider from '../ui/atoms/Divider.svelte';
+	import ModelDetailsModal from './ModelDetailsModal.svelte';
 
 	let repositories = $state<RepositoryRecord[]>([]);
 	let selectedRepoId = $state<string>('');
 	let searchQuery = $state('');
 	let selectedModality = $state<string>('all');
 	let selectedSort = $state<'downloads' | 'likes' | 'lastModified'>('downloads');
+	let currentPage = $state(0);
 
 	let isLoadingRepos = $state(true);
 	let isSearching = $state(false);
@@ -56,11 +56,8 @@
 	// Registered local models for installed detection
 	let registeredModels = $state<ModelRecord[]>([]);
 
-	// Details & Quants state
+	// Inspecting model state (delegated to ModelDetailsModal)
 	let inspectingModel = $state<HubModelItem | null>(null);
-	let isLoadingDetails = $state(false);
-	let modelFiles = $state<HubModelSibling[]>([]);
-	let enqueuedFiles = $state<Record<string, boolean>>({});
 
 	let enabledRepos = $derived(repositories.filter((r) => r.enabled));
 
@@ -132,14 +129,12 @@
 			const mBase = (m.filename || m.relative_path.split('/').pop() || '').toLowerCase();
 			if (mBase !== baseName) return false;
 
-			// If we know which Hub model we are inspecting, verify it matches
 			if (model) {
 				const normModelId = model.id.toLowerCase();
 				const baseId = (model.id.split('/').pop() || model.id).toLowerCase();
 				if (m.source_repo && m.source_repo.toLowerCase() === normModelId) return true;
 				const rel = m.relative_path.toLowerCase();
 				if (rel.includes(`/${normModelId}/`) || rel.includes(`/${baseId}/`)) return true;
-				// Never match a generic filename against a model unless the directory or source_repo matches
 				if (GENERIC_FILENAMES.has(baseName)) return false;
 			}
 
@@ -151,7 +146,6 @@
 		const normId = model.id.toLowerCase();
 		const baseId = (model.id.split('/').pop() || model.id).toLowerCase();
 
-		// 1. Direct match on source_repo or path containing the model ID in folder structure
 		const directMatch = registeredModels.some((m) => {
 			if (m.file_exists === false) return false;
 			if (m.source_repo && m.source_repo.toLowerCase() === normId) return true;
@@ -168,83 +162,11 @@
 
 		if (directMatch) return true;
 
-		// 2. Sibling check (only for non-generic files or files belonging to this model)
 		if (model.siblings && model.siblings.length > 0) {
 			return model.siblings.some((s) => !!findDownloadedModelForFile(s, model));
 		}
 
 		return false;
-	}
-
-	function getEffectiveFileSize(file: HubModelSibling): number {
-		if (file.size && file.size > 0) return file.size;
-
-		// Fallback estimation from filename (e.g. qwen2.5-1.5b-instruct-q4_k_m.gguf)
-		const name = (file.rfilename || '').toLowerCase();
-		const paramMatch = name.match(/(\d+(?:\.\d+)?)\s*b/);
-		if (paramMatch) {
-			const billions = parseFloat(paramMatch[1]);
-			let bitsPerWeight = 4.5; // default Q4
-			if (name.includes('q2')) bitsPerWeight = 2.8;
-			else if (name.includes('q3')) bitsPerWeight = 3.5;
-			else if (name.includes('q4')) bitsPerWeight = 4.5;
-			else if (name.includes('q5')) bitsPerWeight = 5.5;
-			else if (name.includes('q6')) bitsPerWeight = 6.6;
-			else if (name.includes('q8')) bitsPerWeight = 8.5;
-			else if (name.includes('fp16') || name.includes('f16')) bitsPerWeight = 16;
-
-			return Math.round((billions * 1e9 * bitsPerWeight) / 8);
-		}
-
-		return 0;
-	}
-
-	function getPerformanceFit(fileSizeBytes?: number) {
-		if (!fileSizeBytes || fileSizeBytes <= 0) {
-			return {
-				color: 'bg-[var(--text-muted)]',
-				title: t('models.discover.fitUnknown')
-			};
-		}
-
-		const info = hostState.sysinfo;
-		if (!info) {
-			return {
-				color: 'bg-[var(--text-muted)]',
-				title: t('models.discover.fitUnknown')
-			};
-		}
-
-		// Estimate memory with 15% context / KV cache overhead
-		const requiredBytes = fileSizeBytes * 1.15;
-		const vramTotal =
-			info.vram?.total_bytes ??
-			(info.gpus?.reduce((acc, g) => acc + (g.memory_total_bytes ?? 0), 0) ||
-				info.gpu?.memory_total_bytes ||
-				0);
-		const ramTotal = info.ram?.total_bytes ?? 0;
-
-		// 1. Fits in GPU VRAM -> Optimal (Green)
-		if (vramTotal > 0 && requiredBytes <= vramTotal) {
-			return {
-				color: 'bg-[var(--success)]',
-				title: t('models.discover.fitOptimal')
-			};
-		}
-
-		// 2. Fits within system RAM -> Moderate (Yellow)
-		if (ramTotal > 0 && requiredBytes <= ramTotal * 0.85) {
-			return {
-				color: 'bg-[var(--warning)]',
-				title: vramTotal > 0 ? t('models.discover.fitPartialGpu') : t('models.discover.fitModerate')
-			};
-		}
-
-		// 3. Exceeds system RAM -> Risk of OOM or heavy swap (Red)
-		return {
-			color: 'bg-[var(--danger)]',
-			title: t('models.discover.fitLow')
-		};
 	}
 
 	function getOnlyModelName(model: HubModelItem) {
@@ -291,6 +213,15 @@
 			url.searchParams.delete('repo');
 		}
 
+		if (currentPage > 0) {
+			url.searchParams.set('page', String(currentPage + 1));
+		} else {
+			url.searchParams.delete('page');
+		}
+
+		// Clean installed-specific params
+		url.searchParams.delete('status');
+
 		const rawSearch = url.searchParams.toString().replace(/%20/g, '+');
 		const target = `${url.pathname}${rawSearch ? '?' + rawSearch : ''}`;
 		if (target !== `${page.url.pathname}${page.url.search}`) {
@@ -298,7 +229,10 @@
 		}
 	}
 
-	async function executeSearch() {
+	async function executeSearch(resetPage = false) {
+		if (resetPage) {
+			currentPage = 0;
+		}
 		if (!selectedRepoId) return;
 
 		updateUrlParams();
@@ -310,7 +244,8 @@
 				repo_id: selectedRepoId,
 				query: searchQuery.trim() || undefined,
 				modality: selectedModality === 'all' ? undefined : selectedModality,
-				sort: selectedSort
+				sort: selectedSort,
+				page: currentPage
 			});
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
@@ -318,6 +253,18 @@
 		} finally {
 			isSearching = false;
 		}
+	}
+
+	function handlePreviousPage() {
+		if (currentPage > 0) {
+			currentPage--;
+			executeSearch(false);
+		}
+	}
+
+	function handleNextPage() {
+		currentPage++;
+		executeSearch(false);
 	}
 
 	async function inspectFiles(model: HubModelItem) {
@@ -332,81 +279,6 @@
 		}
 
 		inspectingModel = model;
-		isLoadingDetails = true;
-		modelFiles = [];
-		try {
-			const details = await hubApi.getModelDetails(selectedRepoId, model.id);
-			modelFiles = details.siblings || [];
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			if (
-				msg.includes('401') ||
-				msg.toLowerCase().includes('unauthorized') ||
-				msg.toLowerCase().includes('token')
-			) {
-				await showAlert(
-					t('models.discover.authRequiredDesc'),
-					t('models.discover.authRequiredTitle'),
-					'warning'
-				);
-				settingsDialogState.open('repositories');
-				inspectingModel = null;
-				return;
-			}
-			errorMessage = msg;
-		} finally {
-			isLoadingDetails = false;
-		}
-	}
-
-	async function handleDownload(file: HubModelSibling) {
-		if (!inspectingModel) return;
-
-		const filename = file.rfilename.split('/').pop() || file.rfilename;
-		enqueuedFiles[file.rfilename] = true;
-
-		const resolvedUrl =
-			file.download_url ||
-			`https://huggingface.co/${inspectingModel.id}/resolve/main/${file.rfilename}`;
-
-		const modelModality =
-			inspectingModel.modality ||
-			(inspectingModel.pipeline_tag === 'text-to-image' ? 'text-to-image' : 'text-to-text');
-
-		try {
-			await downloadStore.enqueue({
-				url: resolvedUrl,
-				download_url: resolvedUrl,
-				model_name: inspectingModel.id,
-				filename,
-				repo_id: selectedRepoId,
-				modality: modelModality,
-				size_bytes: file.size || 0
-			});
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			errorMessage = msg;
-			enqueuedFiles[file.rfilename] = false;
-		}
-	}
-
-	async function handleDeleteDownloaded(record: ModelRecord) {
-		const confirmed = await askConfirm(
-			t('models.deleteConfirmMsg', { id: record.id }),
-			t('models.deleteConfirmTitle'),
-			'danger',
-			t('common.delete'),
-			t('common.cancel')
-		);
-		if (!confirmed) return;
-
-		try {
-			await modelsApi.delete(record.id, true);
-			await loadRegisteredModels();
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			await showAlert(msg || t('models.deleteError'), t('common.error'), 'danger');
-		}
 	}
 
 	onMount(() => {
@@ -421,6 +293,13 @@
 		}
 		const repo = p.get('repo');
 		if (repo) selectedRepoId = repo;
+		const pageParam = p.get('page');
+		if (pageParam) {
+			const parsed = parseInt(pageParam, 10);
+			if (!isNaN(parsed) && parsed > 0) {
+				currentPage = parsed - 1;
+			}
+		}
 
 		loadRepos();
 		loadRegisteredModels();
@@ -463,7 +342,7 @@
 				<div class="flex-1 min-w-[200px]">
 					<Input
 						bind:value={searchQuery}
-						onkeydown={(e) => e.key === 'Enter' && executeSearch()}
+						onkeydown={(e) => e.key === 'Enter' && executeSearch(true)}
 						placeholder={t('models.discover.searchPlaceholder')}
 						clearable
 					>
@@ -479,7 +358,7 @@
 					<div class="grow-1">
 						<Select
 							bind:value={selectedModality}
-							onchange={executeSearch}
+							onchange={() => executeSearch(true)}
 							options={modalityOptions}
 						/>
 					</div>
@@ -488,14 +367,18 @@
 					<div class="grow-1">
 						<Select
 							bind:value={selectedRepoId}
-							onchange={executeSearch}
+							onchange={() => executeSearch(true)}
 							options={enabledRepos.map((r) => ({ value: r.id, label: r.name }))}
 						/>
 					</div>
 
 					<!-- Sort Filter -->
 					<div class="grow-1">
-						<Select bind:value={selectedSort} onchange={executeSearch} options={sortOptions} />
+						<Select
+							bind:value={selectedSort}
+							onchange={() => executeSearch(true)}
+							options={sortOptions}
+						/>
 					</div>
 				</div>
 			</div>
@@ -516,7 +399,7 @@
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
 				{#each searchResults as model (model.id)}
-					<Card>
+					<Card class="overflow-hidden">
 						{#if isModelInstalled(model)}
 							<DiagonalLabel text={t('common.installed')} />
 						{:else if model.requires_auth}
@@ -571,120 +454,58 @@
 									</span>
 								</div>
 
-								<Button variant="primary" size="sm" onclick={() => inspectFiles(model)}>
-									<FileDown size={13} />
-									<span>{t('models.discover.inspectFiles')}</span>
+								<Button variant="secondary" size="sm" onclick={() => inspectFiles(model)}>
+									<Info size={13} />
+									<span>{t('common.details')}</span>
 								</Button>
 							</div>
 						</div>
 					</Card>
 				{/each}
 			</div>
+
+			<!-- Pagination Controls -->
+			{#if searchResults.length > 0 || currentPage > 0}
+				<div class="flex items-center justify-between gap-2 pt-2 px-1">
+					<Button
+						variant="primary"
+						size="sm"
+						disabled={currentPage === 0 || isSearching}
+						onclick={handlePreviousPage}
+					>
+						<ChevronLeft size={14} />
+						<span>{t('common.previous')}</span>
+					</Button>
+
+					<span class="text-xs font-medium text-[var(--text-muted)]">
+						{t('common.page')}
+						{currentPage + 1}
+					</span>
+
+					<Button
+						variant="primary"
+						size="sm"
+						disabled={searchResults.length < 30 || isSearching}
+						onclick={handleNextPage}
+					>
+						<span>{t('common.next')}</span>
+						<ChevronRight size={14} />
+					</Button>
+				</div>
+			{/if}
 		{/if}
 	{/if}
 </div>
 
-<!-- Files & Quants Modal -->
+<!-- Model Details Modal (README + Files) -->
 {#if inspectingModel}
-	<Modal
-		icon={Box}
+	<ModelDetailsModal
 		open={!!inspectingModel}
+		modelId={inspectingModel.id}
 		title={inspectingModel.id}
+		repoId={selectedRepoId}
+		installedModels={registeredModels}
 		onclose={() => (inspectingModel = null)}
-	>
-		<div class="space-y-4">
-			<div class="text-xs text-[var(--text-muted)]">
-				{t('models.discover.selectQuantPrompt')}
-			</div>
-
-			{#if isLoadingDetails}
-				<div class="flex flex-col items-center justify-center p-10 text-[var(--text-muted)] gap-2">
-					<Spinner size={24} />
-					<span class="text-xs">{t('common.loading')}</span>
-				</div>
-			{:else if modelFiles.length === 0}
-				<div class="text-xs text-[var(--text-muted)] p-6 text-center italic">
-					{t('models.discover.noFilesAvailable')}
-				</div>
-			{:else}
-				<div class="space-y-2 max-h-80 overflow-y-auto pr-1">
-					{#each modelFiles as file}
-						{@const fileSize = getEffectiveFileSize(file)}
-						{@const fit = getPerformanceFit(fileSize)}
-						{@const downloadedModel = findDownloadedModelForFile(file, inspectingModel)}
-						{@const isDownloading = enqueuedFiles[file.rfilename]}
-
-						<Card
-							padding="sm"
-							class="transition-all {downloadedModel
-								? 'border border-[var(--primary)] bg-[var(--primary-light)] shadow-xs'
-								: 'border border-[var(--border-color)]/70'}"
-						>
-							<div class="flex items-center justify-between gap-3 text-xs">
-								<div class="min-w-0 flex-1">
-									<div class="flex items-center gap-2 flex-wrap">
-										<span
-											class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs {fit.color}"
-											title={fit.title}
-										></span>
-										<span class="font-mono text-[var(--text-primary)] font-medium truncate block">
-											{file.rfilename.split('/').pop()}
-										</span>
-										{#if file.quant}
-											<Badge variant="info" class="font-mono text-[10px]">
-												{file.quant}
-											</Badge>
-										{/if}
-									</div>
-									<div class="flex items-center gap-2 mt-1">
-										{#if fileSize > 0}
-											<span class="text-[11px] text-[var(--text-muted)] font-mono">
-												{formatBytes(fileSize)}
-											</span>
-											<span class="text-[10px] text-[var(--border-color)]">•</span>
-										{/if}
-										<span
-											class="text-[11px] text-[var(--text-muted)] cursor-help truncate"
-											title={fit.title}
-										>
-											{fit.title}
-										</span>
-									</div>
-								</div>
-
-								<div class="shrink-0 flex items-center gap-2">
-									{#if isDownloading}
-										<Button variant="success" size="sm" disabled>
-											<ArrowDownToLine size={13} class="animate-pulse text-[var(--success-text)]" />
-											<span>{t('common.downloading')}</span>
-										</Button>
-									{:else if downloadedModel}
-										<Button
-											variant="danger"
-											size="sm"
-											onclick={() => handleDeleteDownloaded(downloadedModel)}
-											title={t('common.delete')}
-										>
-											<Trash size={13} />
-											<span>{t('common.delete')}</span>
-										</Button>
-									{:else}
-										<Button
-											variant="primary"
-											size="sm"
-											onclick={() => handleDownload(file)}
-											title={t('common.download')}
-										>
-											<Download size={13} />
-											<span>{t('common.download')}</span>
-										</Button>
-									{/if}
-								</div>
-							</div>
-						</Card>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</Modal>
+		onModelUpdated={loadRegisteredModels}
+	/>
 {/if}

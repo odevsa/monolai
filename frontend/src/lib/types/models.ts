@@ -19,6 +19,8 @@ export interface ModelRecord {
 	modality: string;
 	architecture?: string;
 	source_repo?: string;
+	is_auxiliary?: boolean;
+	auxiliary_type?: string | null;
 	created_at?: string;
 	presets: ModelPreset[];
 	file_exists?: boolean;
@@ -37,6 +39,8 @@ export interface ModelFileItem {
 	format?: string;
 	modality?: string;
 	architecture?: string;
+	is_auxiliary?: boolean;
+	auxiliary_type?: string | null;
 }
 
 export interface RunningModelStatus {
@@ -142,4 +146,8 @@ export interface HubModelItem {
 	siblings: HubModelSibling[];
 	is_gated?: boolean;
 	requires_auth?: boolean;
+}
+
+export interface HubModelReadme {
+	content: string;
 }

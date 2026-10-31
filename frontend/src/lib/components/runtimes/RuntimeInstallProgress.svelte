@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { ProgressBar } from '$lib/components/ui';
+	import { ProgressBar, Spinner } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { InstallProgress } from '$lib/types/runtimes';
 	import { formatBytes } from '$lib/utils/format';
-	import { RefreshCw } from '@lucide/svelte';
 
 	interface RuntimeInstallProgressProps {
 		progress: InstallProgress;
@@ -25,7 +24,7 @@
 >
 	<div class="flex items-center justify-between gap-3 text-xs">
 		<div class="flex items-center gap-2 text-[var(--text-primary)] min-w-0">
-			<RefreshCw size={13} class="animate-spin text-[var(--primary)] shrink-0" />
+			<Spinner size={13} class="text-[var(--primary)] shrink-0" />
 			<span class="font-medium truncate">{statusMessage}</span>
 		</div>
 		<span class="font-mono text-xs font-bold text-[var(--primary)] shrink-0">

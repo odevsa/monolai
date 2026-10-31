@@ -2,7 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { modelsApi } from '$lib/api/models';
-	import { ModelCard, ModelDiscoverTab, ModelDownloadsTab } from '$lib/components/models';
+	import {
+		ModelAuxiliaryCard,
+		ModelCard,
+		ModelDetailsModal,
+		ModelDiscoverTab,
+		ModelDownloadsTab
+	} from '$lib/components/models';
 	import {
 		Alert,
 		Badge,
@@ -15,6 +21,7 @@
 		Spinner,
 		Tabs
 	} from '$lib/components/ui';
+	import Divider from '$lib/components/ui/atoms/Divider.svelte';
 	import { askConfirm, showAlert } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
@@ -38,6 +45,11 @@
 	let selectedModalityFilter = $state<string>('all');
 	let selectedStatusFilter = $state<'all' | 'running' | 'missing'>('all');
 	let copiedId = $state<string | null>(null);
+
+	// Details & action loading states
+	let selectedDetailsModel = $state<ModelRecord | null>(null);
+	let deletingModelId = $state<string | null>(null);
+	let isRefreshing = $state(false);
 
 	let tabItems = $derived([
 		{ id: 'discover', label: t('models.tabs.discover'), icon: Sparkles },
@@ -72,12 +84,25 @@
 		return map;
 	});
 
+	// Cache query params per tab to preserve each tab's independent state
+	let tabQueryMap: Record<TabType, string> = {
+		discover: '',
+		installed: '',
+		downloads: ''
+	};
+
 	// URL Query param tab synchronization
 	$effect(() => {
 		const tabParam = page.url.searchParams.get('tab');
 		if (tabParam === 'discover' || tabParam === 'installed' || tabParam === 'downloads') {
 			if (activeTab !== tabParam) {
 				activeTab = tabParam;
+				if (tabParam === 'installed') {
+					searchQuery = page.url.searchParams.get('q') || '';
+					selectedModalityFilter = page.url.searchParams.get('modality') || 'all';
+					const st = page.url.searchParams.get('status') || 'all';
+					selectedStatusFilter = st === 'running' || st === 'missing' ? st : 'all';
+				}
 			}
 		}
 	});
@@ -109,6 +134,7 @@
 		// Clean discover-specific params
 		url.searchParams.delete('sort');
 		url.searchParams.delete('repo');
+		url.searchParams.delete('page');
 
 		const rawSearch = url.searchParams.toString().replace(/%20/g, '+');
 		const target = `${url.pathname}${rawSearch ? '?' + rawSearch : ''}`;
@@ -117,21 +143,32 @@
 		}
 	}
 
-	function setTab(tab: TabType) {
-		activeTab = tab;
-		const url = new URL(page.url);
-		url.searchParams.set('tab', tab);
+	function setTab(newTab: TabType) {
+		const oldTab = (page.url.searchParams.get('tab') as TabType) || activeTab;
 
-		// Clean query params of other tab
-		url.searchParams.delete('q');
-		url.searchParams.delete('modality');
-		url.searchParams.delete('sort');
-		url.searchParams.delete('repo');
-		url.searchParams.delete('status');
+		// 1. Save current tab's query params (excluding tab parameter itself)
+		const currentUrl = new URL(page.url);
+		currentUrl.searchParams.delete('tab');
+		tabQueryMap[oldTab] = currentUrl.searchParams.toString();
 
-		const rawSearch = url.searchParams.toString();
-		goto(`${url.pathname}?${rawSearch}`, { replaceState: true, noScroll: true });
-		if (tab === 'installed') {
+		// 2. Switch tab
+		activeTab = newTab;
+
+		// 3. Restore target tab's query params
+		const newParams = new URLSearchParams(tabQueryMap[newTab] || '');
+		newParams.set('tab', newTab);
+
+		const target = `${page.url.pathname}?${newParams.toString()}`;
+		goto(target, { replaceState: true, noScroll: true });
+
+		// 4. If switching to installed, sync filter state
+		if (newTab === 'installed') {
+			const q = newParams.get('q') || '';
+			searchQuery = q;
+			const mod = newParams.get('modality') || 'all';
+			selectedModalityFilter = mod;
+			const st = newParams.get('status') || 'all';
+			selectedStatusFilter = st === 'running' || st === 'missing' ? st : 'all';
 			loadModels(true);
 		}
 	}
@@ -165,6 +202,9 @@
 
 		return list;
 	});
+
+	let primaryModels = $derived(filteredModels.filter((m) => !m.is_auxiliary));
+	let auxiliaryModels = $derived(filteredModels.filter((m) => m.is_auxiliary));
 
 	let lastCompletedDownloads = $state<number | null>(null);
 
@@ -212,6 +252,7 @@
 		);
 		if (!confirmed) return;
 
+		deletingModelId = id;
 		try {
 			await modelsApi.delete(id, true);
 			await loadModels(true);
@@ -219,6 +260,31 @@
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
 			await showAlert(msg || t('models.deleteError'), t('common.error'), 'danger');
+		} finally {
+			deletingModelId = null;
+		}
+	}
+
+	async function deleteAuxiliaryFile(id: string, filename: string) {
+		const confirmed = await askConfirm(
+			t('models.auxiliary.deleteConfirmMsg', { filename }),
+			t('models.auxiliary.deleteConfirmTitle'),
+			'danger',
+			t('common.delete'),
+			t('common.cancel')
+		);
+		if (!confirmed) return;
+
+		deletingModelId = id;
+		try {
+			await modelsApi.delete(id, true);
+			await loadModels(true);
+			refreshFeatures(true);
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			await showAlert(msg || t('models.deleteError'), t('common.error'), 'danger');
+		} finally {
+			deletingModelId = null;
 		}
 	}
 
@@ -228,6 +294,11 @@
 		if (tabParam === 'discover' || tabParam === 'installed' || tabParam === 'downloads') {
 			activeTab = tabParam;
 		}
+
+		// Initialize query map for active tab
+		const initialParams = new URLSearchParams(p);
+		initialParams.delete('tab');
+		tabQueryMap[activeTab] = initialParams.toString();
 
 		if (activeTab === 'installed') {
 			const q = p.get('q');
@@ -250,17 +321,7 @@
 
 <div class="w-full px-4 sm:px-8 py-5 md:py-8 pt-16 md:pt-16 max-w-7xl mx-auto box-border space-y-6">
 	<!-- Page Header -->
-	<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box}>
-		<Button
-			variant="secondary"
-			size="md"
-			onclick={() => loadModels(false, true)}
-			disabled={isLoadingData}
-		>
-			<RefreshCw size={14} class={isLoadingData ? 'animate-spin text-[var(--primary)]' : ''} />
-			<span>{t('common.refresh')}</span>
-		</Button>
-	</PageHeader>
+	<PageHeader title={t('models.pageTitle')} subtitle={t('models.pageSubtitle')} icon={Box} />
 
 	<!-- Sub-tabs Navigation Bar -->
 	<Tabs
@@ -366,18 +427,47 @@
 				{/snippet}
 			</EmptyState>
 		{:else}
-			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-				{#each filteredModels as model (model.id)}
-					<ModelCard
-						{model}
-						runningInfo={runningMap.get(model.id)}
-						{copiedId}
-						onCopyId={copyId}
-						onModelUpdated={() => loadModels(true)}
-						onDelete={deleteModel}
-					/>
-				{/each}
+			<div class="space-y-6">
+				{#if primaryModels.length > 0}
+					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+						{#each primaryModels as model (model.id)}
+							<ModelCard
+								{model}
+								runningInfo={runningMap.get(model.id)}
+								{copiedId}
+								isDeleting={deletingModelId === model.id}
+								onCopyId={copyId}
+								onDetails={(m) => (selectedDetailsModel = m)}
+								onModelUpdated={() => loadModels(true)}
+								onDelete={deleteModel}
+							/>
+						{/each}
+					</div>
+				{/if}
+
+				<Divider />
+
+				<!-- Auxiliary Models Grid -->
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+					{#each auxiliaryModels as model (model.id)}
+						<ModelAuxiliaryCard {model} onDelete={deleteAuxiliaryFile} />
+					{/each}
+				</div>
 			</div>
 		{/if}
 	{/if}
 </div>
+
+{#if selectedDetailsModel}
+	<ModelDetailsModal
+		open={!!selectedDetailsModel}
+		modelId={selectedDetailsModel.source_repo ||
+			(selectedDetailsModel.id.includes('/')
+				? selectedDetailsModel.id.split(':')[0]
+				: selectedDetailsModel.id)}
+		title={selectedDetailsModel.name || selectedDetailsModel.id}
+		installedModels={registeredModels}
+		onclose={() => (selectedDetailsModel = null)}
+		onModelUpdated={() => loadModels(true)}
+	/>
+{/if}

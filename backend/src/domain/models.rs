@@ -22,6 +22,8 @@ pub struct ModelRecord {
     pub modality: String,
     pub architecture: Option<String>,
     pub source_repo: Option<String>,
+    pub is_auxiliary: bool,
+    pub auxiliary_type: Option<String>,
     pub created_at: String,
     #[sqlx(default, skip)]
     pub presets: Vec<ModelPreset>,
@@ -145,6 +147,11 @@ pub struct HubModelItem {
     pub requires_auth: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct HubModelReadme {
+    pub content: String,
+}
+
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct ModelItem {
     pub name: String,
@@ -154,6 +161,8 @@ pub struct ModelItem {
     pub format: String,
     pub modality: String,
     pub architecture: Option<String>,
+    pub is_auxiliary: bool,
+    pub auxiliary_type: Option<String>,
     pub size_bytes: u64,
 }
 

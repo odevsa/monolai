@@ -14,6 +14,8 @@ import type { RuntimeManifest } from '$lib/types/runtimes';
 
 export interface FeatureModelItem {
 	id: string;
+	modelId?: string;
+	presetName?: string;
 	runtime: string;
 	flags: string;
 }
@@ -32,47 +34,66 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 		runtimesApi.getManifests().catch(() => [])
 	]);
 
-	const candidates: FeatureModelItem[] = (openaiModels || []).map((om) => {
-		let matchedRuntime = 'llama-cpp';
-		let matchedFlags = '';
+	const candidates: FeatureModelItem[] = [];
 
-		// Match direct model ID, preset ID, or canonical string
-		const directMatch = (backendModels || []).find((bm) => {
-			if (bm.id === om.id) return true;
-			const canonical = formatCanonicalModelString(bm);
-			return canonical === om.id || bm.relative_path === om.id;
-		});
+	for (const om of openaiModels || []) {
+		let matchedModel: ModelRecord | undefined;
+		let matchedPreset: ModelPreset | undefined;
 
-		if (directMatch) {
-			const def = directMatch.presets?.find((p) => p.is_default) || directMatch.presets?.[0];
-			matchedRuntime = def?.runtime_id || directMatch.runtime || 'llama-cpp';
-			const rawFlags = def?.flags ?? directMatch.flags;
-			matchedFlags = typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {});
-		} else {
-			// Check if om.id is in format model_id:preset_name
-			for (const bm of backendModels || []) {
-				const presetMatch = bm.presets?.find(
-					(p) => p.id === om.id || `${bm.id}:${p.name.toLowerCase().replace(/\s+/g, '-')}` === om.id
+		// 1. Check if om.id matches a preset belonging to bm
+		for (const bm of backendModels || []) {
+			const presetMatch = bm.presets?.find((p) => {
+				const slug = p.name.toLowerCase().replace(/\s+/g, '-');
+				if (p.id === om.id) return true;
+
+				const prefixes = [bm.id, bm.relative_path, formatCanonicalModelString(bm)].filter(Boolean);
+
+				return prefixes.some(
+					(prefix) =>
+						om.id === `${prefix}:${slug}` ||
+						(om.id.startsWith(prefix) && om.id.endsWith(`:${slug}`))
 				);
-				if (presetMatch) {
-					matchedRuntime = presetMatch.runtime_id;
-					const rawFlags = presetMatch.flags;
-					matchedFlags = typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {});
-					break;
-				}
+			});
+			if (presetMatch) {
+				matchedModel = bm;
+				matchedPreset = presetMatch;
+				break;
 			}
 		}
 
-		const canonicalId = directMatch
-			? formatCanonicalModelString(directMatch)
+		// 2. Direct match by model ID, relative_path or canonical string
+		if (!matchedModel) {
+			matchedModel = (backendModels || []).find((bm) => {
+				if (bm.id === om.id || bm.relative_path === om.id) return true;
+				return formatCanonicalModelString(bm) === om.id;
+			});
+			if (matchedModel) {
+				matchedPreset =
+					matchedModel.presets?.find((p) => p.is_default) || matchedModel.presets?.[0];
+			}
+		}
+
+		// Skip auxiliary models
+		if (matchedModel?.is_auxiliary) {
+			continue;
+		}
+
+		const matchedRuntime = matchedPreset?.runtime_id || matchedModel?.runtime || 'llama-cpp';
+		const rawFlags = matchedPreset?.flags ?? matchedModel?.flags;
+		const matchedFlags = typeof rawFlags === 'string' ? rawFlags : JSON.stringify(rawFlags || {});
+
+		const canonicalModelId = matchedModel
+			? formatCanonicalModelString(matchedModel)
 			: formatCanonicalModelString(om.id);
 
-		return {
-			id: canonicalId || om.id,
+		candidates.push({
+			id: om.id,
+			modelId: canonicalModelId || om.id,
+			presetName: matchedPreset?.name,
 			runtime: matchedRuntime,
 			flags: matchedFlags
-		};
-	});
+		});
+	}
 
 	if (!features || features.length === 0) {
 		return candidates;

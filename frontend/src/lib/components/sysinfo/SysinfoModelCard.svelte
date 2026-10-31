@@ -5,7 +5,7 @@
 	import type { RunningModelStatus } from '$lib/types/models';
 	import { formatUptime } from '$lib/utils/format';
 	import { parseModelDetails } from '$lib/utils/model';
-	import { Box, Boxes, CircleAlert, Clock, Cpu, Network, Power, RefreshCw } from '@lucide/svelte';
+	import { Box, Boxes, CircleAlert, Clock, Cpu, Network, Power } from '@lucide/svelte';
 
 	interface SysinfoModelCardProps {
 		model: RunningModelStatus;
@@ -148,13 +148,13 @@
 	<div class="flex items-center justify-end pt-1 border-t border-[var(--border-color)]">
 		<Button
 			variant="danger"
+			loading={isUnloading}
 			disabled={isUnloading}
 			onclick={() => onUnload(model.model_id)}
 			title={t('sysinfo.unloadModelTitle', { model: modelDisplayName })}
 			ariaLabel={t('sysinfo.unloadModelTitle', { model: modelDisplayName })}
 		>
 			{#if isUnloading}
-				<RefreshCw size={13} class="animate-spin text-[var(--warning-text)]" />
 				<span>{t('sysinfo.statusLoading')}</span>
 			{:else}
 				<Power size={13} />

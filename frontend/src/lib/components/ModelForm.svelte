@@ -23,6 +23,7 @@
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 	import { Alert, Button, Input, Select, Tabs } from '$lib/components/ui';
+	import { ModelFilePickerInput } from '$lib/components/models';
 	import { t } from '$lib/i18n';
 	import type { ModelRecord } from '$lib/types/models';
 
@@ -519,12 +520,11 @@
 
 									<div class="mt-0.5">
 										{#if flagDef?.type === 'file'}
-											<Select
+											<ModelFilePickerInput
 												value={formFlags[flagKey] || ''}
-												options={getFileOptions(formFlags[flagKey] || '')}
+												filterMode={flagKey === '--mmproj' ? 'auxiliary' : 'all'}
 												onchange={(val: string) => handleFileSelect(flagKey, val)}
 												placeholder={t('models.selectModelFile')}
-												ariaLabel={flagDef.name || flagKey}
 											/>
 										{:else if flagDef?.type === 'enum' && flagDef.options}
 											<Select

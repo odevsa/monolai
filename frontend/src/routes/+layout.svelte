@@ -5,7 +5,7 @@
 	import { settingsApi } from '$lib/api/settings';
 	import SettingsDialog from '$lib/components/SettingsDialog.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import { Badge, ConfirmDialog, FeatureGate, Logo } from '$lib/components/ui';
+	import { Badge, Button, ConfirmDialog, FeatureGate, Logo, Spinner } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { refreshFeatures } from '$lib/featuresStore';
 	import { t } from '$lib/i18n';
@@ -284,12 +284,12 @@
 									<button
 										type="button"
 										class="flex items-center justify-center p-0.5 border-0 bg-transparent {isConnection
-											? 'text-amber-400'
-											: 'text-emerald-400'} cursor-pointer rounded"
+											? 'text-[var(--warning)]'
+											: 'text-[var(--success)]'} cursor-pointer rounded"
 										onclick={() => headerState.sysinfoReconnectFn?.()}
 										title={t('sysinfo.reconnectStream')}
 									>
-										<RefreshCw size={13} class="animate-spin" />
+										<Spinner size={12} />
 									</button>
 								{/if}
 							</Badge>
@@ -317,29 +317,27 @@
 								{#if headerState.logsEnabled && !headerState.logsConnected && headerState.logsReconnectFn}
 									<button
 										type="button"
-										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-amber-400 cursor-pointer rounded"
+										class="flex items-center justify-center p-0.5 border-0 bg-transparent text-[var(--warning)] cursor-pointer rounded"
 										onclick={() => headerState.logsReconnectFn?.()}
 										title={t('sysinfo.reconnectStream')}
 									>
-										<RefreshCw size={13} class="animate-spin" />
+										<Spinner size={12} />
 									</button>
 								{/if}
 							</Badge>
 						{/if}
 						{#if isRuntimesPage}
-							<button
-								type="button"
-								class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-lg pointer-events-auto transition-all duration-150 hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] cursor-pointer"
+							<Button
+								variant="glass"
+								size="md"
 								onclick={() => headerState.runtimesRefreshFn?.()}
+								loading={headerState.runtimesRefreshing}
 								disabled={headerState.runtimesRefreshing}
 								title={t('common.refresh')}
 							>
-								<RefreshCw
-									size={13}
-									class={headerState.runtimesRefreshing ? 'animate-spin text-[var(--primary)]' : ''}
-								/>
+								<RefreshCw size={13} />
 								<span>{t('common.refresh')}</span>
-							</button>
+							</Button>
 						{/if}
 					</div>
 				</header>

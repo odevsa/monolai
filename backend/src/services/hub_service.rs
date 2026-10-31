@@ -1,6 +1,6 @@
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{
-    CreateRepositoryPayload, HubModelItem, HubModelSibling, RepositoryRecord,
+    CreateRepositoryPayload, HubModelItem, HubModelReadme, HubModelSibling, RepositoryRecord,
     UpdateRepositoryPayload,
 };
 use crate::infrastructure::db::RepositoryRepository;
@@ -138,7 +138,7 @@ impl HubService {
         query: Option<&str>,
         modality: Option<&str>,
         sort: Option<&str>,
-        _page: Option<u32>,
+        page: Option<u32>,
     ) -> AppResult<Vec<HubModelItem>> {
         let target_repo = if let Some(rid) = repo_id {
             self.get_repository_by_id(rid).await?
@@ -160,11 +160,11 @@ impl HubService {
 
         match target_repo.repo_type.as_str() {
             "huggingface" => {
-                self.search_huggingface(&target_repo, query, modality, sort)
+                self.search_huggingface(&target_repo, query, modality, sort, page)
                     .await
             }
             _ => {
-                self.search_huggingface(&target_repo, query, modality, sort)
+                self.search_huggingface(&target_repo, query, modality, sort, page)
                     .await
             }
         }
@@ -176,6 +176,7 @@ impl HubService {
         query: Option<&str>,
         modality: Option<&str>,
         sort: Option<&str>,
+        page: Option<u32>,
     ) -> AppResult<Vec<HubModelItem>> {
         let base_url = if repo.base_url.is_empty() {
             "https://huggingface.co"
@@ -192,8 +193,13 @@ impl HubService {
             _ => "downloads",
         };
 
+        let page_idx = page.unwrap_or(0);
+        let limit: u32 = 30;
+        let skip = page_idx * limit;
+
         let mut query_params: Vec<(&str, String)> = vec![
-            ("limit", "30".to_string()),
+            ("limit", limit.to_string()),
+            ("skip", skip.to_string()),
             ("full", "true".to_string()),
             ("sort", hf_sort.to_string()),
             ("direction", "-1".to_string()),
@@ -503,5 +509,50 @@ impl HubService {
             is_gated,
             requires_auth,
         })
+    }
+
+    pub async fn get_model_readme(
+        &self,
+        repo_id: &str,
+        model_id: &str,
+    ) -> AppResult<HubModelReadme> {
+        let repo = self.get_repository_by_id(repo_id).await?;
+        let base_url = if repo.base_url.is_empty() {
+            "https://huggingface.co"
+        } else {
+            repo.base_url.as_str()
+        };
+
+        let effective_base = repo
+            .get_mirror_url()
+            .unwrap_or_else(|| base_url.to_string());
+        let effective_base = effective_base.trim_end_matches('/');
+
+        let branches = ["main", "master"];
+        let filenames = ["README.md", "readme.md"];
+
+        for branch in &branches {
+            for filename in &filenames {
+                let url = format!("{}/{}/raw/{}/{}", effective_base, model_id, branch, filename);
+                let mut req = self.http_client.get(&url);
+                if let Some(ref token) = repo.api_token {
+                    if !token.is_empty() {
+                        req = req.header("Authorization", format!("Bearer {}", token));
+                    }
+                }
+
+                if let Ok(resp) = req.send().await {
+                    if resp.status().is_success() {
+                        let content = resp.text().await.unwrap_or_default();
+                        return Ok(HubModelReadme { content });
+                    }
+                }
+            }
+        }
+
+        Err(AppError::not_found(format!(
+            "README.md not found for model '{}'",
+            model_id
+        )))
     }
 }

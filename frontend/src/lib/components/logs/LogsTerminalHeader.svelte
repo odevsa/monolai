@@ -74,12 +74,13 @@
 			variant="ghost"
 			size="icon"
 			onclick={onRefresh}
+			loading={isLoading}
 			disabled={isLoading}
 			title={t('common.refresh')}
 			ariaLabel={t('common.refresh')}
 			class="w-7 h-7 text-[var(--text-muted)]"
 		>
-			<RefreshCw size={15} class={isLoading ? 'animate-spin text-[var(--primary)]' : ''} />
+			<RefreshCw size={15} />
 		</Button>
 
 		<!-- Download Log File -->

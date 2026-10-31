@@ -72,5 +72,7 @@
 			class="shrink-0"
 		/>
 	{/if}
-	{@render children?.()}
+	{#if !loading || !size.startsWith('icon')}
+		{@render children?.()}
+	{/if}
 </button>

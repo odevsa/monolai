@@ -9,8 +9,9 @@
 		UpdatePresetPayload
 	} from '$lib/types/models';
 	import type { RuntimeManifest } from '$lib/types/runtimes';
-	import { Plus, SlidersVertical, Trash } from '@lucide/svelte';
+	import { Plus, SlidersVertical } from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import FlagRow from './FlagRow.svelte';
 
 	let {
 		open = false,
@@ -89,6 +90,10 @@
 			value: r.id,
 			label: `${r.name} (${r.id})`
 		}))
+	);
+
+	let manifestFlags = $derived(
+		compatibleRuntimes.find((r) => r.id === selectedRuntime)?.flags || []
 	);
 
 	function addFlag() {
@@ -195,15 +200,10 @@
 			{/if}
 		</div>
 
-		<div class="flex items-center justify-between py-2 border-y border-[var(--border-color)]">
-			<div>
-				<span class="text-xs font-semibold text-[var(--text-primary)] block">
-					{t('models.presets.isDefault')}
-				</span>
-				<span class="text-[11px] text-[var(--text-muted)] block">
-					{t('models.presets.isDefaultDesc')}
-				</span>
-			</div>
+		<div class="flex items-center justify-between py-1">
+			<span class="text-xs font-semibold text-[var(--text-primary)]">
+				{t('models.presets.isDefault')}
+			</span>
 			<Toggle bind:checked={isDefault} />
 		</div>
 
@@ -220,21 +220,14 @@
 				</Button>
 			</div>
 
-			<div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+			<div class="space-y-1.5">
 				{#each flagsList as item, index}
-					<div class="flex items-center gap-2">
-						<Input bind:value={item.key} placeholder="--flag-name" class="font-mono text-xs" />
-						<Input bind:value={item.value} placeholder="value" class="font-mono text-xs" />
-						<Button
-							variant="ghost"
-							size="icon-xs"
-							onclick={() => removeFlag(index)}
-							title={t('common.delete')}
-							ariaLabel={t('common.delete')}
-						>
-							<Trash size={12} class="text-[var(--danger-text)]" />
-						</Button>
-					</div>
+					<FlagRow
+						bind:key={item.key}
+						bind:value={item.value}
+						{manifestFlags}
+						onRemove={() => removeFlag(index)}
+					/>
 				{/each}
 			</div>
 		</div>

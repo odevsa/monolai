@@ -129,7 +129,7 @@
 			onclick={onRecheck}
 			class="shadow-sm"
 		>
-			<RefreshCw size={13} class={rechecking ? 'animate-spin' : ''} />
+			<RefreshCw size={13} />
 			<span>{t('setup.recheckConfig')}</span>
 		</Button>
 	</div>

@@ -8,6 +8,8 @@
 
 	interface RegisteredModel {
 		id: string;
+		modelId?: string;
+		presetName?: string;
 		runtime: string;
 		flags: string;
 	}

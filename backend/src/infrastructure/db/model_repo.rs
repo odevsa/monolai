@@ -26,7 +26,7 @@ impl ModelRepository {
 
     pub async fn get_all(&self) -> AppResult<Vec<ModelRecord>> {
         let mut models = sqlx::query_as::<_, ModelRecord>(
-            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, created_at FROM models ORDER BY name ASC",
+            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, is_auxiliary, auxiliary_type, created_at FROM models ORDER BY name ASC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -40,7 +40,7 @@ impl ModelRepository {
 
     pub async fn get_by_id(&self, id: &str) -> AppResult<Option<ModelRecord>> {
         let mut model = sqlx::query_as::<_, ModelRecord>(
-            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, created_at FROM models WHERE id = ?1",
+            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, is_auxiliary, auxiliary_type, created_at FROM models WHERE id = ?1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -58,7 +58,7 @@ impl ModelRepository {
         relative_path: &str,
     ) -> AppResult<Option<ModelRecord>> {
         let mut model = sqlx::query_as::<_, ModelRecord>(
-            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, created_at FROM models WHERE relative_path = ?1",
+            "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, is_auxiliary, auxiliary_type, created_at FROM models WHERE relative_path = ?1",
         )
         .bind(relative_path)
         .fetch_optional(&self.pool)
@@ -73,7 +73,7 @@ impl ModelRepository {
 
     pub async fn insert_model(&self, m: &ModelRecord) -> AppResult<()> {
         sqlx::query(
-            "INSERT INTO models (id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO models (id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, is_auxiliary, auxiliary_type) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         )
         .bind(&m.id)
         .bind(&m.name)
@@ -84,6 +84,8 @@ impl ModelRepository {
         .bind(&m.modality)
         .bind(&m.architecture)
         .bind(&m.source_repo)
+        .bind(m.is_auxiliary)
+        .bind(&m.auxiliary_type)
         .execute(&self.pool)
         .await?;
 

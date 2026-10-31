@@ -123,6 +123,8 @@ impl ModelService {
                     modality: item.modality.clone(),
                     architecture: item.architecture.clone(),
                     source_repo,
+                    is_auxiliary: item.is_auxiliary,
+                    auxiliary_type: item.auxiliary_type.clone(),
                     created_at: String::new(),
                     presets: Vec::new(),
                     file_exists: true,
@@ -130,24 +132,26 @@ impl ModelService {
 
                 let _ = self.repo.insert_model(&record).await;
 
-                // Create default preset with compatible runtime
-                let runtime_id = if item.modality == "text-to-image" {
-                    "sd-cpp"
-                } else {
-                    "llama-cpp"
-                };
+                // Create default preset with compatible runtime only for primary models
+                if !item.is_auxiliary {
+                    let runtime_id = if item.modality == "text-to-image" {
+                        "sd-cpp"
+                    } else {
+                        "llama-cpp"
+                    };
 
-                let default_preset = ModelPreset {
-                    id: format!("{}:default", canonical_id),
-                    model_id: canonical_id,
-                    name: "Default".to_string(),
-                    runtime_id: runtime_id.to_string(),
-                    flags: serde_json::json!({ "--model": item.relative_path }).to_string(),
-                    is_default: true,
-                    created_at: String::new(),
-                };
+                    let default_preset = ModelPreset {
+                        id: format!("{}:default", canonical_id),
+                        model_id: canonical_id,
+                        name: "Default".to_string(),
+                        runtime_id: runtime_id.to_string(),
+                        flags: serde_json::json!({ "--model": item.relative_path }).to_string(),
+                        is_default: true,
+                        created_at: String::new(),
+                    };
 
-                let _ = self.repo.insert_preset(&default_preset).await;
+                    let _ = self.repo.insert_preset(&default_preset).await;
+                }
             }
         }
 

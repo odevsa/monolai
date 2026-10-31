@@ -35,7 +35,7 @@
 </script>
 
 <div
-	class="rounded-2xl flex flex-col transition-all duration-150 {variantClasses[
+	class="relative rounded-2xl flex flex-col transition-all duration-150 {variantClasses[
 		variant
 	]} {paddingClasses[padding]} {className}"
 >

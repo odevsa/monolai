@@ -14,6 +14,7 @@
 		error = false,
 		clearable = false,
 		class: className = '',
+		inputClass = '',
 		id = '',
 		name = '',
 		autocomplete = 'off',
@@ -38,6 +39,7 @@
 		error?: boolean;
 		clearable?: boolean;
 		class?: string;
+		inputClass?: string;
 		id?: string;
 		name?: string;
 		autocomplete?: HTMLInputAttributes['autocomplete'];
@@ -75,9 +77,17 @@
 	function handleClear() {
 		value = '';
 	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			(e.currentTarget as HTMLInputElement)?.blur();
+		}
+		if (onkeydown) onkeydown(e);
+	}
 </script>
 
 <div
+	title={restProps.title}
 	class="relative flex items-center w-full rounded-lg border transition-all duration-150 {variantClasses[
 		variant
 	]} {error
@@ -110,12 +120,13 @@
 		{spellcheck}
 		{oninput}
 		{onchange}
-		{onkeydown}
+		onkeydown={handleKeyDown}
+		enterkeyhint={restProps.enterkeyhint || (type === 'search' ? 'search' : undefined)}
 		{tabindex}
 		{...restProps}
 		class="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] font-normal border-0 outline-none select-text min-w-0 {prefix
 			? 'pl-1.5'
-			: ''} {sizeClasses[size]}"
+			: ''} {sizeClasses[size]} {inputClass}"
 	/>
 
 	{#if clearable && value && !disabled}

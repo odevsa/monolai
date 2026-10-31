@@ -1,6 +1,7 @@
 use crate::core::error::AppResult;
 use crate::domain::{
-    CreateRepositoryPayload, HubModelItem, RepositoryRecord, UpdateRepositoryPayload,
+    CreateRepositoryPayload, HubModelItem, HubModelReadme, RepositoryRecord,
+    UpdateRepositoryPayload,
 };
 use crate::state::AppState;
 use axum::{
@@ -143,4 +144,28 @@ pub async fn get_hub_model_details_handler(
         .get_model_details(&repo_id, &model_id)
         .await?;
     Ok(Json(details))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/hub/readme/{repo_id}/{model_id}",
+    tag = "Hub",
+    params(
+        ("repo_id" = String, Path, description = "Repository ID"),
+        ("model_id" = String, Path, description = "Model ID on the hub")
+    ),
+    responses(
+        (status = 200, description = "Model README markdown content", body = HubModelReadme),
+        (status = 404, description = "README not found")
+    )
+)]
+pub async fn get_hub_model_readme_handler(
+    State(state): State<AppState>,
+    Path((repo_id, model_id)): Path<(String, String)>,
+) -> AppResult<Json<HubModelReadme>> {
+    let readme = state
+        .hub_service
+        .get_model_readme(&repo_id, &model_id)
+        .await?;
+    Ok(Json(readme))
 }
