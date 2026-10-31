@@ -59,10 +59,22 @@
 						<span>{runtime.installed_version}</span>
 						{#if runtime.has_update}
 							<span class="text-[var(--text-muted)]">&rarr;</span>
-							<span class="text-[var(--primary)]">{runtime.version}</span>
+							{#if runtime.release_notes_url}
+								<a
+									href={runtime.release_notes_url}
+									target="_blank"
+									rel="noreferrer"
+									class="text-[var(--primary)] hover:underline"
+									title={t('runtimes.viewReleaseNotes')}
+								>
+									{runtime.version}
+								</a>
+							{:else}
+								<span class="text-[var(--primary)]">{runtime.version}</span>
+							{/if}
 						{/if}
 					{:else}
-						<span>{runtime.version}</span>
+						<span>{runtime.version || '—'}</span>
 					{/if}
 				</div>
 			</div>

@@ -333,10 +333,10 @@
 								onclick={() => headerState.runtimesRefreshFn?.()}
 								loading={headerState.runtimesRefreshing}
 								disabled={headerState.runtimesRefreshing}
-								title={t('common.refresh')}
+								title={t('runtimes.checkUpdates')}
 							>
 								<RefreshCw size={13} />
-								<span>{t('common.refresh')}</span>
+								<span>{t('runtimes.checkUpdates')}</span>
 							</Button>
 						{/if}
 					</div>

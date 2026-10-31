@@ -57,13 +57,65 @@ pub fn format_acceleration_label(id: &str) -> String {
     }
 }
 
+fn default_gitlab_host() -> String {
+    "https://gitlab.com".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum UpstreamConfig {
+    #[serde(rename = "github_release")]
+    GitHubRelease {
+        repository: String,
+        #[serde(default)]
+        include_prereleases: bool,
+        #[serde(default)]
+        tag_regex: Option<String>,
+    },
+    #[serde(rename = "gitlab_release")]
+    GitLabRelease {
+        #[serde(default = "default_gitlab_host")]
+        host: String,
+        project_id: String,
+        #[serde(default)]
+        tag_regex: Option<String>,
+    },
+    #[serde(rename = "http_json")]
+    HttpJson {
+        url: String,
+        #[serde(default)]
+        variables: HashMap<String, String>,
+    },
+    #[serde(rename = "plain_text")]
+    PlainText {
+        url: String,
+        regex: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UpstreamRuntimeEntry {
+    pub version: String,
+    #[serde(default)]
+    pub variables: HashMap<String, String>,
+    #[serde(default)]
+    pub etag: Option<String>,
+    #[serde(default)]
+    pub last_checked_at: u64,
+    #[serde(default)]
+    pub release_notes_url: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RuntimeManifest {
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub version: String,
     #[serde(default)]
     pub variables: HashMap<String, String>,
+    #[serde(default)]
+    pub upstream: Option<UpstreamConfig>,
     #[serde(default)]
     pub icon: Option<String>,
     #[serde(default)]
@@ -84,6 +136,13 @@ pub struct RuntimeManifest {
 }
 
 impl RuntimeManifest {
+    pub fn apply_upstream(&mut self, entry: &UpstreamRuntimeEntry) {
+        self.version = entry.version.clone();
+        for (key, val) in &entry.variables {
+            self.variables.insert(key.clone(), val.clone());
+        }
+    }
+
     pub fn interpolate_string(&self, template: &str) -> String {
         let mut result = template.replace("{version}", &self.version);
         for (key, val) in &self.variables {
@@ -224,4 +283,6 @@ pub struct RuntimeItem {
     pub installed_acceleration: Option<String>,
     pub available_accelerations: Vec<AccelerationOption>,
     pub install_progress: Option<InstallProgress>,
+    #[serde(default)]
+    pub release_notes_url: Option<String>,
 }

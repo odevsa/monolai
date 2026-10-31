@@ -1381,6 +1381,7 @@ dependencies = [
  "futures-util",
  "libc",
  "mime_guess",
+ "regex",
  "reqwest",
  "rust-embed",
  "serde",

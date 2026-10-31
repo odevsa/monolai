@@ -32,4 +32,5 @@ utoipa-swagger-ui = { version = "8.1", features = ["axum", "reqwest"] }
 uuid = { version = "1.10", features = ["v4", "fast-rng", "serde"] }
 thiserror = "1.0"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+regex = "1.10"
 

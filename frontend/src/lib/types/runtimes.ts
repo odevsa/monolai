@@ -32,6 +32,7 @@ export interface Runtime {
 	available_accelerations: AccelerationOption[];
 	install_progress: InstallProgress | null;
 	binary_path?: string | null;
+	release_notes_url?: string | null;
 }
 
 export interface ManifestFlag {

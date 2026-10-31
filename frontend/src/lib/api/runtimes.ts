@@ -4,6 +4,8 @@ import type { Runtime, RuntimeManifest, InstallProgress } from '$lib/types/runti
 export const runtimesApi = {
 	list: () => api.get<Runtime[]>('/api/runtimes'),
 
+	checkUpdates: () => api.post<Runtime[]>('/api/runtimes/check-updates'),
+
 	getManifests: () => api.get<RuntimeManifest[]>('/api/runtime-manifests'),
 
 	getManifestById: (id: string) =>

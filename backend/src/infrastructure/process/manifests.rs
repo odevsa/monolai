@@ -86,32 +86,50 @@ mod tests {
 
     #[test]
     fn test_manifest_target_resolution() {
-        let llama =
+        let mut llama =
             get_manifest_for_runtime(None, "llama-cpp").expect("llama-cpp manifest should exist");
+        llama.version = "b12023".to_string();
         let target = llama.get_download_target("linux", "x86_64", "cpu");
         assert!(target.is_some());
         let target = target.unwrap();
-        assert!(target.url.contains("llama-"));
+        assert!(target.url.contains("llama-b12023"));
     }
 
     #[test]
     fn test_manifest_custom_variables_interpolation() {
-        let sd = get_manifest_for_runtime(None, "sd-cpp").expect("sd-cpp manifest should exist");
+        use crate::domain::runtimes::{UpstreamConfig, UpstreamRuntimeEntry};
+        use std::collections::HashMap;
+
+        let mut sd = get_manifest_for_runtime(None, "sd-cpp").expect("sd-cpp manifest should exist");
+        assert!(matches!(sd.upstream, Some(UpstreamConfig::GitHubRelease { .. })));
+
+        let mut vars = HashMap::new();
+        vars.insert("version".to_string(), "master-1031-c6dfa9d".to_string());
+        vars.insert("commit".to_string(), "c6dfa9d".to_string());
+
+        sd.apply_upstream(&UpstreamRuntimeEntry {
+            version: "master-1031-c6dfa9d".to_string(),
+            variables: vars,
+            etag: None,
+            last_checked_at: 0,
+            release_notes_url: None,
+        });
+
         assert_eq!(
             sd.variables.get("commit").map(|s| s.as_str()),
-            Some("a1ded76")
+            Some("c6dfa9d")
         );
 
         let target = sd
             .get_download_target("linux", "x86_64", "vulkan")
             .expect("vulkan target should exist");
         assert!(
-            target.url.contains("master-945-a1ded76"),
+            target.url.contains("master-1031-c6dfa9d"),
             "URL should contain version: {}",
             target.url
         );
         assert!(
-            target.url.contains("sd-master-a1ded76-bin"),
+            target.url.contains("sd-master-c6dfa9d-bin"),
             "URL should contain interpolated {{commit}}: {}",
             target.url
         );

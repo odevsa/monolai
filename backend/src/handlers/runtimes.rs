@@ -48,6 +48,22 @@ pub async fn runtimes_handler(State(state): State<AppState>) -> Json<Vec<Runtime
     Json(items)
 }
 
+/// Check upstream sources for runtime updates and refresh the root upstream metadata
+#[utoipa::path(
+    post,
+    path = "/api/runtimes/check-updates",
+    tag = "Runtimes",
+    responses(
+        (status = 200, description = "List of all runtimes with refreshed upstream versions", body = Vec<RuntimeItem>)
+    )
+)]
+pub async fn check_runtime_updates_handler(
+    State(state): State<AppState>,
+) -> Json<Vec<RuntimeItem>> {
+    let items = state.runtime_service.check_updates(true).await;
+    Json(items)
+}
+
 /// Trigger background installation/download for a runtime
 #[utoipa::path(
     post,

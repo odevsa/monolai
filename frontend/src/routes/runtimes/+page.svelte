@@ -20,10 +20,40 @@
 	let runtimes = $state<Runtime[]>([]);
 	let selectedAccelerations = $state<Record<string, string>>({});
 	let loading = $state(true);
+	let checkingUpdates = $state(false);
 	let error = $state<string | null>(null);
 
 	// Map of active cancel callbacks keyed by runtime_id
 	const activeStreams: Record<string, () => void> = {};
+
+	function syncSelectedAccelerations() {
+		for (const r of runtimes) {
+			if (!selectedAccelerations[r.id]) {
+				const rec = r.available_accelerations?.find((a) => a.is_recommended);
+				selectedAccelerations[r.id] =
+					r.installed_acceleration ||
+					rec?.id ||
+					r.available_accelerations?.[0]?.id ||
+					r.active_acceleration;
+			}
+		}
+	}
+
+	async function handleCheckUpdates() {
+		try {
+			checkingUpdates = true;
+			headerState.setRuntimesRefreshing(true);
+			error = null;
+			const data = await runtimesApi.checkUpdates();
+			runtimes = data || [];
+			syncSelectedAccelerations();
+		} catch (err: any) {
+			error = err?.message || t('runtimes.errorLoading');
+		} finally {
+			checkingUpdates = false;
+			headerState.setRuntimesRefreshing(false, () => handleCheckUpdates());
+		}
+	}
 
 	async function fetchRuntimes() {
 		try {
@@ -32,17 +62,7 @@
 			error = null;
 			const data = await runtimesApi.list();
 			runtimes = data || [];
-
-			for (const r of runtimes) {
-				if (!selectedAccelerations[r.id]) {
-					const rec = r.available_accelerations?.find((a) => a.is_recommended);
-					selectedAccelerations[r.id] =
-						r.installed_acceleration ||
-						rec?.id ||
-						r.available_accelerations?.[0]?.id ||
-						r.active_acceleration;
-				}
-			}
+			syncSelectedAccelerations();
 
 			// Reconnect SSE for any runtime currently downloading/extracting
 			for (const runtime of runtimes) {
@@ -54,7 +74,7 @@
 			error = err?.message || t('runtimes.errorLoading');
 		} finally {
 			loading = false;
-			headerState.setRuntimesRefreshing(false);
+			headerState.setRuntimesRefreshing(false, () => handleCheckUpdates());
 		}
 	}
 
@@ -96,7 +116,7 @@
 
 	onMount(() => {
 		fetchRuntimes();
-		headerState.setRuntimesRefreshing(false, () => fetchRuntimes());
+		headerState.setRuntimesRefreshing(false, () => handleCheckUpdates());
 
 		const handleNavRuntimes = () => {
 			fetchRuntimes();
@@ -116,7 +136,7 @@
 	});
 
 	afterNavigate(() => {
-		headerState.setRuntimesRefreshing(false, () => fetchRuntimes());
+		headerState.setRuntimesRefreshing(false, () => handleCheckUpdates());
 	});
 
 	async function installRuntime(runtimeId: string) {

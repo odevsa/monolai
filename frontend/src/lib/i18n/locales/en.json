@@ -382,6 +382,8 @@
 		"noRuntimesFound": "No runtimes available in manifest",
 		"noRuntimesDesc": "No executable runtime backends configured on the server.",
 		"visitRepo": "Visit official repository",
+		"checkUpdates": "Check for updates",
+		"viewReleaseNotes": "View release notes",
 		"description": {
 			"llama-cpp": "High-performance LLM inference engine in C/C++ supporting text generation, OpenAI-compatible HTTP chat and completion endpoints, multimodal vision models, and full or partial GPU layer offloading (CUDA, ROCm, Vulkan, and CPU).",
 			"sd-cpp": "Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image, SD1.x, SD2.x, SDXL, FLUX, and SD3.5 model architectures with GPU offload."

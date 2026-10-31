@@ -50,8 +50,8 @@ use crate::{
         },
         runtime_manifests::{get_runtime_manifest_by_id_handler, get_runtime_manifests_handler},
         runtimes::{
-            install_runtime_handler, install_stream_handler, runtimes_handler,
-            uninstall_runtime_handler,
+            check_runtime_updates_handler, install_runtime_handler, install_stream_handler,
+            runtimes_handler, uninstall_runtime_handler,
         },
         settings::{
             delete_setting_handler, get_all_settings_handler, get_setting_handler,
@@ -153,6 +153,7 @@ fn api_router() -> Router<AppState> {
         .route("/config/setup", post(save_setup_config_handler))
         // Runtimes & Manifests
         .route("/runtimes", get(runtimes_handler))
+        .route("/runtimes/check-updates", post(check_runtime_updates_handler))
         .route("/runtimes/:id/install", post(install_runtime_handler))
         .route("/runtimes/:id/install/stream", get(install_stream_handler))
         .route(

@@ -10,6 +10,7 @@ use utoipa::OpenApi;
         crate::handlers::config::hardware_detect_handler,
         crate::handlers::config::save_setup_config_handler,
         crate::handlers::runtimes::runtimes_handler,
+        crate::handlers::runtimes::check_runtime_updates_handler,
         crate::handlers::runtimes::install_runtime_handler,
         crate::handlers::runtimes::install_stream_handler,
         crate::handlers::runtimes::uninstall_runtime_handler,

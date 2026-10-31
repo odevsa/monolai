@@ -1,9 +1,10 @@
 id: sd-cpp
 name: "Stable Diffusion C++ Server"
-version: "master-1031-c6dfa9d"
-variables:
-  commit: "c6dfa9d"
 website: "https://github.com/leejet/stable-diffusion.cpp"
+upstream:
+  type: github_release
+  repository: "leejet/stable-diffusion.cpp"
+  tag_regex: "master-\\d+-(?P<commit>[a-f0-9]+)"
 description: |
   Stable Diffusion inference in pure C/C++ supporting text-to-image, image-to-image,
   SD1.x, SD2.x, SDXL, FLUX, and SD3.5 model architectures with GPU offload.
