@@ -504,6 +504,7 @@
 		modelId={inspectingModel.id}
 		title={inspectingModel.id}
 		repoId={selectedRepoId}
+		initialModality={inspectingModel.modality}
 		installedModels={registeredModels}
 		onclose={() => (inspectingModel = null)}
 		onModelUpdated={loadRegisteredModels}

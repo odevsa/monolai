@@ -462,8 +462,13 @@ async fn main() {
         config_lock.clone(),
     ));
 
-    // Sync any pre-existing or manual files placed in the models folder
-    let _ = model_service.sync_local_models().await;
+    // Sync any pre-existing or manual files placed in the models folder in the background so port binds immediately
+    let initial_model_service = model_service.clone();
+    tokio::spawn(async move {
+        if let Err(e) = initial_model_service.sync_local_models().await {
+            tracing::warn!("Initial background model sync encountered an error: {}", e);
+        }
+    });
 
     // 9. Build AppState
     let state = AppState {

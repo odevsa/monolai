@@ -113,9 +113,23 @@ fn read_value<R: Read + Seek>(reader: &mut R, value_type: u32, version: u32) -> 
                 read_u32(reader)? as usize
             };
 
-            // Avoid unbounded allocation for large arrays (e.g. token lists)
-            if elem_type == 8 && count > 1000 {
-                // Large string array (e.g. tokenizer tokens) -> skip elements
+            // Fixed-size primitive types: can be skipped in a single seek!
+            let fixed_size: Option<usize> = match elem_type {
+                0 | 1 | 7 => Some(1),
+                2 | 3 => Some(2),
+                4 | 5 | 6 => Some(4),
+                10 | 11 | 12 => Some(8),
+                _ => None,
+            };
+
+            if let Some(size) = fixed_size {
+                let total_bytes = (count as u64).saturating_mul(size as u64);
+                reader.seek(SeekFrom::Current(total_bytes as i64)).ok()?;
+                return Some(GgufValue::Other);
+            }
+
+            // String arrays: skip each string by reading length prefix and seeking
+            if elem_type == 8 {
                 for _ in 0..count {
                     let s_len = if version >= 2 {
                         read_u64(reader)?
@@ -127,21 +141,11 @@ fn read_value<R: Read + Seek>(reader: &mut R, value_type: u32, version: u32) -> 
                 return Some(GgufValue::Other);
             }
 
-            let mut items = Vec::new();
-            for _ in 0..count.min(100) {
-                if let Some(val) = read_value(reader, elem_type, version) {
-                    items.push(val);
-                } else {
-                    return None;
-                }
+            // Fallback for nested or unknown arrays
+            for _ in 0..count {
+                read_value(reader, elem_type, version)?;
             }
-            // Skip remaining if count > 100
-            if count > 100 {
-                for _ in 100..count {
-                    let _ = read_value(reader, elem_type, version);
-                }
-            }
-            Some(GgufValue::Array(items))
+            Some(GgufValue::Other)
         }
         10 => Some(GgufValue::Uint64(read_u64(reader)?)),
         11 => {
@@ -235,25 +239,62 @@ pub fn parse_safetensors_metadata<P: AsRef<Path>>(path: P) -> Option<serde_json:
 
 pub fn map_architecture_to_modality(arch: &str) -> &'static str {
     let lower = arch.to_lowercase();
-    match lower.as_str() {
+    let trimmed = lower.trim();
+
+    // Direct exact matches for known families
+    match trimmed {
+        // Text-to-image / Diffusion architectures
+        "flux" | "sd1" | "sd2" | "sdxl" | "sd3" | "sd3.5" | "stable-diffusion"
+        | "stable_diffusion" | "diffusion" | "pony" => return "text-to-image",
+
+        // Speech-to-text (ASR)
+        "whisper" | "sensevoice" | "funasr" | "paraformer" | "conformer" | "zipformer" => {
+            return "speech-to-text"
+        }
+
+        // Text-to-speech (TTS)
+        "kokoro" | "kokoro_tts" | "kokoro-tts" | "bark" | "xtts" | "xtts2" | "chattts"
+        | "cosyvoice" | "cosyvoice2" | "f5_tts" | "f5tts" | "e2_tts" | "fish_speech"
+        | "spark_tts" | "megatts" | "metavoice" | "valle" | "vall_e" | "tortoise"
+        | "parler_tts" | "vits" | "fastspeech" | "fastspeech2" | "glow_tts" | "tacotron"
+        | "tacotron2" => return "text-to-speech",
+
+        // Embeddings
+        "bert" | "nomic_bert" | "bge" | "jina" => return "embeddings",
+
+        _ => {}
+    }
+
+    // Heuristics for compound architectural identifiers
+    if trimmed.contains("tts")
+        || trimmed.contains("text_to_speech")
+        || trimmed.contains("text-to-speech")
+        || (trimmed.contains("voice") && !trimmed.contains("sensevoice"))
+        || trimmed.contains("fish_speech")
+    {
+        return "text-to-speech";
+    }
+
+    if trimmed.contains("asr")
+        || trimmed.contains("stt")
+        || trimmed.contains("speech_to_text")
+        || trimmed.contains("speech-to-text")
+        || trimmed.contains("whisper")
+        || trimmed.contains("sensevoice")
+    {
+        return "speech-to-text";
+    }
+
+    if trimmed.contains("diffusion") || trimmed.contains("flux") {
+        return "text-to-image";
+    }
+
+    match trimmed {
         // Text-to-text architectures
         "llama" | "qwen" | "qwen2" | "qwen2.5" | "mistral" | "mixtral" | "phi" | "phi3"
         | "gemma" | "gemma2" | "deepseek" | "deepseek2" | "starcoder" | "starcoder2"
         | "command-r" | "bloom" | "falcon" | "mpt" | "baichuan" | "gpt2" | "gptj" | "gptneox"
         | "chatglm" | "internlm" | "nemotron" | "olmo" => "text-to-text",
-
-        // Text-to-image / Diffusion architectures
-        "flux" | "sd1" | "sd2" | "sdxl" | "sd3" | "sd3.5" | "stable-diffusion"
-        | "stable_diffusion" | "diffusion" | "pony" => "text-to-image",
-
-        // Speech-to-text
-        "whisper" => "speech-to-text",
-
-        // Text-to-speech
-        "bark" | "xtts" | "kokoro" => "text-to-speech",
-
-        // Embeddings
-        "bert" | "nomic_bert" | "bge" | "jina" => "embeddings",
 
         _ => "text-to-text",
     }
@@ -267,9 +308,31 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         .unwrap_or_default()
         .to_lowercase();
 
+    // Default to folder modality if located within a canonical category folder
+    let mut default_modality = "text-to-text";
+    for component in path_ref.components() {
+        if let std::path::Component::Normal(c) = component {
+            let s = c.to_string_lossy();
+            if s == "text-to-speech"
+                || s == "speech-to-text"
+                || s == "text-to-image"
+                || s == "embeddings"
+            {
+                default_modality = match s.as_ref() {
+                    "text-to-speech" => "text-to-speech",
+                    "speech-to-text" => "speech-to-text",
+                    "text-to-image" => "text-to-image",
+                    "embeddings" => "embeddings",
+                    _ => "text-to-text",
+                };
+                break;
+            }
+        }
+    }
+
     let mut info = ModelFileInfo {
         format: ext.clone(),
-        modality: "text-to-text".to_string(),
+        modality: default_modality.to_string(),
         architecture: None,
         model_name: None,
         is_auxiliary: false,
@@ -280,7 +343,11 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         if let Some(meta) = parse_gguf_metadata(path_ref) {
             if let Some(arch) = meta.get("general.architecture") {
                 info.architecture = Some(arch.clone());
-                info.modality = map_architecture_to_modality(arch).to_string();
+                let mapped = map_architecture_to_modality(arch);
+                // Prefer specific mapped modality; if generic text-to-text but directory is audio/image, keep directory
+                if mapped != "text-to-text" || default_modality == "text-to-text" {
+                    info.modality = mapped.to_string();
+                }
             }
             if let Some(name) = meta.get("general.name") {
                 info.model_name = Some(name.clone());
@@ -421,6 +488,10 @@ mod tests {
         assert_eq!(map_architecture_to_modality("qwen2"), "text-to-text");
         assert_eq!(map_architecture_to_modality("flux"), "text-to-image");
         assert_eq!(map_architecture_to_modality("whisper"), "speech-to-text");
+        assert_eq!(map_architecture_to_modality("sensevoice"), "speech-to-text");
+        assert_eq!(map_architecture_to_modality("kokoro"), "text-to-speech");
+        assert_eq!(map_architecture_to_modality("kokoro_tts"), "text-to-speech");
+        assert_eq!(map_architecture_to_modality("qwen3_tts"), "text-to-speech");
         assert_eq!(map_architecture_to_modality("bert"), "embeddings");
     }
 }

@@ -53,6 +53,7 @@ impl ModelRepository {
         Ok(model)
     }
 
+    #[allow(dead_code)]
     pub async fn find_by_relative_path(
         &self,
         relative_path: &str,
@@ -100,6 +101,27 @@ impl ModelRepository {
             .bind(id)
             .execute(&self.pool)
             .await?;
+        Ok(())
+    }
+
+    pub async fn update_model_metadata(
+        &self,
+        id: &str,
+        modality: &str,
+        architecture: Option<&str>,
+        is_auxiliary: bool,
+        auxiliary_type: Option<&str>,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "UPDATE models SET modality = ?1, architecture = ?2, is_auxiliary = ?3, auxiliary_type = ?4 WHERE id = ?5",
+        )
+        .bind(modality)
+        .bind(architecture)
+        .bind(is_auxiliary)
+        .bind(auxiliary_type)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 

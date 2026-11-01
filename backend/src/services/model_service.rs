@@ -10,11 +10,12 @@ use crate::infrastructure::process::manager::{
     ProcessManager,
 };
 use crate::infrastructure::process::manifests::get_runtime_manifests;
-use crate::infrastructure::scanner::scan_models;
-use std::path::PathBuf;
+use crate::infrastructure::scanner::{discover_model_files, scan_models};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use std::time::Instant;
+use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct ModelService {
@@ -23,6 +24,7 @@ pub struct ModelService {
     process_manager: ProcessManager,
     config: Arc<RwLock<AppConfig>>,
     last_synced: Arc<RwLock<Option<Instant>>>,
+    sync_lock: Arc<Mutex<()>>,
 }
 
 impl ModelService {
@@ -38,6 +40,7 @@ impl ModelService {
             process_manager,
             config,
             last_synced: Arc::new(RwLock::new(None)),
+            sync_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -71,17 +74,26 @@ impl ModelService {
     }
 
     pub async fn sync_local_models(&self) -> AppResult<()> {
+        let _guard = self.sync_lock.lock().await;
         self.setup_canonical_folders().await;
         let models_dir = self.resolve_models_dir().await;
 
         let dir_clone = models_dir.clone();
-        let scanned = tokio::task::spawn_blocking(move || scan_models(&dir_clone))
+        // 1. Discover all candidate model files by directory walking (0 files opened, instant filesystem metadata only)
+        let discovered_files = tokio::task::spawn_blocking(move || discover_model_files(&dir_clone))
             .await
-            .map_err(|e| AppError::internal(format!("Model scanner task failed: {}", e)))?;
+            .map_err(|e| AppError::internal(format!("Model discovery task failed: {}", e)))?;
 
-        for item in scanned {
-            let existing = self.repo.find_by_relative_path(&item.relative_path).await?;
-            let norm_path = item.relative_path.replace('\\', "/");
+        // 2. Fetch all known models from SQLite once
+        let all_db_models = self.repo.get_all().await?;
+        let existing_map: HashMap<String, ModelRecord> = all_db_models
+            .into_iter()
+            .map(|m| (m.relative_path.clone(), m))
+            .collect();
+
+        // 3. Process each discovered file
+        for file in discovered_files {
+            let norm_path = file.relative_path.replace('\\', "/");
             let parts: Vec<&str> = norm_path.split('/').collect();
 
             // Canonical structure: {type}/{user}/{model}:{filename}
@@ -89,19 +101,24 @@ impl ModelService {
                 let user = parts[1];
                 let repo = parts[2];
                 let repo_slug = format!("{}/{}", user, repo);
-                let id = format!("{}/{}:{}", user, repo, item.filename);
+                let id = format!("{}/{}:{}", user, repo, file.filename);
                 (id, repo_slug.clone(), Some(repo_slug))
             } else if parts.len() == 3 {
                 let folder = parts[1];
-                let id = format!("{}:{}", folder, item.filename);
+                let id = format!("{}:{}", folder, file.filename);
                 (id, folder.to_string(), Some(folder.to_string()))
             } else {
-                (item.filename.clone(), item.name.clone(), None)
+                let stem = Path::new(&file.filename)
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| file.filename.clone());
+                (file.filename.clone(), stem, None)
             };
 
-            if let Some(existing_record) = existing {
-                // If model has an outdated ID, migrate it to the canonical {user}/{model}:{filename} pattern
-                if existing_record.id != canonical_id {
+            if let Some(existing_record) = existing_map.get(&file.relative_path) {
+                // The file ALREADY exists in the database!
+                // We do NOT open or inspect the file header, avoiding disk I/O completely.
+                let current_id = if existing_record.id != canonical_id {
                     let _ = self
                         .repo
                         .update_model_id(
@@ -111,20 +128,86 @@ impl ModelService {
                             source_repo.as_deref(),
                         )
                         .await;
+                    canonical_id.clone()
+                } else {
+                    existing_record.id.clone()
+                };
+
+                // One-time self-healing/migration check: only if model was misclassified as text-to-text
+                // but resides in an audio or image folder or has an audio architecture
+                let needs_migration = existing_record.modality == "text-to-text"
+                    && (norm_path.starts_with("text-to-speech/")
+                        || norm_path.starts_with("speech-to-text/")
+                        || norm_path.starts_with("text-to-image/")
+                        || norm_path.starts_with("embeddings/")
+                        || existing_record.architecture.as_deref() == Some("kokoro_tts"));
+
+                if needs_migration {
+                    let full_path = models_dir.join(&file.relative_path);
+                    let inspect = crate::infrastructure::scanner::gguf::inspect_model_file(&full_path);
+                    if inspect.modality != existing_record.modality
+                        || inspect.architecture != existing_record.architecture
+                    {
+                        let _ = self
+                            .repo
+                            .update_model_metadata(
+                                &current_id,
+                                &inspect.modality,
+                                inspect.architecture.as_deref(),
+                                inspect.is_auxiliary,
+                                inspect.auxiliary_type.as_deref(),
+                            )
+                            .await;
+
+                        let target_runtime = if inspect.modality == "text-to-image" {
+                            "sd-cpp"
+                        } else if inspect.modality == "text-to-speech"
+                            || inspect.modality == "speech-to-text"
+                        {
+                            "audio-cpp"
+                        } else {
+                            "llama-cpp"
+                        };
+
+                        if let Ok(presets) = self.repo.get_presets_for_model(&current_id).await {
+                            for mut p in presets {
+                                if p.is_default && p.runtime_id != target_runtime {
+                                    p.runtime_id = target_runtime.to_string();
+                                    p.flags = crate::infrastructure::process::build_default_preset_flags(
+                                        None,
+                                        target_runtime,
+                                        &file.relative_path,
+                                    );
+                                    let _ = self.repo.update_preset(&p).await;
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
+                // BRAND NEW MODEL added manually into models directory!
+                // Inspect header once to register and build presets.
+                let full_path = models_dir.join(&file.relative_path);
+                let inspect = crate::infrastructure::scanner::gguf::inspect_model_file(&full_path);
+                let name = inspect.model_name.unwrap_or_else(|| {
+                    Path::new(&file.filename)
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| display_name.clone())
+                });
+
                 let record = ModelRecord {
                     id: canonical_id.clone(),
-                    name: display_name,
-                    filename: item.filename.clone(),
-                    relative_path: item.relative_path.clone(),
-                    size_bytes: item.size_bytes as i64,
-                    format: item.format.clone(),
-                    modality: item.modality.clone(),
-                    architecture: item.architecture.clone(),
+                    name,
+                    filename: file.filename.clone(),
+                    relative_path: file.relative_path.clone(),
+                    size_bytes: file.size_bytes as i64,
+                    format: file.format.clone(),
+                    modality: inspect.modality.clone(),
+                    architecture: inspect.architecture.clone(),
                     source_repo,
-                    is_auxiliary: item.is_auxiliary,
-                    auxiliary_type: item.auxiliary_type.clone(),
+                    is_auxiliary: inspect.is_auxiliary,
+                    auxiliary_type: inspect.auxiliary_type.clone(),
                     created_at: String::new(),
                     presets: Vec::new(),
                     file_exists: true,
@@ -132,11 +215,12 @@ impl ModelService {
 
                 let _ = self.repo.insert_model(&record).await;
 
-                // Create default preset with compatible runtime only for primary models
-                if !item.is_auxiliary {
-                    let runtime_id = if item.modality == "text-to-image" {
+                if !inspect.is_auxiliary {
+                    let runtime_id = if inspect.modality == "text-to-image" {
                         "sd-cpp"
-                    } else if item.modality == "text-to-speech" || item.modality == "speech-to-text" {
+                    } else if inspect.modality == "text-to-speech"
+                        || inspect.modality == "speech-to-text"
+                    {
                         "audio-cpp"
                     } else {
                         "llama-cpp"
@@ -150,7 +234,7 @@ impl ModelService {
                         flags: crate::infrastructure::process::build_default_preset_flags(
                             None,
                             runtime_id,
-                            &item.relative_path,
+                            &file.relative_path,
                         ),
                         is_default: true,
                         created_at: String::new(),
@@ -182,7 +266,7 @@ impl ModelService {
         let should_sync = {
             let ls = self.last_synced.read().await;
             match *ls {
-                Some(inst) => force_sync || inst.elapsed() > Duration::from_secs(30),
+                Some(_) => force_sync,
                 None => true,
             }
         };

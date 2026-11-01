@@ -232,6 +232,17 @@
 		}
 	}
 
+	async function handleSyncDisk() {
+		if (isRefreshing) return;
+		isRefreshing = true;
+		try {
+			await loadModels(true, true);
+			refreshFeatures(true);
+		} finally {
+			isRefreshing = false;
+		}
+	}
+
 	async function copyId(id: string) {
 		const ok = await copyToClipboard(id);
 		if (ok) {
@@ -384,6 +395,17 @@
 							options={statusOptions}
 						/>
 					</div>
+
+					<!-- Refresh / Sync Disk Button -->
+					<Button
+						variant="secondary"
+						disabled={isRefreshing || isLoadingData}
+						onclick={handleSyncDisk}
+						title={t('common.refresh')}
+					>
+						<RefreshCw size={15} class={isRefreshing ? 'animate-spin' : ''} />
+						<span class="hidden sm:inline">{t('common.refresh')}</span>
+					</Button>
 				</div>
 			</div>
 		</Card>
@@ -466,6 +488,7 @@
 				? selectedDetailsModel.id.split(':')[0]
 				: selectedDetailsModel.id)}
 		title={selectedDetailsModel.name || selectedDetailsModel.id}
+		initialModality={selectedDetailsModel.modality}
 		installedModels={registeredModels}
 		onclose={() => (selectedDetailsModel = null)}
 		onModelUpdated={() => loadModels(true)}

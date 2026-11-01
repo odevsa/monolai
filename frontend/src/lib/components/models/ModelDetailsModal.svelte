@@ -16,7 +16,7 @@
 	import { t } from '$lib/i18n';
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import { hostState } from '$lib/state/host.svelte';
-	import type { HubModelSibling, ModelRecord } from '$lib/types/models';
+	import type { HubModelItem, HubModelSibling, ModelRecord } from '$lib/types/models';
 	import { formatBytes } from '$lib/utils/format';
 	import { resolveMarkdownRelativeUrls, stripMarkdownFrontmatter } from '$lib/utils/markdown';
 	import {
@@ -35,6 +35,7 @@
 		modelId,
 		title,
 		repoId = 'huggingface',
+		initialModality,
 		installedModels = [],
 		onclose,
 		onModelUpdated
@@ -43,6 +44,7 @@
 		modelId: string;
 		title?: string;
 		repoId?: string;
+		initialModality?: string;
 		installedModels?: ModelRecord[];
 		onclose?: () => void;
 		onModelUpdated?: () => void;
@@ -54,6 +56,7 @@
 	let isLoadingReadme = $state(false);
 	let readmeError = $state<string | null>(null);
 
+	let modelDetails = $state<HubModelItem | null>(null);
 	let modelFiles = $state<HubModelSibling[]>([]);
 	let isLoadingDetails = $state(false);
 	let detailsError = $state<string | null>(null);
@@ -102,6 +105,7 @@
 					activeModalTab = 'readme';
 					readmeContent = null;
 					readmeError = null;
+					modelDetails = null;
 					modelFiles = [];
 					detailsError = null;
 					loadReadme();
@@ -140,6 +144,7 @@
 		detailsError = null;
 		try {
 			const details = await hubApi.getModelDetails(repoId, cleanRepoId);
+			modelDetails = details;
 			modelFiles = details.siblings || [];
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
@@ -218,6 +223,8 @@
 		const resolvedUrl =
 			file.download_url || `https://huggingface.co/${cleanRepoId}/resolve/main/${file.rfilename}`;
 
+		const effectiveModality = modelDetails?.modality || initialModality || 'text-to-text';
+
 		try {
 			await downloadStore.enqueue({
 				url: resolvedUrl,
@@ -225,7 +232,7 @@
 				model_name: cleanRepoId,
 				filename,
 				repo_id: repoId,
-				modality: 'text-to-text',
+				modality: effectiveModality,
 				size_bytes: file.size || 0
 			});
 		} catch (err: unknown) {
