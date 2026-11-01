@@ -176,6 +176,7 @@ flags:
     name: "Model File"
     description: "Path to the main GGUF model file"
     type: "file"
+    model: true
     important: true
     default_value: ""
   - flag: "--ctx-size"
@@ -194,31 +195,26 @@ flags:
     name: "Parallel Slots"
     description: "Number of parallel request execution slots for continuous batching"
     type: "int"
-    important: false
     default_value: "1"
   - flag: "--threads"
     name: "CPU Threads"
     description: "Number of CPU threads to use during generation (default: physical cores)"
     type: "int"
-    important: false
     default_value: "8"
   - flag: "--threads-batch"
     name: "Batch CPU Threads"
     description: "Number of CPU threads to use during prompt batch processing"
     type: "int"
-    important: false
     default_value: "8"
   - flag: "--batch-size"
     name: "Logical Batch Size"
     description: "Logical maximum batch size for prompt processing"
     type: "int"
-    important: false
     default_value: "2048"
   - flag: "--ubatch-size"
     name: "Physical Batch Size"
     description: "Physical maximum batch size for prompt processing"
     type: "int"
-    important: false
     default_value: "512"
 
   # Multimodal & Vision
@@ -226,13 +222,11 @@ flags:
     name: "Multimodal Projector"
     description: "Path to the mmproj GGUF file for vision/audio models"
     type: "file-auxiliary"
-    important: false
     default_value: ""
   - flag: "--image-max-threads"
     name: "Image Max Threads"
     description: "Maximum number of threads for image preprocessing"
     type: "int"
-    important: false
     default_value: "4"
 
   # Hardware Acceleration & Memory
@@ -240,7 +234,6 @@ flags:
     name: "Flash Attention"
     description: "Enable Flash Attention (reduces VRAM and increases speed)"
     type: "enum"
-    important: false
     default_value: "auto"
     options:
       - "auto"
@@ -250,25 +243,21 @@ flags:
     name: "Disable mmap"
     description: "Do not memory-map model files (loads fully into RAM, slower startup)"
     type: "bool"
-    important: false
     default_value: "false"
   - flag: "--mlock"
     name: "Memory Lock"
     description: "Force the system to keep model memory locked in RAM (prevents swapping)"
     type: "bool"
-    important: false
     default_value: "false"
   - flag: "--no-kv-offload"
     name: "Disable KV Offload"
     description: "Disable KV cache offloading to GPU VRAM"
     type: "bool"
-    important: false
     default_value: "false"
   - flag: "--cache-type-k"
     name: "KV Cache Type (K)"
     description: "Quantization data type for K cache"
     type: "enum"
-    important: false
     default_value: "f16"
     options:
       - "f16"
@@ -280,7 +269,6 @@ flags:
     name: "KV Cache Type (V)"
     description: "Quantization data type for V cache"
     type: "enum"
-    important: false
     default_value: "f16"
     options:
       - "f16"
@@ -292,7 +280,6 @@ flags:
     name: "Multi-GPU Split Mode"
     description: "How to split the model across multiple GPUs"
     type: "enum"
-    important: false
     default_value: "layer"
     options:
       - "layer"
@@ -302,25 +289,21 @@ flags:
     name: "Main GPU Index"
     description: "Primary GPU index used for computation"
     type: "int"
-    important: false
     default_value: "0"
   - flag: "--tensor-split"
     name: "Tensor Split"
     description: "Fraction of the model offloaded to each GPU (comma-separated, e.g. 3,1)"
     type: "string"
-    important: false
     default_value: ""
   - flag: "--device"
     name: "Device Selection"
     description: "Comma-separated device list for offloading (e.g. CUDA0, CUDA1, Vulkan0)"
     type: "string"
-    important: false
     default_value: ""
   - flag: "--defrag-thold"
     name: "KV Defragmentation Threshold"
     description: "KV cache defragmentation threshold (negative to disable)"
     type: "number"
-    important: false
     default_value: "-1.0"
 
   # LoRA & Adapters
@@ -328,19 +311,16 @@ flags:
     name: "LoRA Adapter"
     description: "Path to a LoRA adapter file"
     type: "file-auxiliary"
-    important: false
     default_value: ""
   - flag: "--lora-scaled"
     name: "LoRA Scaled"
     description: "Path to a LoRA adapter file with explicit scale (format: file:scale)"
     type: "string"
-    important: false
     default_value: ""
   - flag: "--control-vector"
     name: "Control Vector"
     description: "Path to control vector file for steering model generation"
     type: "file-auxiliary"
-    important: false
     default_value: ""
 
   # Endpoints & Templates
@@ -348,43 +328,36 @@ flags:
     name: "Enable Embeddings"
     description: "Enable text embedding generation endpoint"
     type: "bool"
-    important: false
     default_value: "false"
   - flag: "--reranking"
     name: "Enable Reranking"
     description: "Enable text reranking endpoint"
     type: "bool"
-    important: false
     default_value: "false"
   - flag: "--chat-template"
     name: "Chat Template"
     description: "Name of built-in chat template (e.g. llama3, chatml, deepseek, mistral)"
     type: "string"
-    important: false
     default_value: ""
   - flag: "--jinja"
     name: "Enable Jinja"
     description: "Use Jinja templating engine for formatting chat messages"
     type: "bool"
-    important: false
     default_value: "true"
   - flag: "--api-key"
     name: "API Key"
     description: "Require an API key for authorized requests"
     type: "string"
-    important: false
     default_value: ""
   - flag: "--timeout"
     name: "Server Timeout"
     description: "Server read/write timeout in seconds"
     type: "int"
-    important: false
     default_value: "600"
   - flag: "--no-webui"
     name: "Disable WebUI"
     description: "Disable the built-in llama.cpp web UI, serving only API routes"
     type: "bool"
-    important: false
     default_value: "true"
 
   # Sampling Defaults
@@ -392,49 +365,41 @@ flags:
     name: "Temperature"
     description: "Generation temperature (higher = more creative, lower = more deterministic)"
     type: "number"
-    important: false
     default_value: "0.8"
   - flag: "--top-k"
     name: "Top-K"
     description: "Top-k sampling threshold"
     type: "int"
-    important: false
     default_value: "40"
   - flag: "--top-p"
     name: "Top-P"
     description: "Top-p nucleus sampling threshold"
     type: "number"
-    important: false
     default_value: "0.95"
   - flag: "--min-p"
     name: "Min-P"
     description: "Minimum probability threshold relative to most likely token"
     type: "number"
-    important: false
     default_value: "0.05"
   - flag: "--repeat-penalty"
     name: "Repeat Penalty"
     description: "Penalize repetitive token generation"
     type: "number"
-    important: false
     default_value: "1.0"
   - flag: "--repeat-last-n"
     name: "Repeat Last N"
     description: "Number of tokens to consider for repeat penalty (0 = disabled, -1 = ctx)"
     type: "int"
-    important: false
     default_value: "64"
   - flag: "--seed"
     name: "RNG Seed"
     description: "Random number generator seed (-1 for random)"
     type: "int"
-    important: false
     default_value: "-1"
   - flag: "--n-predict"
     name: "Max Predicted Tokens"
     description: "Maximum number of tokens to predict (-1 for infinity)"
     type: "int"
-    important: false
     default_value: "-1"
 
   # Context Scaling (RoPE & YaRN)
@@ -442,7 +407,6 @@ flags:
     name: "RoPE Scaling"
     description: "RoPE frequency scaling method"
     type: "enum"
-    important: false
     default_value: "none"
     options:
       - "none"
@@ -452,25 +416,21 @@ flags:
     name: "RoPE Scale"
     description: "RoPE context scaling factor"
     type: "number"
-    important: false
     default_value: "1.0"
   - flag: "--rope-freq-base"
     name: "RoPE Base Frequency"
     description: "RoPE base frequency (0 = loaded from model)"
     type: "number"
-    important: false
     default_value: "0.0"
   - flag: "--rope-freq-scale"
     name: "RoPE Frequency Scale"
     description: "RoPE frequency scaling factor (0 = loaded from model)"
     type: "number"
-    important: false
     default_value: "0.0"
   - flag: "--yarn-orig-ctx"
     name: "YaRN Original Context"
     description: "Original context size the model was trained on"
     type: "int"
-    important: false
     default_value: "0"
 
   # Speculative Decoding
@@ -478,17 +438,14 @@ flags:
     name: "Draft Model File"
     description: "Path to a smaller draft model for speculative decoding acceleration"
     type: "file-auxiliary"
-    important: false
     default_value: ""
   - flag: "--spec-draft-ngl"
     name: "Draft GPU Layers"
     description: "Number of layers of the draft model to offload to GPU"
     type: "int"
-    important: false
     default_value: "99"
   - flag: "--spec-draft-p-min"
     name: "Draft Min Probability"
     description: "Minimum speculative decoding draft probability"
     type: "number"
-    important: false
     default_value: "0.0"

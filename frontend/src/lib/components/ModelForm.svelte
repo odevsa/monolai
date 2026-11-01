@@ -26,6 +26,7 @@
 	import { ModelFilePickerInput } from '$lib/components/models';
 	import { t } from '$lib/i18n';
 	import type { ModelRecord } from '$lib/types/models';
+	import type { ManifestFlag, RuntimeManifest } from '$lib/types/runtimes';
 
 	interface RuntimeItem {
 		id: string;
@@ -46,24 +47,6 @@
 		path?: string;
 		size_bytes?: number;
 		size?: number;
-	}
-
-	interface ManifestFlag {
-		flag: string;
-		name: string;
-		description: string;
-		type: string;
-		important: boolean;
-		default_value: string;
-		options?: string[];
-	}
-
-	interface RuntimeManifest {
-		id: string;
-		name: string;
-		description: string;
-		binary_name?: string;
-		flags: ManifestFlag[];
 	}
 
 	let {

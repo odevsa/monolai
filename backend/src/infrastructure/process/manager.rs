@@ -395,26 +395,19 @@ pub async fn load_model_process(
     };
 
     let mut parsed_flags = crate::infrastructure::scanner::parse_flags_map(&preset.flags);
-    let mut has_model_flag = false;
-    for (k, v) in parsed_flags.iter_mut() {
-        if k == "--model" || k == "-m" || k == "--checkpoint" || k == "-w" {
-            has_model_flag = true;
-            let p = std::path::Path::new(v);
-            if !p.is_absolute() {
-                *v = full_model_path.to_string_lossy().to_string();
-            }
-        }
-    }
-    if !has_model_flag {
-        let flag_name = if is_sd_server {
-            "--checkpoint"
-        } else {
-            "--model"
-        };
-        parsed_flags.insert(
-            flag_name.to_string(),
-            full_model_path.to_string_lossy().to_string(),
-        );
+    let manifest = crate::infrastructure::process::manifests::get_manifest_for_runtime(None, &preset.runtime_id);
+    let model_flag_name = manifest
+        .as_ref()
+        .and_then(|m| m.find_model_flag().map(|f| f.flag.as_str()))
+        .unwrap_or(if is_sd_server { "--checkpoint" } else { "--model" });
+
+    // Always resolve the runtime's model flag to the model file path
+    parsed_flags.insert(
+        model_flag_name.to_string(),
+        full_model_path.to_string_lossy().to_string(),
+    );
+    if model_flag_name == "--model" {
+        parsed_flags.remove("-m");
     }
 
     let mut cmd = Command::new(&binary_path);

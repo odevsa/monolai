@@ -40,7 +40,8 @@ export interface ManifestFlag {
 	name: string;
 	description: string;
 	type: string;
-	important: boolean;
+	important?: boolean;
+	model?: boolean;
 	default_value: string;
 	options?: string[];
 }
@@ -49,6 +50,7 @@ export interface RuntimeManifest {
 	id: string;
 	name: string;
 	description: string;
+	binary_name?: string;
 	variables?: Record<string, string>;
 	features?: string[];
 	flags: ManifestFlag[];

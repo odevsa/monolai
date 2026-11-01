@@ -17,6 +17,7 @@
 		id: string;
 		key: string;
 		value: string;
+		disabled?: boolean;
 	}
 
 	let {
@@ -53,41 +54,84 @@
 	let isSaving = $state(false);
 	let errorMessage = $state<string | null>(null);
 
+	function getModelFlagKey(
+		runtimeId: string,
+		runtimesList: RuntimeManifest[] = compatibleRuntimes
+	): string {
+		const manifest = runtimesList.find((r) => r.id === runtimeId);
+		const modelFlag =
+			manifest?.flags?.find((f) => f.model) ||
+			manifest?.flags?.find(
+				(f) => f.type === 'file' || f.flag === '--model' || f.flag === '--checkpoint'
+			);
+		return modelFlag?.flag || '--model';
+	}
+
+	function createModelFlagItem(
+		runtimeId: string,
+		runtimesList: RuntimeManifest[] = compatibleRuntimes
+	): FlagItem {
+		const key = getModelFlagKey(runtimeId, runtimesList);
+		const val = model.relative_path || model.filename || '';
+		return {
+			id: 'model-flag',
+			key,
+			value: val,
+			disabled: true
+		};
+	}
+
 	function getImportantFlagsForRuntime(
 		runtimeId: string,
 		runtimesList: RuntimeManifest[] = compatibleRuntimes
 	): FlagItem[] {
+		const modelItem = createModelFlagItem(runtimeId, runtimesList);
 		const manifest = runtimesList.find((r) => r.id === runtimeId);
-		if (!manifest) return [];
+		if (!manifest) return [modelItem];
 
-		const important = manifest.flags?.filter((f) => f.important) || [];
-		if (important.length === 0) {
-			const modelFlag = manifest.flags?.find(
-				(f) => f.flag === '--model' || f.flag === '--checkpoint'
-			);
-			if (modelFlag) {
-				return [
-					{
-						id: crypto.randomUUID(),
-						key: modelFlag.flag,
-						value: model.relative_path || model.filename || ''
-					}
-				];
+		const important = manifest.flags?.filter((f) => f.important && f.flag !== modelItem.key) || [];
+		const otherItems = important.map((f) => ({
+			id: crypto.randomUUID(),
+			key: f.flag,
+			value: f.default_value ?? ''
+		}));
+
+		return [modelItem, ...otherItems];
+	}
+
+	function parsePresetFlags(
+		presetFlags: unknown,
+		runtimeId: string,
+		runtimesList: RuntimeManifest[] = compatibleRuntimes
+	): FlagItem[] {
+		const modelItem = createModelFlagItem(runtimeId, runtimesList);
+		let rawEntries: [string, string][] = [];
+
+		if (presetFlags && typeof presetFlags === 'object') {
+			rawEntries = Object.entries(presetFlags as Record<string, unknown>).map(([k, v]) => [
+				k,
+				String(v)
+			]);
+		} else if (typeof presetFlags === 'string') {
+			try {
+				const parsed = JSON.parse(presetFlags);
+				rawEntries = Object.entries(parsed).map(([k, v]) => [k, String(v)]);
+			} catch {
+				rawEntries = [['flags', presetFlags]];
 			}
-			return [];
 		}
 
-		return important.map((f) => {
-			let val = f.default_value ?? '';
-			if (f.type === 'file' || f.flag === '--model' || f.flag === '--checkpoint') {
-				val = model.relative_path || model.filename || val;
-			}
-			return {
-				id: crypto.randomUUID(),
-				key: f.flag,
-				value: val
-			};
-		});
+		const otherEntries = rawEntries.filter(
+			([k]) => k !== modelItem.key && k !== '--model' && k !== '--checkpoint' && k !== '-m'
+		);
+
+		const otherItems = otherEntries.map(([k, v]) => ({
+			id: crypto.randomUUID(),
+			key: k,
+			value: v
+		}));
+
+		return [modelItem, ...otherItems];
 	}
 
 	function onRuntimeChange(newRuntimeId: string) {
@@ -103,27 +147,7 @@
 			selectedRuntime = preset.runtime_id;
 			previousRuntime = preset.runtime_id;
 			isDefault = preset.is_default;
-
-			if (preset.flags) {
-				if (typeof preset.flags === 'object' && preset.flags !== null) {
-					flagsList = Object.entries(preset.flags).map(([key, value]) => ({
-						id: crypto.randomUUID(),
-						key,
-						value: String(value)
-					}));
-				} else if (typeof preset.flags === 'string') {
-					try {
-						const parsed = JSON.parse(preset.flags);
-						flagsList = Object.entries(parsed).map(([key, value]) => ({
-							id: crypto.randomUUID(),
-							key,
-							value: String(value)
-						}));
-					} catch {
-						flagsList = [{ id: crypto.randomUUID(), key: 'flags', value: preset.flags }];
-					}
-				}
-			}
+			flagsList = parsePresetFlags(preset.flags, selectedRuntime, compatibleRuntimes);
 		} else {
 			name = '';
 			const hasDefault = model.presets?.some((p) => p.is_default);
@@ -137,7 +161,9 @@
 				previousRuntime = compatibleRuntimes[0].id;
 			}
 
-			if (!preset && selectedRuntime) {
+			if (preset) {
+				flagsList = parsePresetFlags(preset.flags, selectedRuntime, compatibleRuntimes);
+			} else if (selectedRuntime) {
 				flagsList = getImportantFlagsForRuntime(selectedRuntime, compatibleRuntimes);
 			}
 		} catch (err: unknown) {
@@ -163,6 +189,7 @@
 	}
 
 	function removeFlag(index: number) {
+		if (flagsList[index]?.disabled) return;
 		flagsList = flagsList.filter((_, i) => i !== index);
 	}
 
@@ -301,6 +328,7 @@
 						bind:key={item.key}
 						bind:value={item.value}
 						{manifestFlags}
+						disabled={item.disabled}
 						onRemove={() => removeFlag(index)}
 					/>
 				{/each}

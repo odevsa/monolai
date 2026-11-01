@@ -24,11 +24,13 @@
 		key = $bindable(''),
 		value = $bindable(''),
 		manifestFlags = [],
+		disabled = false,
 		onRemove
 	}: {
 		key: string;
 		value: string;
 		manifestFlags?: ManifestFlag[];
+		disabled?: boolean;
 		onRemove: () => void;
 	} = $props();
 
@@ -51,6 +53,10 @@
 	function detectMode(flagKey: string, flags: ManifestFlag[]): FlagValueType {
 		const lower = flagKey.toLowerCase().trim();
 		const def = flags.find((f) => f.flag.toLowerCase().trim() === lower);
+
+		if (def?.model) {
+			return 'primary';
+		}
 
 		// Prioritize auxiliary assets (from manifest type, known flags, or descriptions)
 		if (
@@ -158,7 +164,8 @@
 	<!-- Flag Key Writable Select (Manifest SSoT + Free Typing) -->
 	<div class="w-1/2 min-w-0">
 		<Select
-			writable
+			writable={!disabled}
+			{disabled}
 			bind:value={key}
 			options={flagOptions}
 			placeholder={t('models.presets.selectFlagPlaceholder')}
@@ -180,30 +187,36 @@
 	<div class="w-1/2 min-w-0 flex items-center gap-1.5">
 		{#if activeType === 'primary'}
 			<ModelFilePickerInput
+				{disabled}
 				bind:value
 				filterMode="primary"
 				placeholder={flagDef?.description || t('models.presets.flagValuePlaceholder')}
 			/>
 		{:else if activeType === 'auxiliary'}
 			<ModelFilePickerInput
+				{disabled}
 				bind:value
 				filterMode="auxiliary"
 				placeholder={flagDef?.description || t('models.presets.flagValuePlaceholder')}
 			/>
 		{:else if activeType === 'file'}
 			<ModelFilePickerInput
+				{disabled}
 				bind:value
 				filterMode="all"
 				placeholder={flagDef?.description || t('models.presets.flagValuePlaceholder')}
 			/>
 		{:else if activeType === 'bool'}
 			<div
-				class="flex items-center justify-between w-full h-[34px] px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)]"
+				class="flex items-center justify-between w-full h-[34px] px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] {disabled
+					? 'opacity-50 pointer-events-none'
+					: ''}"
 			>
 				<span class="text-xs text-[var(--text-secondary)] font-mono">
 					{value === 'true' ? 'true' : 'false'}
 				</span>
 				<Toggle
+					{disabled}
 					checked={value === 'true'}
 					onchange={(checked) => {
 						value = checked ? 'true' : 'false';
@@ -212,6 +225,7 @@
 			</div>
 		{:else if activeType === 'number'}
 			<Input
+				{disabled}
 				type="number"
 				bind:value
 				title={value}
@@ -221,6 +235,7 @@
 			/>
 		{:else if isEnumType && flagDef?.options}
 			<Select
+				{disabled}
 				bind:value
 				options={flagDef.options.map((opt: string) => ({ value: opt, label: opt }))}
 				placeholder={t('models.presets.flagValuePlaceholder')}
@@ -228,6 +243,7 @@
 			/>
 		{:else}
 			<Input
+				{disabled}
 				type="text"
 				bind:value
 				title={value}
@@ -240,11 +256,12 @@
 		<!-- Value Type Selector Popover Trigger -->
 		<button
 			type="button"
+			{disabled}
 			bind:this={triggerRef}
 			onclick={toggleTypeMenu}
 			title={t('models.presets.changeValueType')}
 			aria-label={t('models.presets.changeValueType')}
-			class="h-[34px] w-[34px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+			class="h-[34px] w-[34px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
 		>
 			{#if activeType === 'primary'}
 				<Box size={13} class="text-[var(--primary)]" />
@@ -390,6 +407,7 @@
 			variant="danger"
 			size="icon"
 			onclick={onRemove}
+			{disabled}
 			title={t('common.delete')}
 			ariaLabel={t('common.delete')}
 			class="h-[34px] w-[34px] shrink-0"

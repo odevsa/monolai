@@ -8,7 +8,10 @@ pub struct ManifestFlag {
     pub description: String,
     #[serde(rename = "type")]
     pub flag_type: String,
+    #[serde(default)]
     pub important: bool,
+    #[serde(default)]
+    pub model: bool,
     #[serde(default)]
     pub default_value: String,
     #[serde(default)]
@@ -136,6 +139,14 @@ pub struct RuntimeManifest {
 }
 
 impl RuntimeManifest {
+    pub fn find_model_flag(&self) -> Option<&ManifestFlag> {
+        self.flags.iter().find(|f| f.model).or_else(|| {
+            self.flags
+                .iter()
+                .find(|f| f.flag_type == "file" || f.flag == "--model" || f.flag == "--checkpoint")
+        })
+    }
+
     pub fn apply_upstream(&mut self, entry: &UpstreamRuntimeEntry) {
         self.version = entry.version.clone();
         for (key, val) in &entry.variables {

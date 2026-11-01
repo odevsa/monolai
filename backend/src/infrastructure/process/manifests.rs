@@ -67,36 +67,26 @@ pub fn get_manifest_for_runtime(
 }
 
 /// Generate default preset flags from a runtime manifest, prioritizing important flags
-/// and mapping the primary model path to `--model` or `--checkpoint`.
+/// and mapping the primary model path dynamically to the manifest flag marked with `model: true`.
 pub fn build_preset_flags_from_manifest(
     manifest: &RuntimeManifest,
     model_relative_path: &str,
 ) -> serde_json::Value {
     let mut flags_map = serde_json::Map::new();
 
-    let important_flags: Vec<_> = manifest.flags.iter().filter(|f| f.important).collect();
-    if important_flags.is_empty() {
-        flags_map.insert(
-            "--model".to_string(),
-            serde_json::Value::String(model_relative_path.to_string()),
-        );
-    } else {
-        for flag in important_flags {
-            let val = if flag.flag_type == "file"
-                || flag.flag == "--model"
-                || flag.flag == "--checkpoint"
-            {
-                model_relative_path.to_string()
-            } else {
-                flag.default_value.clone()
-            };
-            flags_map.insert(flag.flag.clone(), serde_json::Value::String(val));
-        }
+    let model_flag = manifest.find_model_flag();
+    let model_flag_name = model_flag.map(|f| f.flag.as_str()).unwrap_or("--model");
 
-        if !flags_map.contains_key("--model") && !flags_map.contains_key("--checkpoint") {
+    flags_map.insert(
+        model_flag_name.to_string(),
+        serde_json::Value::String(model_relative_path.to_string()),
+    );
+
+    for flag in &manifest.flags {
+        if flag.important && flag.flag != model_flag_name {
             flags_map.insert(
-                "--model".to_string(),
-                serde_json::Value::String(model_relative_path.to_string()),
+                flag.flag.clone(),
+                serde_json::Value::String(flag.default_value.clone()),
             );
         }
     }
