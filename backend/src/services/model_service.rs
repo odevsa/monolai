@@ -145,7 +145,11 @@ impl ModelService {
                         model_id: canonical_id,
                         name: "Default".to_string(),
                         runtime_id: runtime_id.to_string(),
-                        flags: serde_json::json!({ "--model": item.relative_path }).to_string(),
+                        flags: crate::infrastructure::process::build_default_preset_flags(
+                            None,
+                            runtime_id,
+                            &item.relative_path,
+                        ),
                         is_default: true,
                         created_at: String::new(),
                     };

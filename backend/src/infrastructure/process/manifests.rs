@@ -66,9 +66,74 @@ pub fn get_manifest_for_runtime(
         .find(|m| m.id.eq_ignore_ascii_case(runtime_id))
 }
 
+/// Generate default preset flags from a runtime manifest, prioritizing important flags
+/// and mapping the primary model path to `--model` or `--checkpoint`.
+pub fn build_preset_flags_from_manifest(
+    manifest: &RuntimeManifest,
+    model_relative_path: &str,
+) -> serde_json::Value {
+    let mut flags_map = serde_json::Map::new();
+
+    let important_flags: Vec<_> = manifest.flags.iter().filter(|f| f.important).collect();
+    if important_flags.is_empty() {
+        flags_map.insert(
+            "--model".to_string(),
+            serde_json::Value::String(model_relative_path.to_string()),
+        );
+    } else {
+        for flag in important_flags {
+            let val = if flag.flag_type == "file"
+                || flag.flag == "--model"
+                || flag.flag == "--checkpoint"
+            {
+                model_relative_path.to_string()
+            } else {
+                flag.default_value.clone()
+            };
+            flags_map.insert(flag.flag.clone(), serde_json::Value::String(val));
+        }
+
+        if !flags_map.contains_key("--model") && !flags_map.contains_key("--checkpoint") {
+            flags_map.insert(
+                "--model".to_string(),
+                serde_json::Value::String(model_relative_path.to_string()),
+            );
+        }
+    }
+
+    serde_json::Value::Object(flags_map)
+}
+
+/// Helper to build default preset flags JSON string directly for a given runtime ID.
+pub fn build_default_preset_flags(
+    extra_folder: Option<&Path>,
+    runtime_id: &str,
+    model_relative_path: &str,
+) -> String {
+    if let Some(manifest) = get_manifest_for_runtime(extra_folder, runtime_id) {
+        build_preset_flags_from_manifest(&manifest, model_relative_path).to_string()
+    } else {
+        serde_json::json!({ "--model": model_relative_path }).to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_build_default_preset_flags_from_manifests() {
+        let llama_flags = build_default_preset_flags(None, "llama-cpp", "models/llama-3.gguf");
+        let parsed_llama: serde_json::Value = serde_json::from_str(&llama_flags).unwrap();
+        assert_eq!(parsed_llama["--model"], "models/llama-3.gguf");
+        assert_eq!(parsed_llama["--ctx-size"], "4096");
+        assert_eq!(parsed_llama["--n-gpu-layers"], "99");
+
+        let sd_flags = build_default_preset_flags(None, "sd-cpp", "models/sd.safetensors");
+        let parsed_sd: serde_json::Value = serde_json::from_str(&sd_flags).unwrap();
+        assert_eq!(parsed_sd["--model"], "models/sd.safetensors");
+        assert!(parsed_sd.get("--ctx-size").is_none());
+    }
 
     #[test]
     fn test_embedded_manifests_parse_correctly() {

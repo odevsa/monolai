@@ -163,9 +163,15 @@
 			options={flagOptions}
 			placeholder={t('models.presets.selectFlagPlaceholder')}
 			class="w-full"
-			onchange={() => {
+			onchange={(newKey) => {
 				// Reset override to adapt to the newly selected flag type
 				customType = null;
+				if (!value && newKey) {
+					const def = manifestFlags.find((f) => f.flag === newKey);
+					if (def?.default_value) {
+						value = def.default_value;
+					}
+				}
 			}}
 		/>
 	</div>

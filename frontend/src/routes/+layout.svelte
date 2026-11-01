@@ -335,7 +335,9 @@
 								disabled={headerState.runtimesRefreshing}
 								title={t('runtimes.checkUpdates')}
 							>
-								<RefreshCw size={13} />
+								{#if !headerState.runtimesRefreshing}
+									<RefreshCw size={13} />
+								{/if}
 								<span>{t('runtimes.checkUpdates')}</span>
 							</Button>
 						{/if}

@@ -7,4 +7,7 @@ pub use manager::{
     start_idle_auto_unload_loop, write_processes_json, ModelRequestGuard, ProcessManager,
 };
 #[allow(unused_imports)]
-pub use manifests::{get_manifest_for_runtime, get_runtime_manifests};
+pub use manifests::{
+    build_default_preset_flags, build_preset_flags_from_manifest, get_manifest_for_runtime,
+    get_runtime_manifests,
+};

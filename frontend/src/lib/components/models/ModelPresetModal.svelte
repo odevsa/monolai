@@ -13,6 +13,12 @@
 	import { onMount } from 'svelte';
 	import FlagRow from './FlagRow.svelte';
 
+	interface FlagItem {
+		id: string;
+		key: string;
+		value: string;
+	}
+
 	let {
 		open = false,
 		model,
@@ -29,54 +35,106 @@
 
 	let name = $state('default');
 	let selectedRuntime = $state('');
+	let previousRuntime = $state('');
 	let isDefault = $state(true);
-	let flagsList = $state<Array<{ key: string; value: string }>>([]);
+	let flagsList = $state<FlagItem[]>([]);
 
 	let compatibleRuntimes = $state<RuntimeManifest[]>([]);
 	let isLoadingRuntimes = $state(true);
 	let isSaving = $state(false);
 	let errorMessage = $state<string | null>(null);
 
-	$effect(() => {
+	function getImportantFlagsForRuntime(
+		runtimeId: string,
+		runtimesList: RuntimeManifest[] = compatibleRuntimes
+	): FlagItem[] {
+		const manifest = runtimesList.find((r) => r.id === runtimeId);
+		if (!manifest) return [];
+
+		const important = manifest.flags?.filter((f) => f.important) || [];
+		if (important.length === 0) {
+			const modelFlag = manifest.flags?.find(
+				(f) => f.flag === '--model' || f.flag === '--checkpoint'
+			);
+			if (modelFlag) {
+				return [
+					{
+						id: crypto.randomUUID(),
+						key: modelFlag.flag,
+						value: model.relative_path || model.filename || ''
+					}
+				];
+			}
+			return [];
+		}
+
+		return important.map((f) => {
+			let val = f.default_value ?? '';
+			if (f.type === 'file' || f.flag === '--model' || f.flag === '--checkpoint') {
+				val = model.relative_path || model.filename || val;
+			}
+			return {
+				id: crypto.randomUUID(),
+				key: f.flag,
+				value: val
+			};
+		});
+	}
+
+	function onRuntimeChange(newRuntimeId: string) {
+		if (newRuntimeId === previousRuntime) return;
+		previousRuntime = newRuntimeId;
+		selectedRuntime = newRuntimeId;
+		flagsList = getImportantFlagsForRuntime(newRuntimeId);
+	}
+
+	onMount(async () => {
 		if (preset) {
 			name = preset.name;
 			selectedRuntime = preset.runtime_id;
+			previousRuntime = preset.runtime_id;
 			isDefault = preset.is_default;
-		} else {
-			name = 'default';
-			isDefault = true;
-		}
-	});
 
-	onMount(async () => {
-		if (preset?.flags) {
-			if (typeof preset.flags === 'object' && preset.flags !== null) {
-				flagsList = Object.entries(preset.flags).map(([key, value]) => ({
-					key,
-					value: String(value)
-				}));
-			} else if (typeof preset.flags === 'string') {
-				try {
-					const parsed = JSON.parse(preset.flags);
-					flagsList = Object.entries(parsed).map(([key, value]) => ({
+			if (preset.flags) {
+				if (typeof preset.flags === 'object' && preset.flags !== null) {
+					flagsList = Object.entries(preset.flags).map(([key, value]) => ({
+						id: crypto.randomUUID(),
 						key,
 						value: String(value)
 					}));
-				} catch {
-					flagsList = [{ key: 'flags', value: preset.flags }];
+				} else if (typeof preset.flags === 'string') {
+					try {
+						const parsed = JSON.parse(preset.flags);
+						flagsList = Object.entries(parsed).map(([key, value]) => ({
+							id: crypto.randomUUID(),
+							key,
+							value: String(value)
+						}));
+					} catch {
+						flagsList = [{ id: crypto.randomUUID(), key: 'flags', value: preset.flags }];
+					}
 				}
 			}
 		} else {
-			flagsList = [
-				{ key: '--ctx-size', value: '4096' },
-				{ key: '--n-gpu-layers', value: '99' }
-			];
+			const hasDefault = model.presets?.some((p) => p.name.toLowerCase() === 'default');
+			if (hasDefault) {
+				name = `preset-${(model.presets?.length || 0) + 1}`;
+				isDefault = false;
+			} else {
+				name = 'default';
+				isDefault = true;
+			}
 		}
 
 		try {
 			compatibleRuntimes = await modelsApi.getCompatibleRuntimes(model.modality, model.format);
 			if (!selectedRuntime && compatibleRuntimes.length > 0) {
 				selectedRuntime = compatibleRuntimes[0].id;
+				previousRuntime = compatibleRuntimes[0].id;
+			}
+
+			if (!preset && selectedRuntime) {
+				flagsList = getImportantFlagsForRuntime(selectedRuntime, compatibleRuntimes);
 			}
 		} catch (err: unknown) {
 			console.error('Failed to load compatible runtimes:', err);
@@ -97,7 +155,7 @@
 	);
 
 	function addFlag() {
-		flagsList = [...flagsList, { key: '', value: '' }];
+		flagsList = [...flagsList, { id: crypto.randomUUID(), key: '', value: '' }];
 	}
 
 	function removeFlag(index: number) {
@@ -196,7 +254,7 @@
 					})}
 				</div>
 			{:else}
-				<Select bind:value={selectedRuntime} options={runtimeOptions} />
+				<Select bind:value={selectedRuntime} options={runtimeOptions} onchange={onRuntimeChange} />
 			{/if}
 		</div>
 
@@ -221,7 +279,7 @@
 			</div>
 
 			<div class="space-y-1.5">
-				{#each flagsList as item, index}
+				{#each flagsList as item, index (item.id)}
 					<FlagRow
 						bind:key={item.key}
 						bind:value={item.value}
