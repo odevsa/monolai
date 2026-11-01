@@ -71,6 +71,18 @@ export function getModalityBadgeVariant(
 export interface ParsedModelDetails {
 	name: string;
 	tags: string[];
+	preset?: string;
+}
+
+function formatPresetSlug(slug: string): string {
+	if (!slug || slug.toLowerCase() === 'default') return '';
+	if (slug.includes('-')) {
+		return slug
+			.split('-')
+			.map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : ''))
+			.join(' ');
+	}
+	return slug.charAt(0).toUpperCase() + slug.slice(1);
 }
 
 /**
@@ -213,11 +225,18 @@ export function parseModelDetails(
 
 	let baseName = '';
 	let tagSource = '';
+	let preset = '';
 
 	if (canonical.includes(':')) {
-		const colonIdx = canonical.indexOf(':');
-		baseName = canonical.slice(0, colonIdx).trim();
-		tagSource = canonical.slice(colonIdx + 1).trim();
+		const parts = canonical.split(':');
+		baseName = parts[0].trim();
+		tagSource = parts[1]?.trim() || '';
+		if (parts.length > 2) {
+			const rawPreset = parts.slice(2).join(':').trim();
+			if (rawPreset.toLowerCase() !== 'default') {
+				preset = formatPresetSlug(rawPreset);
+			}
+		}
 	} else {
 		baseName = canonical;
 		tagSource = canonical;
@@ -273,7 +292,7 @@ export function parseModelDetails(
 	if (quantTag) tags.push(quantTag);
 	if (typeTag) tags.push(typeTag);
 
-	return { name: baseName, tags };
+	return { name: baseName, tags, preset: preset || undefined };
 }
 
 /**

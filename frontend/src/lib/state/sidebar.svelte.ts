@@ -55,4 +55,3 @@ class SidebarStateManager {
 }
 
 export const sidebarState = new SidebarStateManager();
-

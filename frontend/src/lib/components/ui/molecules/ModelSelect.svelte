@@ -132,12 +132,10 @@
 			{#if value}
 				<ModelBadge
 					model={selectedModel?.modelId || value}
+					preset={selectedModel?.presetName}
 					variant="inline"
 					hideTagsOnMobile={variant === 'pill'}
 				/>
-				{#if selectedModel?.presetName}
-					<span class="preset-badge">{selectedModel.presetName}</span>
-				{/if}
 			{:else}
 				<Box size={14} class="model-box-icon" />
 				<span class="model-placeholder-text">{resolvedPlaceholder}</span>
@@ -168,10 +166,11 @@
 						onclick={() => selectOption(model.id)}
 					>
 						<div class="item-left">
-							<ModelBadge model={model.modelId || model.id} variant="inline" />
-							{#if model.presetName}
-								<span class="preset-badge">{model.presetName}</span>
-							{/if}
+							<ModelBadge
+								model={model.modelId || model.id}
+								preset={model.presetName}
+								variant="inline"
+							/>
 						</div>
 						<span class="mini-tag">{model.runtime}</span>
 					</button>

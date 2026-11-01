@@ -4,6 +4,7 @@
 
 	let {
 		model,
+		preset = undefined,
 		showIcon = true,
 		iconSize = 14,
 		variant = 'badge',
@@ -12,6 +13,7 @@
 		class: className = ''
 	}: {
 		model: string | string[] | undefined | null;
+		preset?: string;
 		showIcon?: boolean;
 		iconSize?: number;
 		variant?: 'badge' | 'inline' | 'clean' | 'badge-full' | 'full';
@@ -21,6 +23,7 @@
 	} = $props();
 
 	let parsed = $derived(parseModelDetails(model));
+	let effectivePreset = $derived(preset || parsed.preset);
 </script>
 
 {#if parsed.name}
@@ -35,6 +38,10 @@
 			{#each parsed.tags as tag}
 				<span class="model-tag {hideTagsOnMobile ? 'max-sm:hidden' : ''}">{tag}</span>
 			{/each}
+		{/if}
+
+		{#if effectivePreset}
+			<span class="preset-badge">{effectivePreset}</span>
 		{/if}
 	</span>
 {/if}
@@ -125,5 +132,22 @@
 	.badge-full .model-tag {
 		background: var(--primary-focus);
 		color: var(--primary-hover);
+	}
+
+	.preset-badge {
+		font-size: 0.65rem;
+		font-weight: 600;
+		padding: 0.1rem 0.4rem;
+		border-radius: var(--radius-sm, 0.25rem);
+		background: var(--bg-surface-hover);
+		color: var(--text-secondary);
+		border: 1px solid var(--border-color);
+		line-height: 1.2;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.inline .preset-badge {
+		background: color-mix(in srgb, var(--bg-surface) 60%, black 40%);
 	}
 </style>

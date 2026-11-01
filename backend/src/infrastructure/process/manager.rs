@@ -395,10 +395,9 @@ pub async fn load_model_process(
     };
 
     let mut parsed_flags = crate::infrastructure::scanner::parse_flags_map(&preset.flags);
-    let manifest = crate::infrastructure::process::manifests::get_manifest_for_runtime(None, &preset.runtime_id);
     let model_flag_name = manifest
-        .as_ref()
-        .and_then(|m| m.find_model_flag().map(|f| f.flag.as_str()))
+        .find_model_flag()
+        .map(|f| f.flag.as_str())
         .unwrap_or(if is_sd_server { "--checkpoint" } else { "--model" });
 
     // Always resolve the runtime's model flag to the model file path
@@ -410,6 +409,32 @@ pub async fn load_model_process(
         parsed_flags.remove("-m");
     }
 
+    // Resolve relative file paths for all file/auxiliary flags to absolute paths within models_dir
+    for (k, v) in parsed_flags.iter_mut() {
+        if k == &model_flag_name {
+            continue;
+        }
+        let trimmed = v.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let expanded = crate::core::config::expand_tilde(trimmed);
+        if expanded.is_absolute() {
+            *v = expanded.to_string_lossy().to_string();
+            continue;
+        }
+
+        let is_file_flag = manifest.flags.iter().any(|f| {
+            (f.flag == *k || f.flag.split(',').any(|part| part.trim() == *k))
+                && (f.flag_type.contains("file") || f.flag_type == "auxiliary")
+        });
+
+        let candidate_in_models = models_dir.join(&expanded);
+        if is_file_flag || candidate_in_models.exists() {
+            *v = candidate_in_models.to_string_lossy().to_string();
+        }
+    }
+
     let mut cmd = Command::new(&binary_path);
     let mut port_injected = false;
 
@@ -417,20 +442,45 @@ pub async fn load_model_process(
         cmd.current_dir(parent);
     }
 
+    let mut cmd_args: Vec<String> = Vec::new();
+
     for (k, v) in &parsed_flags {
         let val_substituted = v.replace("${PORT}", &allocated_port.to_string());
         if k == "--port" || k == "--listen-port" || k == "-p" {
             port_injected = true;
             cmd.arg(port_flag).arg(&val_substituted);
+            cmd_args.push(port_flag.to_string());
+            cmd_args.push(val_substituted);
         } else if v.trim().is_empty() {
             cmd.arg(k);
+            cmd_args.push(k.to_string());
         } else {
             cmd.arg(k).arg(&val_substituted);
+            cmd_args.push(k.to_string());
+            cmd_args.push(val_substituted);
         }
     }
 
     if !port_injected {
-        cmd.arg(port_flag).arg(allocated_port.to_string());
+        let p_str = allocated_port.to_string();
+        cmd.arg(port_flag).arg(&p_str);
+        cmd_args.push(port_flag.to_string());
+        cmd_args.push(p_str);
+    }
+
+    let bin_display = std::path::Path::new(&binary_path)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| binary_path.clone());
+    let full_command_line = format!("{} {}", bin_display, cmd_args.join(" "));
+
+    tracing::info!(target: "process_spawn", "Executing: {}", full_command_line);
+    if let Some(ref tx) = pm.log_tx {
+        let _ = tx.send((
+            format!("{}: {}", runtime_id, model_id),
+            "INFO".to_string(),
+            format!("Executing: {}", full_command_line),
+        ));
     }
 
     cmd.stdout(Stdio::piped());
@@ -482,7 +532,10 @@ pub async fn load_model_process(
 
     let log_ready_signal = Arc::new(tokio::sync::Notify::new());
     let log_ready_signal_clone = log_ready_signal.clone();
-    let last_logs = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let last_logs = Arc::new(std::sync::Mutex::new(vec![format!(
+        "Executing: {}",
+        full_command_line
+    )]));
     let last_logs_out = last_logs.clone();
     let last_logs_err = last_logs.clone();
 
