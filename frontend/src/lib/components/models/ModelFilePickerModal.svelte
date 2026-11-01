@@ -29,6 +29,7 @@
 
 	let files = $state<ModelFileItem[]>([]);
 	let isLoading = $state(false);
+	let hasLoaded = $state(false);
 
 	async function loadFiles() {
 		isLoading = true;
@@ -38,11 +39,12 @@
 			console.error('Failed to load available model files:', err);
 		} finally {
 			isLoading = false;
+			hasLoaded = true;
 		}
 	}
 
 	$effect(() => {
-		if (open && files.length === 0 && !isLoading) {
+		if (open && !hasLoaded && !isLoading) {
 			loadFiles();
 		}
 	});
@@ -55,7 +57,7 @@
 </script>
 
 <Modal {open} title={title || t('models.picker.title')} onclose={onClose} maxWidth="2xl">
-	{#if isLoading && files.length === 0}
+	{#if !hasLoaded}
 		<div class="flex flex-col items-center justify-center py-16 gap-3 text-[var(--text-muted)]">
 			<Spinner size={24} />
 			<span class="text-xs">{t('common.loading')}</span>

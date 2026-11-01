@@ -6,6 +6,7 @@
 	import {
 		buildFolderTree,
 		getNodeAtPath,
+		normalizePath,
 		type FolderNode,
 		type ModelPickerFilter
 	} from '$lib/utils/modelTree';
@@ -44,16 +45,57 @@
 	let searchQuery = $state('');
 	let currentSegments = $state<string[]>([]);
 	let highlightedFile = $state<ModelFileItem | null>(null);
+	let hasInitializedFolder = $state(false);
+	let lastSelectedPath = $state<string | undefined>(undefined);
 
-	// If selectedPath is already passed, initialize highlightedFile
+	// If selectedPath has value, initialize highlightedFile and navigate directly to its parent folder
 	$effect(() => {
-		if (selectedPath && !highlightedFile) {
-			const found = files.find(
-				(f) => f.relative_path === selectedPath || f.absolute_path === selectedPath
-			);
+		if (selectedPath !== lastSelectedPath) {
+			lastSelectedPath = selectedPath;
+			hasInitializedFolder = false;
+		}
+
+		if (selectedPath && !hasInitializedFolder && files.length > 0) {
+			const normSelected = normalizePath(selectedPath);
+
+			const found = files.find((f) => {
+				if (f.relative_path && normalizePath(f.relative_path) === normSelected) return true;
+				if (
+					f.absolute_path &&
+					(f.absolute_path === selectedPath || normalizePath(f.absolute_path) === normSelected)
+				)
+					return true;
+				if (
+					f.filename &&
+					(f.filename === selectedPath || normalizePath(f.filename) === normSelected)
+				)
+					return true;
+				if (f.name && (f.name === selectedPath || normalizePath(f.name) === normSelected))
+					return true;
+				if (
+					f.relative_path &&
+					(normSelected.endsWith(normalizePath(f.relative_path)) ||
+						normalizePath(f.relative_path).endsWith(normSelected))
+				) {
+					return true;
+				}
+				return false;
+			});
+
 			if (found) {
 				highlightedFile = found;
+				const relativePath = found.relative_path || found.filename || '';
+				const normRel = normalizePath(relativePath);
+				const segs = normRel.split('/').filter(Boolean).slice(0, -1);
+				currentSegments = segs;
+			} else {
+				const segs = normSelected.split('/').filter(Boolean).slice(0, -1);
+				if (segs.length > 0) {
+					currentSegments = segs;
+				}
 			}
+
+			hasInitializedFolder = true;
 		}
 	});
 
@@ -107,6 +149,23 @@
 		if (onSelect) {
 			onSelect(path, highlightedFile);
 		}
+	}
+
+	function scrollSelectedIntoView(node: HTMLElement, isSelected: boolean) {
+		if (isSelected) {
+			setTimeout(() => {
+				node.scrollIntoView({ block: 'nearest' });
+			}, 50);
+		}
+		return {
+			update(selected: boolean) {
+				if (selected) {
+					setTimeout(() => {
+						node.scrollIntoView({ block: 'nearest' });
+					}, 50);
+				}
+			}
+		};
 	}
 </script>
 
@@ -265,6 +324,7 @@
 						: 'bg-transparent border-transparent hover:bg-[var(--bg-surface-hover)]'}"
 					onclick={() => selectFile(file)}
 					ondblclick={confirmSelection}
+					use:scrollSelectedIntoView={isSelected}
 				>
 					<div class="flex items-center gap-2.5 min-w-0 pr-2">
 						<FileBox
