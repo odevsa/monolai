@@ -33,11 +33,20 @@
 		onSaved: () => void;
 	} = $props();
 
-	let name = $state('default');
+	let name = $state('');
+	let nameInputRef = $state<HTMLInputElement | null>(null);
 	let selectedRuntime = $state('');
 	let previousRuntime = $state('');
 	let isDefault = $state(true);
 	let flagsList = $state<FlagItem[]>([]);
+
+	$effect(() => {
+		if (open) {
+			requestAnimationFrame(() => {
+				nameInputRef?.focus();
+			});
+		}
+	});
 
 	let compatibleRuntimes = $state<RuntimeManifest[]>([]);
 	let isLoadingRuntimes = $state(true);
@@ -116,14 +125,9 @@
 				}
 			}
 		} else {
-			const hasDefault = model.presets?.some((p) => p.name.toLowerCase() === 'default');
-			if (hasDefault) {
-				name = `preset-${(model.presets?.length || 0) + 1}`;
-				isDefault = false;
-			} else {
-				name = 'default';
-				isDefault = true;
-			}
+			name = '';
+			const hasDefault = model.presets?.some((p) => p.is_default);
+			isDefault = !hasDefault;
 		}
 
 		try {
@@ -163,6 +167,7 @@
 	}
 
 	async function handleSave() {
+		if (isSaving) return;
 		if (!name.trim()) {
 			errorMessage = t('models.presets.nameRequired');
 			return;
@@ -209,6 +214,13 @@
 			isSaving = false;
 		}
 	}
+
+	function handleInputKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			handleSave();
+		}
+	}
 </script>
 
 <Modal
@@ -216,7 +228,13 @@
 	title={preset ? t('models.presets.editPreset') : t('models.presets.addPreset')}
 	{onclose}
 >
-	<div class="space-y-4">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSave();
+		}}
+		class="space-y-4"
+	>
 		{#if errorMessage}
 			<Alert variant="error" title={t('common.error')}>
 				{errorMessage}
@@ -229,8 +247,11 @@
 			</label>
 			<Input
 				id="preset-name"
+				bind:ref={nameInputRef}
 				bind:value={name}
 				placeholder="e.g. default, low-vram, long-context"
+				autofocus
+				onkeydown={handleInputKeyDown}
 			/>
 		</div>
 
@@ -272,10 +293,6 @@
 					<SlidersVertical size={13} />
 					<span>{t('models.presets.flags')}</span>
 				</label>
-				<Button variant="ghost" size="xs" onclick={addFlag}>
-					<Plus size={12} />
-					<span>{t('common.add')}</span>
-				</Button>
 			</div>
 
 			<div class="space-y-1.5">
@@ -288,6 +305,11 @@
 					/>
 				{/each}
 			</div>
+
+			<Button variant="primary" size="xs" onclick={addFlag}>
+				<Plus size={12} />
+				<span>{t('common.add')}</span>
+			</Button>
 		</div>
 
 		<!-- Modal Actions -->
@@ -296,8 +318,8 @@
 				{t('common.cancel')}
 			</Button>
 			<Button
+				type="submit"
 				variant="primary"
-				onclick={handleSave}
 				disabled={isSaving || !name.trim() || !selectedRuntime}
 			>
 				{#if isSaving}
@@ -306,5 +328,5 @@
 				<span>{t('common.save')}</span>
 			</Button>
 		</div>
-	</div>
+	</form>
 </Modal>

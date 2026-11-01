@@ -13,6 +13,8 @@
 		disabled = false,
 		error = false,
 		clearable = false,
+		autofocus = false,
+		ref = $bindable<HTMLInputElement | null>(null),
 		class: className = '',
 		inputClass = '',
 		id = '',
@@ -38,6 +40,8 @@
 		disabled?: boolean;
 		error?: boolean;
 		clearable?: boolean;
+		autofocus?: boolean;
+		ref?: HTMLInputElement | null;
 		class?: string;
 		inputClass?: string;
 		id?: string;
@@ -74,6 +78,20 @@
 		lg: 'pl-3.5'
 	};
 
+	let inputEl = $state<HTMLInputElement | null>(null);
+
+	$effect(() => {
+		ref = inputEl;
+	});
+
+	$effect(() => {
+		if (autofocus && inputEl) {
+			requestAnimationFrame(() => {
+				inputEl?.focus();
+			});
+		}
+	});
+
 	function handleClear() {
 		value = '';
 	}
@@ -107,6 +125,7 @@
 	{/if}
 
 	<input
+		bind:this={inputEl}
 		{id}
 		{name}
 		{type}

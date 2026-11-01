@@ -83,169 +83,171 @@
 	}
 </script>
 
-<Card class="flex flex-col justify-between gap-3.5 h-full" padding="md">
-	<!-- Top: Avatar + Title + Badges + Real-time Status -->
-	<div class="flex items-start justify-between gap-3">
-		<div class="flex flex-col gap-1.5 min-w-0 flex-1">
-			<div class="flex justify-start items-center gap-1">
-				<Box size={18} class="text-[var(--primary)] shrink-0" />
+<Card>
+	<div class="flex h-full flex-col justify-between gap-3.5">
+		<!-- Top: Avatar + Title + Badges + Real-time Status -->
+		<div class="flex items-start justify-between gap-3">
+			<div class="flex flex-col gap-1.5 min-w-0 flex-1">
+				<div class="flex justify-start items-center gap-1">
+					<Box size={18} class="text-[var(--primary)] shrink-0" />
 
-				<h4
-					class="mr-auto text-sm font-semibold text-[var(--text-primary)] truncate"
-					title={model.name || model.id}
-				>
-					{model.name || model.id}
-				</h4>
+					<h4
+						class="mr-auto text-sm font-semibold text-[var(--text-primary)] truncate"
+						title={model.name || model.id}
+					>
+						{model.name || model.id}
+					</h4>
 
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					onclick={() => onCopyId?.(model.id)}
-					title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-					ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-				>
-					{#if isCopied}
-						<Check size={12} class="text-[var(--success-text)]" />
-					{:else}
-						<Copy size={12} />
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						onclick={() => onCopyId?.(model.id)}
+						title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+						ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+					>
+						{#if isCopied}
+							<Check size={12} class="text-[var(--success-text)]" />
+						{:else}
+							<Copy size={12} />
+						{/if}
+					</Button>
+				</div>
+
+				<div class="flex items-center gap-1 truncate">
+					<!-- Modality Badge -->
+					<Badge variant={getModalityBadgeVariant(model.modality)} rounded="rounded-md" size="sm">
+						{model.modality}
+					</Badge>
+
+					<!-- Format & Architecture -->
+					{#if model.format}
+						<Badge variant="muted" rounded="rounded-md" size="sm" class="uppercase">
+							{model.format}
+						</Badge>
 					{/if}
+					{#if model.architecture}
+						<Badge variant="muted" rounded="rounded-md" size="sm">
+							{model.architecture}
+						</Badge>
+					{/if}
+				</div>
+
+				<div class="flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
+					<FolderOpen size={12} class="text-[var(--text-muted)] shrink-0" />
+					<span title={displayPath} class="truncate">{displayPath}</span>
+					{#if model.size_bytes > 0}
+						<span class="shrink-0">• {formatBytes(model.size_bytes)}</span>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Status Badge -->
+			<div class="flex items-center gap-1 shrink-0">
+				{#if isRunning}
+					<Badge variant="success" pulse={true}>
+						{t('models.runningPort', { port: runningInfo?.port ?? 0 })}
+					</Badge>
+				{:else if isMissing}
+					<Badge variant="warning">
+						<TriangleAlert size={11} class="shrink-0" />
+						<span>{t('models.fileMissing')}</span>
+					</Badge>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Presets Section -->
+		<div
+			class="bg-[var(--bg-primary)] border border-[var(--border-color)]/70 rounded-lg p-3 space-y-2"
+		>
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+					<Layers size={13} class="text-[var(--primary)]" />
+					<span>{t('models.presets.title')} ({model.presets?.length || 0})</span>
+				</div>
+
+				<Button variant="ghost" size="xs" onclick={openAddPreset}>
+					<Plus size={12} />
+					<span>{t('models.presets.addPreset')}</span>
 				</Button>
 			</div>
 
-			<div class="flex items-center gap-1 truncate">
-				<!-- Modality Badge -->
-				<Badge variant={getModalityBadgeVariant(model.modality)} rounded="rounded-md" size="sm">
-					{model.modality}
-				</Badge>
+			{#if !model.presets || model.presets.length === 0}
+				<p class="text-[11px] text-[var(--text-muted)] italic m-0">
+					{t('models.presets.noPresets')}
+				</p>
+			{:else}
+				<div class="space-y-1.5">
+					{#each model.presets as preset (preset.id)}
+						<div
+							class="flex items-center justify-between gap-2 p-1.5 bg-[var(--bg-surface)] border border-[var(--border-color)]/50 rounded-md text-xs"
+						>
+							<div class="flex items-center gap-1.5 min-w-0">
+								{#if preset.is_default}
+									<Star size={11} class="text-[var(--warning)] shrink-0 fill-[var(--warning)]" />
+								{/if}
+								<span class="font-medium text-[var(--text-primary)] truncate">
+									{preset.name}
+								</span>
+								<Badge variant="muted" class="font-mono text-[10px]">
+									{preset.runtime_id}
+								</Badge>
+							</div>
 
-				<!-- Format & Architecture -->
-				{#if model.format}
-					<Badge variant="muted" rounded="rounded-md" size="sm" class="uppercase">
-						{model.format}
-					</Badge>
-				{/if}
-				{#if model.architecture}
-					<Badge variant="muted" rounded="rounded-md" size="sm">
-						{model.architecture}
-					</Badge>
-				{/if}
-			</div>
-
-			<div class="flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
-				<FolderOpen size={12} class="text-[var(--text-muted)] shrink-0" />
-				<span title={displayPath} class="truncate">{displayPath}</span>
-				{#if model.size_bytes > 0}
-					<span class="shrink-0">• {formatBytes(model.size_bytes)}</span>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Status Badge -->
-		<div class="flex items-center gap-1 shrink-0">
-			{#if isRunning}
-				<Badge variant="success" pulse={true}>
-					{t('models.runningPort', { port: runningInfo?.port ?? 0 })}
-				</Badge>
-			{:else if isMissing}
-				<Badge variant="warning">
-					<TriangleAlert size={11} class="shrink-0" />
-					<span>{t('models.fileMissing')}</span>
-				</Badge>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Presets Section -->
-	<div
-		class="bg-[var(--bg-primary)] border border-[var(--border-color)]/70 rounded-lg p-3 space-y-2"
-	>
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-				<Layers size={13} class="text-[var(--primary)]" />
-				<span>{t('models.presets.title')} ({model.presets?.length || 0})</span>
-			</div>
-
-			<Button variant="ghost" size="xs" onclick={openAddPreset}>
-				<Plus size={12} />
-				<span>{t('models.presets.addPreset')}</span>
-			</Button>
-		</div>
-
-		{#if !model.presets || model.presets.length === 0}
-			<p class="text-[11px] text-[var(--text-muted)] italic m-0">
-				{t('models.presets.noPresets')}
-			</p>
-		{:else}
-			<div class="space-y-1.5">
-				{#each model.presets as preset (preset.id)}
-					<div
-						class="flex items-center justify-between gap-2 p-1.5 bg-[var(--bg-surface)] border border-[var(--border-color)]/50 rounded-md text-xs"
-					>
-						<div class="flex items-center gap-1.5 min-w-0">
-							{#if preset.is_default}
-								<Star size={11} class="text-[var(--warning)] shrink-0 fill-[var(--warning)]" />
-							{/if}
-							<span class="font-medium text-[var(--text-primary)] truncate">
-								{preset.name}
-							</span>
-							<Badge variant="muted" class="font-mono text-[10px]">
-								{preset.runtime_id}
-							</Badge>
-						</div>
-
-						<div class="flex items-center gap-1 shrink-0">
-							<Button
-								variant="ghost"
-								size="icon-xs"
-								onclick={() => openEditPreset(preset)}
-								title={t('common.edit')}
-								ariaLabel={t('common.edit')}
-							>
-								<Pencil size={11} />
-							</Button>
-							{#if model.presets.length > 1}
+							<div class="flex items-center gap-1 shrink-0">
 								<Button
 									variant="ghost"
 									size="icon-xs"
-									loading={deletingPresetId === preset.id}
-									onclick={() => deletePreset(preset)}
-									title={t('common.delete')}
-									ariaLabel={t('common.delete')}
+									onclick={() => openEditPreset(preset)}
+									title={t('common.edit')}
+									ariaLabel={t('common.edit')}
 								>
-									<Trash size={11} class="text-[var(--danger-text)]" />
+									<Pencil size={11} />
 								</Button>
-							{/if}
+								{#if model.presets.length > 1}
+									<Button
+										variant="ghost"
+										size="icon-xs"
+										loading={deletingPresetId === preset.id}
+										onclick={() => deletePreset(preset)}
+										title={t('common.delete')}
+										ariaLabel={t('common.delete')}
+									>
+										<Trash size={11} class="text-[var(--danger-text)]" />
+									</Button>
+								{/if}
+							</div>
 						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
-	</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 
-	<!-- Card Footer -->
-	<div
-		class="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-color)]/50"
-	>
-		<Button
-			variant="secondary"
-			size="sm"
-			onclick={() => onDetails?.(model)}
-			title={t('common.details')}
+		<!-- Card Footer -->
+		<div
+			class="flex items-center mt-auto justify-between gap-2 pt-2 border-t border-[var(--border-color)]/50"
 		>
-			<Info size={13} />
-			<span>{t('common.details')}</span>
-		</Button>
+			<Button
+				variant="secondary"
+				size="sm"
+				onclick={() => onDetails?.(model)}
+				title={t('common.details')}
+			>
+				<Info size={13} />
+				<span>{t('common.details')}</span>
+			</Button>
 
-		<Button
-			variant="danger"
-			size="sm"
-			loading={isDeleting}
-			onclick={() => onDelete(model.id)}
-			title={t('common.delete')}
-		>
-			<Trash size={13} />
-			<span>{t('common.delete')}</span>
-		</Button>
+			<Button
+				variant="danger"
+				size="sm"
+				loading={isDeleting}
+				onclick={() => onDelete(model.id)}
+				title={t('common.delete')}
+			>
+				<Trash size={13} />
+				<span>{t('common.delete')}</span>
+			</Button>
+		</div>
 	</div>
 </Card>
 
