@@ -10,12 +10,16 @@ function getOpenAIBaseUrl(): string {
 	return `${window.location.origin}/v1`;
 }
 
+// 1 hour in milliseconds to prevent premature abortion of long local generations (e.g. multi-step CPU diffusion or deep reasoning)
+const LOCAL_INFERENCE_TIMEOUT_MS = 60 * 60 * 1000;
+
 export function createOpenAIClient(): OpenAI {
 	return new OpenAI({
 		baseURL: getOpenAIBaseUrl(),
 		apiKey: 'monolai',
 		dangerouslyAllowBrowser: true,
-		maxRetries: 0
+		maxRetries: 0,
+		timeout: LOCAL_INFERENCE_TIMEOUT_MS
 	});
 }
 
@@ -63,7 +67,8 @@ export async function streamChatCompletion(
 			stream: true
 		},
 		{
-			signal
+			signal,
+			timeout: LOCAL_INFERENCE_TIMEOUT_MS
 		}
 	);
 
@@ -78,6 +83,9 @@ export async function generateImages(
 	signal?: AbortSignal
 ): Promise<ImagesResponse> {
 	const client = createOpenAIClient();
-	const res = await client.images.generate(params, { signal });
+	const res = await client.images.generate(params, {
+		signal,
+		timeout: LOCAL_INFERENCE_TIMEOUT_MS
+	});
 	return res as ImagesResponse;
 }

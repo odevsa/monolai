@@ -193,7 +193,11 @@
 			// Add to global gallery store
 			imageGalleryState.addImage(generatedList);
 		} catch (err: any) {
-			if (err.name === 'AbortError') {
+			if (
+				err.name === 'AbortError' ||
+				err.name === 'APIUserAbortError' ||
+				err.message?.toLowerCase().includes('abort')
+			) {
 				generationError = generationError || t('image.interrupted');
 			} else {
 				generationError = err.message || t('image.generationFailed');

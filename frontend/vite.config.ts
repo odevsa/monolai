@@ -80,7 +80,9 @@ export default defineConfig({
 			},
 			'/v1': {
 				target: backendTarget,
-				changeOrigin: true
+				changeOrigin: true,
+				timeout: 0,
+				proxyTimeout: 0
 			}
 		}
 	}

@@ -32,8 +32,12 @@ impl ProxyService {
         process_manager: ProcessManager,
         config: Arc<RwLock<AppConfig>>,
     ) -> Self {
+        // Do not set an arbitrary short request timeout for local inference proxies.
+        // Heavy generations (multi-step diffusion on CPU/GPU or long reasoning chains) can take >10-30 minutes.
         let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(300))
+            .connect_timeout(Duration::from_secs(10))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .tcp_keepalive(Duration::from_secs(30))
             .build()
             .unwrap_or_default();
 
@@ -468,7 +472,8 @@ impl ProxyService {
                     }
                 }
                 Err(e) => {
-                    if retry_count < 10 {
+                    // Only retry if we failed to establish initial TCP connection (e.g. process still booting up)
+                    if retry_count < 10 && e.is_connect() {
                         tokio::time::sleep(Duration::from_millis(500)).await;
                         retry_count += 1;
                         continue;
