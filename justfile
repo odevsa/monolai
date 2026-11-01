@@ -178,13 +178,24 @@ version new_version="":
         exit 0
     fi
     mkdir -p frontend/build
-    sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" backend/Cargo.toml
-    sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" desktop/Cargo.toml
-    sed -i -E "0,/\"version\": \"[^\"]+\"/s//\"version\": \"$NEW_V\"/" frontend/package.json
-    echo "export const APP_VERSION = '$NEW_V';" > frontend/src/lib/version.ts
-    if [ -f packaging/windows/monolai.nsi ]; then
-        sed -i -E 's/(!define VERSION ")[^"]*(")/\1'"$NEW_V"'\2/' packaging/windows/monolai.nsi
+    if command -v perl >/dev/null 2>&1; then
+        perl -pi -e 'if (!$done && s/^(version\s*=\s*")[^"]+(")/${1}'"$NEW_V"'${2}/) { $done = 1; }' backend/Cargo.toml
+        perl -pi -e 'if (!$done && s/^(version\s*=\s*")[^"]+(")/${1}'"$NEW_V"'${2}/) { $done = 1; }' desktop/Cargo.toml
+        perl -pi -e 'if (!$done && s/("version"\s*:\s*")[^"]+(")/${1}'"$NEW_V"'${2}/) { $done = 1; }' frontend/package.json
+        if [ -f packaging/windows/monolai.nsi ]; then
+            perl -pi -e 's/(!define VERSION ")[^"]*(")/${1}'"$NEW_V"'${2}/' packaging/windows/monolai.nsi
+        fi
+    else
+        sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" backend/Cargo.toml
+        sed -i -E "0,/^version = \"[^\"]+\"/s//version = \"$NEW_V\"/" desktop/Cargo.toml
+        sed -i -E "0,/\"version\": \"[^\"]+\"/s//\"version\": \"$NEW_V\"/" frontend/package.json
+        if [ -f packaging/windows/monolai.nsi ]; then
+            sed -i -E 's/(!define VERSION ")[^"]*(")/\1'"$NEW_V"'\2/' packaging/windows/monolai.nsi
+        fi
     fi
-    (cd backend && cargo check --quiet)
-    (cd desktop && cargo check --quiet)
+    echo "export const APP_VERSION = '$NEW_V';" > frontend/src/lib/version.ts
+    if [ "${CI:-}" != "true" ] && command -v cargo >/dev/null 2>&1; then
+        (cd backend && cargo check --quiet 2>/dev/null) || true
+        (cd desktop && cargo check --quiet 2>/dev/null) || true
+    fi
     printf "Version synchronized to %s\n" "$NEW_V"

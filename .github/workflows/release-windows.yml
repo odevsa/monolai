@@ -3,7 +3,15 @@ name: Release Windows
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag or number (e.g. v1.2.3 or 1.2.3)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -28,20 +36,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Extract Version
         id: get_version
         shell: bash
         run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            TAG="${{ github.event.inputs.version }}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
             TAG="${{ github.event.release.tag_name }}"
-            VERSION="${TAG#v}"
           elif [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
             TAG="${GITHUB_REF#refs/tags/}"
-            VERSION="${TAG#v}"
           else
-            VERSION=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
+            TAG=$(grep -m1 '^version' backend/Cargo.toml | cut -d '"' -f2)
           fi
+          VERSION="${TAG#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Sync project version
+        shell: bash
+        run: |
+          just version "${{ steps.get_version.outputs.VERSION }}"
 
       - name: Define Package Names
         id: names
