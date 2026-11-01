@@ -11,7 +11,6 @@
 		"loading": "Caricamento...",
 		"refresh": "Aggiorna",
 		"retry": "Riprova",
-		"back": "Indietro",
 		"copy": "Copia",
 		"copied": "Copiato!",
 		"edit": "Modifica",
@@ -33,6 +32,7 @@
 		"new": "Nuovo",
 		"add": "Aggiungi",
 		"download": "Scarica",
+		"details": "Dettagli",
 		"unload": "Scarica",
 		"unloadAll": "Scarica tutto",
 		"scrollToBottom": "Scorri in fondo",
@@ -46,7 +46,10 @@
 		"ready": "Pronto",
 		"downloading": "Download in corso...",
 		"show": "Mostra",
-		"hide": "Nascondi"
+		"hide": "Nascondi",
+		"page": "Pagina",
+		"previous": "Precedente",
+		"next": "Successivo"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Abilita almeno un repository di modelli (come Hugging Face Hub) per esplorare, verificare i quant e scaricare modelli.",
 			"enableHuggingFace": "Abilita Hugging Face Hub",
 			"searchPlaceholder": "Cerca modelli nell'hub (es. qwen, llama, flux)...",
-			"search": "Cerca",
-			"inspectFiles": "File",
 			"selectQuantPrompt": "Seleziona un file di pesi quantizzati da scaricare direttamente nella cartella dei modelli:",
 			"noFilesAvailable": "Nessun file di modello compatibile trovato in questo repository.",
 			"authRequired": "Autenticazione richiesta",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Compatibilità prestazionale sconosciuta: dimensione del file non segnalata",
 			"sortDownloads": "Più scaricati",
 			"sortLikes": "Più apprezzati",
-			"sortUpdated": "Aggiornati di recente"
+			"sortUpdated": "Aggiornati di recente",
+			"tabFiles": "File e Quant",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "Nessun README disponibile",
+			"noReadmeDesc": "Questo repository non contiene un file README.md.",
+			"openInHuggingFace": "Apri in Hugging Face"
 		},
 		"presets": {
 			"title": "Preset di esecuzione",
@@ -248,12 +254,38 @@
 			"presetName": "Nome del preset",
 			"runtime": "Motore di runtime",
 			"isDefault": "Preset predefinito",
-			"isDefaultDesc": "Usa automaticamente questo preset quando il modello viene richiesto senza tag di preset.",
 			"flags": "Parametri di esecuzione",
 			"nameRequired": "Il nome del preset è obbligatorio.",
 			"runtimeRequired": "È necessario selezionare un motore di runtime compatibile.",
 			"noCompatibleRuntimes": "Nessun runtime installato supporta la modalità '{{modality}}' e il formato '{{format}}'.",
-			"deleteConfirm": "Sei sicuro di voler eliminare il preset '{{name}}'?"
+			"deleteConfirm": "Sei sicuro di voler eliminare il preset '{{name}}'?",
+			"selectFlagPlaceholder": "--nome-flag o digita personalizzato...",
+			"flagValuePlaceholder": "Valore del flag",
+			"changeValueType": "Cambia tipo di valore",
+			"typePrimary": "Modello Principale",
+			"typeAuxiliary": "File Ausiliario",
+			"typeAnyFile": "Qualsiasi File di Modello",
+			"typeText": "Testo",
+			"typeNumber": "Numero",
+			"typeBool": "Booleano"
+		},
+		"auxiliary": {
+			"copyPath": "Copia Percorso",
+			"pathCopied": "Percorso copiato negli appunti",
+			"deleteConfirmTitle": "Elimina File Ausiliario",
+			"deleteConfirmMsg": "Sei sicuro di voler eliminare definitivamente '{{filename}}' dal disco?"
+		},
+		"picker": {
+			"title": "Seleziona File Modello",
+			"filterAll": "Tutti i File",
+			"filterPrimary": "Modelli Principali",
+			"filterAuxiliary": "File Ausiliari",
+			"searchPlaceholder": "Cerca modelli o cartelle...",
+			"root": "Radice",
+			"upOneLevel": "Livello superiore",
+			"noFiles": "Nessun file trovato in questa cartella",
+			"selectFilePrompt": "Seleziona un file per continuare",
+			"selectButton": "Seleziona File"
 		},
 		"downloads": {
 			"emptyTitle": "Nessun download",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Visualizza note di rilascio",
 		"description": {
 			"llama-cpp": "Motore di inferenza LLM ad alte prestazioni in C/C++ che supporta generazione di testo, endpoint HTTP compatibili con OpenAI, modelli multimodali e offload parziale o totale su GPU (CUDA, ROCm, Vulkan e CPU).",
-			"sd-cpp": "Inferenza Stable Diffusion in puro C/C++ che supporta text-to-image, image-to-image, architetture SD1.x, SD2.x, SDXL, FLUX e SD3.5 con accelerazione GPU."
+			"sd-cpp": "Inferenza Stable Diffusion in puro C/C++ che supporta text-to-image, image-to-image, architetture SD1.x, SD2.x, SDXL, FLUX e SD3.5 con accelerazione GPU.",
+			"audio-cpp": "Motore di inferenza audio ad alte prestazioni in puro C++ basato su ggml, con supporto per Text-to-Speech (TTS), Speech-to-Text (ASR), clonazione vocale, separazione delle sorgenti e generazione musicale tramite modelli GGUF con accelerazione GPU (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Errore durante il caricamento dei runtime dal backend.",
 		"installationError": "Si è verificato un errore durante l'installazione",

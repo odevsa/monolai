@@ -11,7 +11,6 @@
 		"loading": "読み込み中...",
 		"refresh": "更新",
 		"retry": "再試行",
-		"back": "戻る",
 		"copy": "コピー",
 		"copied": "コピー完了！",
 		"edit": "編集",
@@ -33,6 +32,7 @@
 		"new": "新規",
 		"add": "追加",
 		"download": "ダウンロード",
+		"details": "詳細",
 		"unload": "アンロード",
 		"unloadAll": "すべてアンロード",
 		"scrollToBottom": "最下部へスクロール",
@@ -46,7 +46,10 @@
 		"ready": "準備完了",
 		"downloading": "ダウンロード中...",
 		"show": "表示",
-		"hide": "非表示"
+		"hide": "非表示",
+		"page": "ページ",
+		"previous": "前へ",
+		"next": "次へ"
 	},
 	"navigation": {
 		"chat": "チャット",
@@ -224,8 +227,6 @@
 			"noReposDesc": "モデルの探索、量子化ファイルの確認、ダウンロードを行うには、少なくとも1つのモデルリポジトリ（Hugging Face Hubなど）を有効にしてください。",
 			"enableHuggingFace": "Hugging Face Hub を有効化",
 			"searchPlaceholder": "Hub上のモデルを検索（例: qwen, llama, flux）...",
-			"search": "検索",
-			"inspectFiles": "ファイル",
 			"selectQuantPrompt": "モデルディレクトリに直接ダウンロードする量子化重みファイルを選択してください:",
 			"noFilesAvailable": "このリポジトリに互換性のあるモデルファイルが見つかりません。",
 			"authRequired": "認証が必要",
@@ -238,7 +239,12 @@
 			"fitUnknown": "パフォーマンス適合性不明: ファイルサイズが報告されていません",
 			"sortDownloads": "最多ダウンロード",
 			"sortLikes": "最多いいね",
-			"sortUpdated": "最近更新された順"
+			"sortUpdated": "最近更新された順",
+			"tabFiles": "ファイルと量子化",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "README がありません",
+			"noReadmeDesc": "このリポジトリには README.md ファイルが含まれていません。",
+			"openInHuggingFace": "Hugging Face で開く"
 		},
 		"presets": {
 			"title": "実行プリセット",
@@ -248,12 +254,38 @@
 			"presetName": "プリセット名",
 			"runtime": "ランタイムエンジン",
 			"isDefault": "デフォルトプリセット",
-			"isDefaultDesc": "プリセットタグなしでモデルがリクエストされた場合、このプリセットを自動的に使用します。",
 			"flags": "実行フラグ",
 			"nameRequired": "プリセット名は必須です。",
 			"runtimeRequired": "互換性のあるランタイムエンジンを選択する必要があります。",
 			"noCompatibleRuntimes": "モダリティ '{{modality}}' および形式 '{{format}}' をサポートするインストール済みランタイムはありません。",
-			"deleteConfirm": "プリセット '{{name}}' を削除してもよろしいですか？"
+			"deleteConfirm": "プリセット '{{name}}' を削除してもよろしいですか？",
+			"selectFlagPlaceholder": "--フラグ名 または直接入力...",
+			"flagValuePlaceholder": "フラグの値",
+			"changeValueType": "値の型を変更",
+			"typePrimary": "プライマリモデル",
+			"typeAuxiliary": "補助アセット",
+			"typeAnyFile": "任意のモデルファイル",
+			"typeText": "テキスト",
+			"typeNumber": "数値",
+			"typeBool": "真偽値"
+		},
+		"auxiliary": {
+			"copyPath": "パスをコピー",
+			"pathCopied": "パスをクリップボードにコピーしました",
+			"deleteConfirmTitle": "補助ファイルを削除",
+			"deleteConfirmMsg": "'{{filename}}' をディスクから完全に削除してもよろしいですか？"
+		},
+		"picker": {
+			"title": "モデルファイルを選択",
+			"filterAll": "すべてのファイル",
+			"filterPrimary": "プライマリモデル",
+			"filterAuxiliary": "補助ファイル",
+			"searchPlaceholder": "モデルまたはフォルダを検索...",
+			"root": "ルート",
+			"upOneLevel": "1つ上の階層へ",
+			"noFiles": "このディレクトリにファイルは見つかりませんでした",
+			"selectFilePrompt": "ファイルを選択して続行してください",
+			"selectButton": "ファイルを選択"
 		},
 		"downloads": {
 			"emptyTitle": "ダウンロードはありません",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "リリースノートを表示",
 		"description": {
 			"llama-cpp": "テキスト生成、OpenAI互換HTTPエンドポイント、マルチモーダルモデル、GPUへの層オフロード（CUDA、ROCm、Vulkan、CPU）をサポートするC/C++製高性能LLM推論エンジン。",
-			"sd-cpp": "テキストから画像、画像から画像、SD1.x/SD2.x/SDXL/FLUX/SD3.5モデルアーキテクチャのGPUオフロードをサポートする純C/C++製Stable Diffusion推論エンジン。"
+			"sd-cpp": "テキストから画像、画像から画像、SD1.x/SD2.x/SDXL/FLUX/SD3.5モデルアーキテクチャのGPUオフロードをサポートする純C/C++製Stable Diffusion推論エンジン。",
+			"audio-cpp": "ggml を搭載した純粋な C++ 製の高性能音声推論エンジン。GGUF モデルと GPU オフロード（CUDA、ROCm、Vulkan）を用いて、Text-to-Speech（TTS）、音声認識（ASR/STT）、音声クローン、音源分離、音楽生成に対応。"
 		},
 		"errorLoading": "バックエンドからのランタイム読み込み中にエラーが発生しました。",
 		"installationError": "インストールエラーが発生しました",

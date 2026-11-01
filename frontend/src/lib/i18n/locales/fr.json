@@ -11,7 +11,6 @@
 		"loading": "Chargement...",
 		"refresh": "Actualiser",
 		"retry": "Réessayer",
-		"back": "Retour",
 		"copy": "Copier",
 		"copied": "Copié !",
 		"edit": "Modifier",
@@ -33,6 +32,7 @@
 		"new": "Nouveau",
 		"add": "Ajouter",
 		"download": "Télécharger",
+		"details": "Détails",
 		"unload": "Décharger",
 		"unloadAll": "Tout décharger",
 		"scrollToBottom": "Faire défiler vers le bas",
@@ -46,7 +46,10 @@
 		"ready": "Prêt",
 		"downloading": "Téléchargement...",
 		"show": "Afficher",
-		"hide": "Masquer"
+		"hide": "Masquer",
+		"page": "Page",
+		"previous": "Précédent",
+		"next": "Suivant"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Activez au moins un dépôt de modèles (comme Hugging Face Hub) pour explorer, inspecter les quants et télécharger des modèles.",
 			"enableHuggingFace": "Activer Hugging Face Hub",
 			"searchPlaceholder": "Rechercher des modèles sur le hub (ex. qwen, llama, flux)...",
-			"search": "Rechercher",
-			"inspectFiles": "Fichiers",
 			"selectQuantPrompt": "Sélectionnez un fichier de poids quantifiés à télécharger directement dans votre dossier de modèles :",
 			"noFilesAvailable": "Aucun fichier de modèle compatible trouvé dans ce dépôt.",
 			"authRequired": "Authentification requise",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Compatibilité des performances inconnue : taille de fichier non signalée",
 			"sortDownloads": "Plus téléchargés",
 			"sortLikes": "Plus aimés",
-			"sortUpdated": "Récemment mis à jour"
+			"sortUpdated": "Récemment mis à jour",
+			"tabFiles": "Fichiers et Quants",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "Aucun README disponible",
+			"noReadmeDesc": "Ce dépôt ne contient aucun fichier README.md.",
+			"openInHuggingFace": "Ouvrir dans Hugging Face"
 		},
 		"presets": {
 			"title": "Préréglages d'exécution",
@@ -248,12 +254,38 @@
 			"presetName": "Nom du préréglage",
 			"runtime": "Moteur d'exécution",
 			"isDefault": "Préréglage par défaut",
-			"isDefaultDesc": "Utiliser automatiquement ce préréglage lorsque le modèle est demandé sans étiquette de préréglage.",
 			"flags": "Paramètres d'exécution",
 			"nameRequired": "Le nom du préréglage est requis.",
 			"runtimeRequired": "Un moteur d'exécution compatible doit être sélectionné.",
 			"noCompatibleRuntimes": "Aucun moteur installé ne prend en charge la modalité '{{modality}}' et le format '{{format}}'.",
-			"deleteConfirm": "Voulez-vous vraiment supprimer le préréglage '{{name}}' ?"
+			"deleteConfirm": "Voulez-vous vraiment supprimer le préréglage '{{name}}' ?",
+			"selectFlagPlaceholder": "--nom-du-flag ou saisir personnalisé...",
+			"flagValuePlaceholder": "Valeur du flag",
+			"changeValueType": "Changer le type de valeur",
+			"typePrimary": "Modèle Principal",
+			"typeAuxiliary": "Fichier Auxiliaire",
+			"typeAnyFile": "Tout Fichier de Modèle",
+			"typeText": "Texte",
+			"typeNumber": "Nombre",
+			"typeBool": "Booléen"
+		},
+		"auxiliary": {
+			"copyPath": "Copier le Chemin",
+			"pathCopied": "Chemin copié dans le presse-papiers",
+			"deleteConfirmTitle": "Supprimer le Fichier Auxiliaire",
+			"deleteConfirmMsg": "Êtes-vous sûr de vouloir supprimer définitivement '{{filename}}' du disque ?"
+		},
+		"picker": {
+			"title": "Sélectionner un Fichier de Modèle",
+			"filterAll": "Tous les Fichiers",
+			"filterPrimary": "Modèles Principaux",
+			"filterAuxiliary": "Fichiers Auxiliaires",
+			"searchPlaceholder": "Rechercher des modèles ou dossiers...",
+			"root": "Racine",
+			"upOneLevel": "Dossier parent",
+			"noFiles": "Aucun fichier trouvé dans ce dossier",
+			"selectFilePrompt": "Sélectionnez un fichier pour continuer",
+			"selectButton": "Sélectionner le Fichier"
 		},
 		"downloads": {
 			"emptyTitle": "Aucun téléchargement",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Afficher les notes de version",
 		"description": {
 			"llama-cpp": "Moteur d'inférence LLM haute performance en C/C++ supportant la génération de texte, des endpoints HTTP compatibles OpenAI, les modèles de vision et le déchargement GPU complet ou partiel (CUDA, ROCm, Vulkan et CPU).",
-			"sd-cpp": "Inférence Stable Diffusion en pur C/C++ supportant texte-vers-image, image-vers-image, les architectures SD1.x, SD2.x, SDXL, FLUX et SD3.5 avec accélération GPU."
+			"sd-cpp": "Inférence Stable Diffusion en pur C/C++ supportant texte-vers-image, image-vers-image, les architectures SD1.x, SD2.x, SDXL, FLUX et SD3.5 avec accélération GPU.",
+			"audio-cpp": "Moteur d'inférence audio haute performance en C++ pur propulsé par ggml, prenant en charge le Text-to-Speech (TTS), le Speech-to-Text (ASR), le clonage vocal, la séparation de sources et la génération musicale via des modèles GGUF avec déchargement GPU (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Erreur lors du chargement des moteurs depuis le backend.",
 		"installationError": "Une erreur est survenue lors de l'installation",

@@ -11,7 +11,6 @@
 		"loading": "Загрузка...",
 		"refresh": "Обновить",
 		"retry": "Повторить",
-		"back": "Назад",
 		"copy": "Копировать",
 		"copied": "Скопировано!",
 		"edit": "Редактировать",
@@ -33,6 +32,7 @@
 		"new": "Новый",
 		"add": "Добавить",
 		"download": "Скачать",
+		"details": "Подробности",
 		"unload": "Выгрузить",
 		"unloadAll": "Выгрузить все",
 		"scrollToBottom": "Прокрутить вниз",
@@ -46,7 +46,10 @@
 		"ready": "Готово",
 		"downloading": "Загрузка...",
 		"show": "Показать",
-		"hide": "Скрыть"
+		"hide": "Скрыть",
+		"page": "Страница",
+		"previous": "Назад",
+		"next": "Вперед"
 	},
 	"navigation": {
 		"chat": "Чат",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Включите хотя бы один репозиторий моделей (например, Hugging Face Hub), чтобы просматривать, проверять квантования и скачивать модели.",
 			"enableHuggingFace": "Включить Hugging Face Hub",
 			"searchPlaceholder": "Поиск моделей на хабе (напр. qwen, llama, flux)...",
-			"search": "Искать",
-			"inspectFiles": "Файлы",
 			"selectQuantPrompt": "Выберите файл квантованных весов для загрузки прямо в каталог моделей:",
 			"noFilesAvailable": "В этом репозитории не найдено совместимых файлов моделей.",
 			"authRequired": "Требуется авторизация",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Совместимость неизвестна: размер файла не указан",
 			"sortDownloads": "Больше всего загрузок",
 			"sortLikes": "Больше всего лайков",
-			"sortUpdated": "Недавно обновленные"
+			"sortUpdated": "Недавно обновленные",
+			"tabFiles": "Файлы и квантования",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "README отсутствует",
+			"noReadmeDesc": "В этом репозитории нет файла README.md.",
+			"openInHuggingFace": "Открыть на Hugging Face"
 		},
 		"presets": {
 			"title": "Пресеты запуска",
@@ -248,12 +254,38 @@
 			"presetName": "Название пресета",
 			"runtime": "Среда выполнения",
 			"isDefault": "Пресет по умолчанию",
-			"isDefaultDesc": "Автоматически использовать этот пресет, когда модель запрашивается без тега пресета.",
 			"flags": "Флаги выполнения",
 			"nameRequired": "Название пресета обязательно.",
 			"runtimeRequired": "Необходимо выбрать совместимую среду выполнения.",
 			"noCompatibleRuntimes": "Нет установленных сред выполнения с поддержкой модальности '{{modality}}' и формата '{{format}}'.",
-			"deleteConfirm": "Вы уверены, что хотите удалить пресет '{{name}}'?"
+			"deleteConfirm": "Вы уверены, что хотите удалить пресет '{{name}}'?",
+			"selectFlagPlaceholder": "--имя-флага или введите свой...",
+			"flagValuePlaceholder": "Значение флага",
+			"changeValueType": "Изменить тип значения",
+			"typePrimary": "Основная модель",
+			"typeAuxiliary": "Вспомогательный ресурс",
+			"typeAnyFile": "Любой файл модели",
+			"typeText": "Текст",
+			"typeNumber": "Число",
+			"typeBool": "Логическое"
+		},
+		"auxiliary": {
+			"copyPath": "Копировать путь",
+			"pathCopied": "Путь скопирован в буфер обмена",
+			"deleteConfirmTitle": "Удалить вспомогательный файл",
+			"deleteConfirmMsg": "Вы уверены, что хотите безвозвратно удалить '{{filename}}' с диска?"
+		},
+		"picker": {
+			"title": "Выбрать файл модели",
+			"filterAll": "Все файлы",
+			"filterPrimary": "Основные модели",
+			"filterAuxiliary": "Вспомогательные файлы",
+			"searchPlaceholder": "Поиск моделей или папок...",
+			"root": "Корень",
+			"upOneLevel": "На уровень выше",
+			"noFiles": "В этой папке файлы не найдены",
+			"selectFilePrompt": "Выберите файл для продолжения",
+			"selectButton": "Выбрать файл"
 		},
 		"downloads": {
 			"emptyTitle": "Нет загрузок",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Посмотреть примечания к выпуску",
 		"description": {
 			"llama-cpp": "Высокопроизводительный движок инференса LLM на C/C++ с поддержкой генерации текста, OpenAI-совместимых эндпоинтов, мультимодальных моделей и выгрузки слоев на GPU (CUDA, ROCm, Vulkan и CPU).",
-			"sd-cpp": "Инференс Stable Diffusion на чистом C/C++ с поддержкой text-to-image, image-to-image, архитектур SD1.x, SD2.x, SDXL, FLUX и SD3.5 с аппаратным ускорением на GPU."
+			"sd-cpp": "Инференс Stable Diffusion на чистом C/C++ с поддержкой text-to-image, image-to-image, архитектур SD1.x, SD2.x, SDXL, FLUX и SD3.5 с аппаратным ускорением на GPU.",
+			"audio-cpp": "Высокопроизводительный движок аудиоинференса на чистом C++ на базе ggml с поддержкой синтеза речи (TTS), распознавания речи (ASR), клонирования голоса, разделения источников и генерации музыки с использованием моделей GGUF и GPU-ускорения (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Ошибка при загрузке сред выполнения с сервера.",
 		"installationError": "Произошла ошибка при установке",

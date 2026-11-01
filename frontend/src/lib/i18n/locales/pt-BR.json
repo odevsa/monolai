@@ -11,7 +11,6 @@
 		"loading": "Carregando...",
 		"refresh": "Atualizar",
 		"retry": "Tentar novamente",
-		"back": "Voltar",
 		"copy": "Copiar",
 		"copied": "Copiado!",
 		"edit": "Editar",
@@ -33,6 +32,7 @@
 		"new": "Novo",
 		"add": "Adicionar",
 		"download": "Baixar",
+		"details": "Detalhes",
 		"unload": "Descarregar",
 		"unloadAll": "Descarregar Todos",
 		"scrollToBottom": "Rolar para o final",
@@ -46,7 +46,10 @@
 		"ready": "Pronto",
 		"downloading": "Baixando...",
 		"show": "Mostrar",
-		"hide": "Ocultar"
+		"hide": "Ocultar",
+		"page": "Página",
+		"previous": "Anterior",
+		"next": "Próximo"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Habilite ao menos um repositório de modelos (como o Hugging Face Hub) para explorar, inspecionar quants e baixar modelos.",
 			"enableHuggingFace": "Habilitar Hugging Face Hub",
 			"searchPlaceholder": "Buscar modelos no hub (ex: qwen, llama, flux)...",
-			"search": "Buscar",
-			"inspectFiles": "Arquivos",
 			"selectQuantPrompt": "Selecione um arquivo de pesos quantizados para baixar diretamente para o diretório de modelos:",
 			"noFilesAvailable": "Nenhum arquivo de modelo compatível encontrado neste repositório.",
 			"authRequired": "Autenticação Necessária",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Adequação de desempenho desconhecida: tamanho do arquivo não informado",
 			"sortDownloads": "Mais Baixados",
 			"sortLikes": "Mais Curtidos",
-			"sortUpdated": "Atualizados Recentemente"
+			"sortUpdated": "Atualizados Recentemente",
+			"tabFiles": "Arquivos e Quants",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "Nenhum README Disponível",
+			"noReadmeDesc": "Este repositório não contém um arquivo README.md.",
+			"openInHuggingFace": "Abrir no Hugging Face"
 		},
 		"presets": {
 			"title": "Predefinições de Execução",
@@ -248,12 +254,38 @@
 			"presetName": "Nome da Predefinição",
 			"runtime": "Motor de Execução",
 			"isDefault": "Predefinição Padrão",
-			"isDefaultDesc": "Usar esta predefinição automaticamente quando o modelo for solicitado sem uma tag de predefinição.",
 			"flags": "Parâmetros de Execução",
 			"nameRequired": "O nome da predefinição é obrigatório.",
 			"runtimeRequired": "Um motor de execução compatível deve ser selecionado.",
 			"noCompatibleRuntimes": "Nenhum motor instalado é compatível com a modalidade '{{modality}}' e formato '{{format}}'.",
-			"deleteConfirm": "Tem certeza de que deseja excluir a predefinição '{{name}}'?"
+			"deleteConfirm": "Tem certeza de que deseja excluir a predefinição '{{name}}'?",
+			"selectFlagPlaceholder": "--nome-da-flag ou digite personalizado...",
+			"flagValuePlaceholder": "Valor da flag",
+			"changeValueType": "Alterar tipo de valor",
+			"typePrimary": "Modelo Principal",
+			"typeAuxiliary": "Arquivo Auxiliar",
+			"typeAnyFile": "Qualquer Arquivo de Modelo",
+			"typeText": "Texto",
+			"typeNumber": "Número",
+			"typeBool": "Booleano"
+		},
+		"auxiliary": {
+			"copyPath": "Copiar Caminho",
+			"pathCopied": "Caminho copiado para a área de transferência",
+			"deleteConfirmTitle": "Excluir Arquivo Auxiliar",
+			"deleteConfirmMsg": "Tem certeza de que deseja excluir permanentemente '{{filename}}' do disco?"
+		},
+		"picker": {
+			"title": "Selecionar Arquivo de Modelo",
+			"filterAll": "Todos os Arquivos",
+			"filterPrimary": "Modelos Principais",
+			"filterAuxiliary": "Arquivos Auxiliares",
+			"searchPlaceholder": "Buscar modelos ou pastas...",
+			"root": "Raiz",
+			"upOneLevel": "Subir um nível",
+			"noFiles": "Nenhum arquivo encontrado neste diretório",
+			"selectFilePrompt": "Selecione um arquivo para continuar",
+			"selectButton": "Selecionar Arquivo"
 		},
 		"downloads": {
 			"emptyTitle": "Nenhum Download",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Ver notas da versão",
 		"description": {
 			"llama-cpp": "Motor de inferência de LLM de alto desempenho em C/C++ compatível com geração de texto, endpoints HTTP compatíveis com OpenAI, modelos de visão multimodal e descarregamento total ou parcial em GPU (CUDA, ROCm, Vulkan e CPU).",
-			"sd-cpp": "Inferência de Stable Diffusion em C/C++ puro compatível com texto-para-imagem, imagem-para-imagem, arquiteturas SD1.x, SD2.x, SDXL, FLUX e SD3.5 com aceleração por GPU."
+			"sd-cpp": "Inferência de Stable Diffusion em C/C++ puro compatível com texto-para-imagem, imagem-para-imagem, arquiteturas SD1.x, SD2.x, SDXL, FLUX e SD3.5 com aceleração por GPU.",
+			"audio-cpp": "Motor de inferência de áudio de alto desempenho em C++ puro com ggml, com suporte a Text-to-Speech (TTS), Speech-to-Text (ASR), clonagem de voz, separação de fontes e geração musical usando modelos GGUF com offload de GPU (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Erro ao carregar runtimes do backend.",
 		"installationError": "Ocorreu um erro na instalação",

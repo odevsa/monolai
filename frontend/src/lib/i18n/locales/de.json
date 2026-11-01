@@ -11,7 +11,6 @@
 		"loading": "Laden...",
 		"refresh": "Aktualisieren",
 		"retry": "Wiederholen",
-		"back": "Zurück",
 		"copy": "Kopieren",
 		"copied": "Kopiert!",
 		"edit": "Bearbeiten",
@@ -33,6 +32,7 @@
 		"new": "Neu",
 		"add": "Hinzufügen",
 		"download": "Herunterladen",
+		"details": "Details",
 		"unload": "Entladen",
 		"unloadAll": "Alle entladen",
 		"scrollToBottom": "Nach unten scrollen",
@@ -46,7 +46,10 @@
 		"ready": "Bereit",
 		"downloading": "Herunterladen...",
 		"show": "Anzeigen",
-		"hide": "Ausblenden"
+		"hide": "Ausblenden",
+		"page": "Seite",
+		"previous": "Zurück",
+		"next": "Weiter"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Aktivieren Sie mindestens ein Modell-Repository (wie Hugging Face Hub), um Modelle zu durchsuchen, Quants zu prüfen und Modelle herunterzuladen.",
 			"enableHuggingFace": "Hugging Face Hub aktivieren",
 			"searchPlaceholder": "Modelle im Hub suchen (z. B. qwen, llama, flux)...",
-			"search": "Suchen",
-			"inspectFiles": "Dateien",
 			"selectQuantPrompt": "Wählen Sie eine quantisierte Gewichtsdatei aus, um sie direkt in Ihr Modellverzeichnis herunterzuladen:",
 			"noFilesAvailable": "Keine kompatiblen Modelldateien in diesem Repository gefunden.",
 			"authRequired": "Authentifizierung erforderlich",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Leistungseignung unbekannt: Dateigröße nicht gemeldet",
 			"sortDownloads": "Meiste Downloads",
 			"sortLikes": "Meiste Likes",
-			"sortUpdated": "Kürzlich aktualisiert"
+			"sortUpdated": "Kürzlich aktualisiert",
+			"tabFiles": "Dateien & Quants",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "Kein README verfügbar",
+			"noReadmeDesc": "Dieses Repository enthält keine README.md-Datei.",
+			"openInHuggingFace": "In Hugging Face öffnen"
 		},
 		"presets": {
 			"title": "Ausführungsvorlagen",
@@ -248,12 +254,38 @@
 			"presetName": "Vorlagenname",
 			"runtime": "Runtime-Engine",
 			"isDefault": "Standardvorlage",
-			"isDefaultDesc": "Diese Vorlage automatisch verwenden, wenn das Modell ohne Vorlagen-Tag angefordert wird.",
 			"flags": "Ausführungsflags",
 			"nameRequired": "Der Vorlagenname ist erforderlich.",
 			"runtimeRequired": "Eine kompatible Runtime-Engine muss ausgewählt werden.",
 			"noCompatibleRuntimes": "Keine installierte Runtime unterstützt die Modalität '{{modality}}' und das Format '{{format}}'.",
-			"deleteConfirm": "Möchten Sie die Vorlage '{{name}}' wirklich löschen?"
+			"deleteConfirm": "Möchten Sie die Vorlage '{{name}}' wirklich löschen?",
+			"selectFlagPlaceholder": "--flag-name oder benutzerdefiniert eingeben...",
+			"flagValuePlaceholder": "Flag-Wert",
+			"changeValueType": "Werttyp ändern",
+			"typePrimary": "Hauptmodell",
+			"typeAuxiliary": "Zusatzressource",
+			"typeAnyFile": "Beliebige Modelldatei",
+			"typeText": "Text",
+			"typeNumber": "Zahl",
+			"typeBool": "Boolesch"
+		},
+		"auxiliary": {
+			"copyPath": "Pfad kopieren",
+			"pathCopied": "Pfad in die Zwischenablage kopiert",
+			"deleteConfirmTitle": "Zusatzdatei löschen",
+			"deleteConfirmMsg": "Möchten Sie '{{filename}}' wirklich dauerhaft vom Datenträger löschen?"
+		},
+		"picker": {
+			"title": "Modelldatei auswählen",
+			"filterAll": "Alle Dateien",
+			"filterPrimary": "Hauptmodelle",
+			"filterAuxiliary": "Zusatzdateien",
+			"searchPlaceholder": "Modelle oder Ordner suchen...",
+			"root": "Stammverzeichnis",
+			"upOneLevel": "Eine Ebene nach oben",
+			"noFiles": "Keine Dateien in diesem Verzeichnis gefunden",
+			"selectFilePrompt": "Wählen Sie eine Datei aus, um fortzufahren",
+			"selectButton": "Datei auswählen"
 		},
 		"downloads": {
 			"emptyTitle": "Keine Downloads",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Versionshinweise anzeigen",
 		"description": {
 			"llama-cpp": "Hochleistungsfähige LLM-Inferenz-Engine in C/C++ mit Unterstützung für Textgenerierung, OpenAI-kompatible HTTP-Endpunkte, Multimodalität und GPU-Auslagerung (CUDA, ROCm, Vulkan und CPU).",
-			"sd-cpp": "Stable Diffusion-Inferenz in reinem C/C++ mit Unterstützung für Text-zu-Bild, Bild-zu-Bild, SD1.x, SD2.x, SDXL, FLUX und SD3.5 mit GPU-Beschleunigung."
+			"sd-cpp": "Stable Diffusion-Inferenz in reinem C/C++ mit Unterstützung für Text-zu-Bild, Bild-zu-Bild, SD1.x, SD2.x, SDXL, FLUX und SD3.5 mit GPU-Beschleunigung.",
+			"audio-cpp": "Hochleistungs-Audio-Inferenz-Engine in reinem C++, angetrieben von ggml, mit Unterstützung für Text-to-Speech (TTS), Speech-to-Text (ASR), Stimmenklonen, Quellentrennung und Musikgenerierung mit GGUF-Modellen und GPU-Beschleunigung (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Fehler beim Laden der Laufzeitumgebungen vom Backend.",
 		"installationError": "Installationsfehler aufgetreten",

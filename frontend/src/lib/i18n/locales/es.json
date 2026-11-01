@@ -11,7 +11,6 @@
 		"loading": "Cargando...",
 		"refresh": "Actualizar",
 		"retry": "Reintentar",
-		"back": "Volver",
 		"copy": "Copiar",
 		"copied": "¡Copiado!",
 		"edit": "Editar",
@@ -33,6 +32,7 @@
 		"new": "Nuevo",
 		"add": "Añadir",
 		"download": "Descargar",
+		"details": "Detalles",
 		"unload": "Descargar",
 		"unloadAll": "Descargar Todos",
 		"scrollToBottom": "Desplazarse al final",
@@ -46,7 +46,10 @@
 		"ready": "Listo",
 		"downloading": "Descargando...",
 		"show": "Mostrar",
-		"hide": "Ocultar"
+		"hide": "Ocultar",
+		"page": "Página",
+		"previous": "Anterior",
+		"next": "Siguiente"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -224,8 +227,6 @@
 			"noReposDesc": "Habilite al menos un repositorio de modelos (como Hugging Face Hub) para explorar, inspeccionar quantizaciones y descargar modelos.",
 			"enableHuggingFace": "Habilitar Hugging Face Hub",
 			"searchPlaceholder": "Buscar modelos en el hub (ej: qwen, llama, flux)...",
-			"search": "Buscar",
-			"inspectFiles": "Archivos",
 			"selectQuantPrompt": "Seleccione un archivo de pesos cuantizados para descargarlo directamente en su directorio de modelos:",
 			"noFilesAvailable": "No se encontraron archivos de modelo compatibles en este repositorio.",
 			"authRequired": "Autenticación requerida",
@@ -238,7 +239,12 @@
 			"fitUnknown": "Compatibilidad de rendimiento desconocida: tamaño de archivo no reportado",
 			"sortDownloads": "Más descargados",
 			"sortLikes": "Más valorados",
-			"sortUpdated": "Actualizados recientemente"
+			"sortUpdated": "Actualizados recientemente",
+			"tabFiles": "Archivos y Quants",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "No hay README disponible",
+			"noReadmeDesc": "Este repositorio no contiene un archivo README.md.",
+			"openInHuggingFace": "Abrir en Hugging Face"
 		},
 		"presets": {
 			"title": "Preajustes de ejecución",
@@ -248,12 +254,38 @@
 			"presetName": "Nombre del preajuste",
 			"runtime": "Motor de ejecución",
 			"isDefault": "Preajuste predeterminado",
-			"isDefaultDesc": "Usar este preajuste automáticamente cuando se solicite el modelo sin una etiqueta de preajuste.",
 			"flags": "Parámetros de ejecución",
 			"nameRequired": "El nombre del preajuste es obligatorio.",
 			"runtimeRequired": "Debe seleccionarse un motor de ejecución compatible.",
 			"noCompatibleRuntimes": "Ningún motor instalado es compatible con la modalidad '{{modality}}' y formato '{{format}}'.",
-			"deleteConfirm": "¿Está seguro de que desea eliminar el preajuste '{{name}}'?"
+			"deleteConfirm": "¿Está seguro de que desea eliminar el preajuste '{{name}}'?",
+			"selectFlagPlaceholder": "--nombre-flag o escribe personalizado...",
+			"flagValuePlaceholder": "Valor del flag",
+			"changeValueType": "Cambiar tipo de valor",
+			"typePrimary": "Modelo Principal",
+			"typeAuxiliary": "Archivo Auxiliar",
+			"typeAnyFile": "Cualquier Archivo de Modelo",
+			"typeText": "Texto",
+			"typeNumber": "Número",
+			"typeBool": "Booleano"
+		},
+		"auxiliary": {
+			"copyPath": "Copiar Ruta",
+			"pathCopied": "Ruta copiada al portapapeles",
+			"deleteConfirmTitle": "Eliminar Archivo Auxiliar",
+			"deleteConfirmMsg": "¿Estás seguro de que deseas eliminar permanentemente '{{filename}}' del disco?"
+		},
+		"picker": {
+			"title": "Seleccionar Archivo de Modelo",
+			"filterAll": "Todos los Archivos",
+			"filterPrimary": "Modelos Principales",
+			"filterAuxiliary": "Archivos Auxiliares",
+			"searchPlaceholder": "Buscar modelos o carpetas...",
+			"root": "Raíz",
+			"upOneLevel": "Subir un nivel",
+			"noFiles": "No se encontraron archivos en este directorio",
+			"selectFilePrompt": "Selecciona un archivo para continuar",
+			"selectButton": "Seleccionar Archivo"
 		},
 		"downloads": {
 			"emptyTitle": "No hay descargas",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "Ver notas de la versión",
 		"description": {
 			"llama-cpp": "Motor de inferencia LLM de alto rendimiento en C/C++ compatible con generación de texto, endpoints de chat y completion compatibles con OpenAI, modelos de visión multimodal y descarga a GPU (CUDA, ROCm, Vulkan y CPU).",
-			"sd-cpp": "Inferencia de Stable Diffusion en C/C++ puro compatible con texto a imagen, imagen a imagen, arquitecturas SD1.x, SD2.x, SDXL, FLUX y SD3.5 con aceleración por GPU."
+			"sd-cpp": "Inferencia de Stable Diffusion en C/C++ puro compatible con texto a imagen, imagen a imagen, arquitecturas SD1.x, SD2.x, SDXL, FLUX y SD3.5 con aceleración por GPU.",
+			"audio-cpp": "Motor de inferencia de audio de alto rendimiento en C++ puro impulsado por ggml, compatible con Text-to-Speech (TTS), Speech-to-Text (ASR), clonación de voz, separación de fuentes y generación musical mediante modelos GGUF con aceleración por GPU (CUDA, ROCm, Vulkan)."
 		},
 		"errorLoading": "Error al cargar los runtimes desde el backend.",
 		"installationError": "Ocurrió un error durante la instalación",

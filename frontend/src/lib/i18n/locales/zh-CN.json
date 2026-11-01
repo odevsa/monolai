@@ -11,7 +11,6 @@
 		"loading": "加载中...",
 		"refresh": "刷新",
 		"retry": "重试",
-		"back": "返回",
 		"copy": "复制",
 		"copied": "已复制！",
 		"edit": "编辑",
@@ -33,6 +32,7 @@
 		"new": "新建",
 		"add": "添加",
 		"download": "下载",
+		"details": "详情",
 		"unload": "卸载",
 		"unloadAll": "全部卸载",
 		"scrollToBottom": "滚动到底部",
@@ -46,7 +46,10 @@
 		"ready": "就绪",
 		"downloading": "下载中...",
 		"show": "显示",
-		"hide": "隐藏"
+		"hide": "隐藏",
+		"page": "页",
+		"previous": "上一页",
+		"next": "下一页"
 	},
 	"navigation": {
 		"chat": "对话",
@@ -224,8 +227,6 @@
 			"noReposDesc": "至少启用一个模型仓库（如 Hugging Face Hub）以探索、检查量化版本并下载模型。",
 			"enableHuggingFace": "启用 Hugging Face Hub",
 			"searchPlaceholder": "在仓库中搜索模型（如 qwen、llama、flux）...",
-			"search": "搜索",
-			"inspectFiles": "文件",
 			"selectQuantPrompt": "选择要直接下载到模型目录的量化权重文件：",
 			"noFilesAvailable": "此仓库中未找到兼容的模型文件。",
 			"authRequired": "需要身份验证",
@@ -238,7 +239,12 @@
 			"fitUnknown": "性能适配未知：未报告文件大小",
 			"sortDownloads": "最多下载",
 			"sortLikes": "最多点赞",
-			"sortUpdated": "最近更新"
+			"sortUpdated": "最近更新",
+			"tabFiles": "文件与量化",
+			"tabReadme": "README.md",
+			"noReadmeTitle": "无可用 README",
+			"noReadmeDesc": "该仓库未包含 README.md 文件。",
+			"openInHuggingFace": "在 Hugging Face 中打开"
 		},
 		"presets": {
 			"title": "运行预设",
@@ -248,12 +254,38 @@
 			"presetName": "预设名称",
 			"runtime": "运行引擎",
 			"isDefault": "默认预设",
-			"isDefaultDesc": "当未指定预设标签请求此模型时，自动使用此预设。",
 			"flags": "运行参数",
 			"nameRequired": "预设名称为必填项。",
 			"runtimeRequired": "必须选择兼容的运行引擎。",
 			"noCompatibleRuntimes": "没有已安装的运行引擎支持模态 '{{modality}}' 和格式 '{{format}}'。",
-			"deleteConfirm": "确定要删除预设 '{{name}}' 吗？"
+			"deleteConfirm": "确定要删除预设 '{{name}}' 吗？",
+			"selectFlagPlaceholder": "--参数名称 或输入自定义...",
+			"flagValuePlaceholder": "参数值",
+			"changeValueType": "更改值类型",
+			"typePrimary": "主模型",
+			"typeAuxiliary": "辅助资产",
+			"typeAnyFile": "任意模型文件",
+			"typeText": "文本",
+			"typeNumber": "数字",
+			"typeBool": "布尔值"
+		},
+		"auxiliary": {
+			"copyPath": "复制路径",
+			"pathCopied": "路径已复制到剪贴板",
+			"deleteConfirmTitle": "删除辅助文件",
+			"deleteConfirmMsg": "确定要从磁盘永久删除“{{filename}}”吗？"
+		},
+		"picker": {
+			"title": "选择模型文件",
+			"filterAll": "所有文件",
+			"filterPrimary": "主模型",
+			"filterAuxiliary": "辅助文件",
+			"searchPlaceholder": "搜索模型或文件夹...",
+			"root": "根目录",
+			"upOneLevel": "上一层",
+			"noFiles": "在此目录中未找到文件",
+			"selectFilePrompt": "请选择一个文件以继续",
+			"selectButton": "选择文件"
 		},
 		"downloads": {
 			"emptyTitle": "暂无下载",
@@ -345,7 +377,8 @@
 		"viewReleaseNotes": "查看发行说明",
 		"description": {
 			"llama-cpp": "基于 C/C++ 的高性能 LLM 推理引擎，支持文本生成、OpenAI 兼容接口、多模态视觉模型以及跨 GPU/CPU 层的完全或部分卸载（CUDA、ROCm、Vulkan 与 CPU）。",
-			"sd-cpp": "基于纯 C/C++ 实现的 Stable Diffusion 推理引擎，支持文生图、图生图、SD1.x、SD2.x、SDXL、FLUX 和 SD3.5 等多种模型架构的 GPU 加速。"
+			"sd-cpp": "基于纯 C/C++ 实现的 Stable Diffusion 推理引擎，支持文生图、图生图、SD1.x、SD2.x、SDXL、FLUX 和 SD3.5 等多种模型架构的 GPU 加速。",
+			"audio-cpp": "基于 ggml 的纯 C++ 高性能音频推理引擎，支持文本转语音 (TTS)、语音识别 (ASR/STT)、声音克隆、音源分离以及音乐生成，采用 GGUF 模型并支持 GPU 加速 (CUDA、ROCm、Vulkan)。"
 		},
 		"errorLoading": "从后端获取运行环境列表失败。",
 		"installationError": "安装过程中出现错误",
