@@ -41,11 +41,13 @@
 	let menuCoords = $state({ top: 0, left: 0 });
 
 	let flagOptions: SelectOption[] = $derived(
-		manifestFlags.map((f) => ({
-			value: f.flag,
-			label: `${f.flag} (${f.name || f.flag})`,
-			sublabel: f.description
-		}))
+		manifestFlags
+			.filter((f) => !f.model)
+			.map((f) => ({
+				value: f.flag,
+				label: `${f.flag} (${f.name || f.flag})`,
+				sublabel: f.description
+			}))
 	);
 
 	let flagDef = $derived(manifestFlags.find((f) => f.flag === key));

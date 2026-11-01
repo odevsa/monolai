@@ -7,3 +7,4 @@ export * from './chats.svelte';
 export * from './host.svelte';
 export * from './downloads.svelte';
 export * from './settings.svelte';
+export * from './sidebar.svelte';

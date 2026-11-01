@@ -12,6 +12,7 @@
 	import { chatsState } from '$lib/state/chats.svelte';
 	import { downloadStore } from '$lib/state/downloads.svelte';
 	import { addChatTab, closeChatTab, headerState, selectChatTab } from '$lib/state/header.svelte';
+	import { sidebarState } from '$lib/state/sidebar.svelte';
 	import { getThemeType, resolveEffectiveTheme, type ThemeId } from '$lib/themes';
 	import type { ConfigStatus } from '$lib/types/config';
 	import { formatSpeed } from '$lib/utils/format';
@@ -23,8 +24,6 @@
 
 	let themeMode = $state<ThemeId>('system');
 	let systemPrefersDark = $state(false);
-	let sidebarCollapsed = $state(false);
-	let mobileSidebarOpen = $state(false);
 	let settingsOpen = $state(false);
 	let configStatus = $state<ConfigStatus | null>(null);
 
@@ -167,7 +166,7 @@
 		<button
 			type="button"
 			class="md:hidden fixed top-3.5 left-3.5 w-10 h-10 flex items-center justify-center bg-[var(--bg-surface)]/50 backdrop-blur-md border border-[var(--border-color)]/70 rounded-xl text-[var(--text-primary)] cursor-pointer z-[90] transition-all duration-150 hover:bg-[var(--bg-surface)]/80 hover:border-[var(--border-hover)] shadow-xs"
-			onclick={() => (mobileSidebarOpen = true)}
+			onclick={() => (sidebarState.mobileOpen = true)}
 			onmouseenter={() => (isMobileLogoHovered = true)}
 			onmouseleave={() => (isMobileLogoHovered = false)}
 			aria-label="Open Sidebar"
@@ -182,8 +181,8 @@
 
 		<div class="flex flex-1 w-full h-full min-h-0 overflow-hidden">
 			<Sidebar
-				bind:collapsed={sidebarCollapsed}
-				bind:mobileOpen={mobileSidebarOpen}
+				bind:collapsed={sidebarState.collapsed}
+				bind:mobileOpen={sidebarState.mobileOpen}
 				onOpenSettings={() => (settingsOpen = true)}
 			/>
 
