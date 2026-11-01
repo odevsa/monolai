@@ -136,6 +136,8 @@ impl ModelService {
                 if !item.is_auxiliary {
                     let runtime_id = if item.modality == "text-to-image" {
                         "sd-cpp"
+                    } else if item.modality == "text-to-speech" || item.modality == "speech-to-text" {
+                        "audio-cpp"
                     } else {
                         "llama-cpp"
                     };

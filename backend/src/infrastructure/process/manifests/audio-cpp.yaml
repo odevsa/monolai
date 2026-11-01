@@ -1,0 +1,318 @@
+id: audio-cpp
+name: "Audio C++ Server"
+website: "https://github.com/0xShug0/audio.cpp"
+upstream:
+  type: github_release
+  repository: "0xShug0/audio.cpp"
+  tag_regex: "^v\\d+\\.\\d+\\.\\d+$"
+description: |
+  High-performance pure C++ inference engine for modern audio AI models powered by ggml.
+  Supports Text-to-Speech (TTS), Automatic Speech Recognition (ASR/STT), Voice Cloning,
+  Voice Activity Detection (VAD), and Audio Processing without Python dependencies.
+version: "v0.9.3"
+features:
+  - text-to-speech
+  - speech-to-text
+  - voice-cloning
+  - audio-generation
+supported_modalities:
+  - text-to-speech
+  - speech-to-text
+supported_formats:
+  - gguf
+binary_name: "audiocpp_server"
+
+downloads:
+  linux:
+    x86_64:
+      cpu:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cpu.tar.gz"
+        archive_type: "tar.gz"
+      vulkan:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-vulkan.tar.gz"
+        archive_type: "tar.gz"
+      cuda:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
+        archive_type: "tar.gz"
+      cuda-12:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
+        archive_type: "tar.gz"
+      cuda-12.8:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
+        archive_type: "tar.gz"
+      rocm:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-rocm10.0.0-test.tar.gz"
+        archive_type: "tar.gz"
+    arm64:
+      cpu:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-arm64-cpu.tar.gz"
+        archive_type: "tar.gz"
+  windows:
+    x86_64:
+      cpu:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cpu.zip"
+        archive_type: "zip"
+      cuda:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
+        archive_type: "zip"
+      cuda-12:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
+        archive_type: "zip"
+      vulkan:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-vulkan.zip"
+        archive_type: "zip"
+  macos:
+    arm64:
+      metal:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-macos-arm64-metal.tar.gz"
+        archive_type: "tar.gz"
+      cpu:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-macos-arm64-metal.tar.gz"
+        archive_type: "tar.gz"
+    x86_64:
+      metal:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-macos-x64-metal.tar.gz"
+        archive_type: "tar.gz"
+      cpu:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-macos-x64-metal.tar.gz"
+        archive_type: "tar.gz"
+
+flags:
+  # Model & Task Definition
+  - flag: "--model"
+    name: "Model File"
+    description: "Path to the main audio GGUF checkpoint or package directory"
+    type: "file"
+    model: true
+    important: true
+    default_value: ""
+  - flag: "--family"
+    name: "Model Family"
+    description: "Architecture implementation family (e.g. pocket_tts, qwen3_tts, sensevoice, kokoro)"
+    type: "enum"
+    important: true
+    default_value: ""
+    options:
+      - "pocket_tts"
+      - "qwen3_tts"
+      - "qwen3_asr"
+      - "parakeet_tdt"
+      - "sensevoice"
+      - "kokoro"
+      - "chatterbox"
+      - "bark"
+      - "fish_speech"
+      - "drama3"
+      - "ming3"
+      - "coqui_xtts"
+      - "f5_tts"
+      - "cosyvoice"
+      - "rvc"
+      - "demucs"
+      - "whisper"
+  - flag: "--task"
+    name: "Audio Task"
+    description: "Speech or audio operation to perform"
+    type: "enum"
+    important: true
+    default_value: "tts"
+    options:
+      - "tts"
+      - "asr"
+      - "clon"
+      - "vc"
+      - "svc"
+      - "s2s"
+      - "vad"
+      - "diar"
+      - "sep"
+      - "vdes"
+      - "midi"
+      - "wake"
+      - "cls"
+      - "gen"
+  - flag: "--mode"
+    name: "Execution Mode"
+    description: "Execution processing mode for requests"
+    type: "enum"
+    default_value: "offline"
+    options:
+      - "offline"
+      - "streaming"
+
+  # Network & Server Settings
+  - flag: "--host"
+    name: "Host Address"
+    description: "IP interface to bind HTTP server endpoints"
+    type: "string"
+    important: true
+    default_value: "127.0.0.1"
+  - flag: "--port"
+    name: "Port"
+    description: "TCP port number for incoming HTTP API requests"
+    type: "int"
+    important: true
+    default_value: "8080"
+  - flag: "--config"
+    name: "Server Configuration"
+    description: "Path to a JSON configuration file defining server parameters and models"
+    type: "file-auxiliary"
+    default_value: ""
+  - flag: "--no-ui"
+    name: "Disable WebUI"
+    description: "Run as an API-only server without serving embedded frontend assets"
+    type: "bool"
+    default_value: "true"
+  - flag: "--ui"
+    name: "Enable WebUI"
+    description: "Expose embedded SvelteKit WebUI at the root HTTP endpoint"
+    type: "bool"
+    default_value: "false"
+  - flag: "--ui-management"
+    name: "UI Management"
+    description: "Enable model package management and dynamic loading endpoints in the WebUI"
+    type: "bool"
+    default_value: "false"
+
+  # Hardware Acceleration & Compute
+  - flag: "--backend"
+    name: "Inference Backend"
+    description: "Hardware compute acceleration backend"
+    type: "enum"
+    important: true
+    default_value: "cpu"
+    options:
+      - "cpu"
+      - "cuda"
+      - "vulkan"
+      - "metal"
+      - "hip"
+      - "best"
+  - flag: "--device"
+    name: "Device Index"
+    description: "Zero-based GPU accelerator device index"
+    type: "int"
+    default_value: "0"
+  - flag: "--threads"
+    name: "Compute Threads"
+    description: "Number of CPU worker threads for inference computations"
+    type: "int"
+    important: true
+    default_value: "4"
+  - flag: "--parallel-jobs"
+    name: "Parallel Runtime"
+    description: "Enable experimental parallel runtime engine for concurrent requests"
+    type: "bool"
+    default_value: "false"
+  - flag: "--max-loaded-models"
+    name: "Max Resident Models"
+    description: "Maximum models kept in memory simultaneously using LRU eviction (0 for unbounded)"
+    type: "int"
+    default_value: "1"
+
+  # Auxiliary Audio Files & Voice Reference
+  - flag: "--voice-ref"
+    name: "Voice Reference Audio"
+    description: "Path to clean speech reference WAV file for voice cloning and speaker adaptation"
+    type: "file-auxiliary"
+    default_value: ""
+  - flag: "--audio"
+    name: "Input Audio File"
+    description: "Path to input audio file for speech-to-text, conversion, or separation"
+    type: "file-auxiliary"
+    default_value: ""
+  - flag: "--text"
+    name: "Input Prompt Text"
+    description: "Text input string to synthesize or transcribe against"
+    type: "string"
+    default_value: ""
+  - flag: "--out"
+    name: "Output Audio File"
+    description: "Destination file path for generated or enhanced audio"
+    type: "string"
+    default_value: ""
+  - flag: "--out-dir"
+    name: "Output Directory"
+    description: "Destination directory for batch generated audio files and transcripts"
+    type: "string"
+    default_value: ""
+
+  # Audio Streaming & Formatting
+  - flag: "--input-format"
+    name: "PCM Format"
+    description: "Raw PCM sample format when streaming audio"
+    type: "enum"
+    default_value: "s16le"
+    options:
+      - "s16le"
+      - "f32le"
+  - flag: "--input-rate"
+    name: "Sample Rate (Hz)"
+    description: "Audio sample rate in Hz for streaming input audio"
+    type: "int"
+    default_value: "16000"
+  - flag: "--audio-chunk-seconds"
+    name: "Audio Chunk Duration"
+    description: "Chunk split interval in seconds for long audio input processing"
+    type: "number"
+    default_value: "30"
+  - flag: "--audio-chunk-mode"
+    name: "Chunking Mode"
+    description: "Algorithm used for segmenting long audio streams"
+    type: "enum"
+    default_value: "auto"
+    options:
+      - "auto"
+      - "fixed"
+      - "vad"
+      - "none"
+  - flag: "--resample-kernel-cache-mb"
+    name: "Resample Cache (MB)"
+    description: "Memory limit in MiB allocated for cached resampling kernels"
+    type: "int"
+    default_value: "64"
+
+  # Batch & Workflow Execution
+  - flag: "--batch-text-file"
+    name: "Batch Text File"
+    description: "Path to file containing one generation request per line"
+    type: "file-auxiliary"
+    default_value: ""
+  - flag: "--request-sequence"
+    name: "Request Sequence File"
+    description: "Path to JSON file containing structured batch request queue"
+    type: "file-auxiliary"
+    default_value: ""
+  - flag: "--session-option"
+    name: "Session Option"
+    description: "Backend-specific execution parameters or plans in key=value or JSON format"
+    type: "string"
+    default_value: ""
+  - flag: "--recipe"
+    name: "Predefined Recipe"
+    description: "Built-in workflow recipe name (e.g. cross-language-dubbing, any-tts)"
+    type: "string"
+    default_value: ""
+
+  # Logging & Performance Diagnostics
+  - flag: "--log"
+    name: "Enable Logging"
+    description: "Print timing, progress, and execution logs to standard output"
+    type: "bool"
+    default_value: "true"
+  - flag: "--log-file"
+    name: "Log File Destination"
+    description: "Stream server execution logs directly to a designated log file"
+    type: "string"
+    default_value: ""
+  - flag: "--metrics"
+    name: "Performance Metrics"
+    description: "Print wall time, audio duration, real-time factor (RTF), and sample rate metrics"
+    type: "bool"
+    default_value: "false"
+  - flag: "--inspect"
+    name: "Inspect Model"
+    description: "Print discovered tensors, capabilities, and parameters for the specified model"
+    type: "bool"
+    default_value: "false"
+

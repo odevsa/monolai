@@ -1,4 +1,5 @@
 <script lang="ts">
+	import audioIcon from '$lib/assets/runtimes/audio-cpp.svg';
 	import llamaIcon from '$lib/assets/runtimes/llama-cpp.svg';
 	import sdIcon from '$lib/assets/runtimes/sd-cpp.svg';
 	import { t } from '$lib/i18n';
@@ -13,7 +14,8 @@
 
 	const localIcons: Record<string, string> = {
 		'llama-cpp': llamaIcon,
-		'sd-cpp': sdIcon
+		'sd-cpp': sdIcon,
+		'audio-cpp': audioIcon
 	};
 
 	let iconSrc = $derived(localIcons[runtime.id] || runtime.icon);

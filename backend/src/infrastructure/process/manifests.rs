@@ -3,6 +3,7 @@ use std::path::Path;
 
 const LLAMA_CPP_MANIFEST: &str = include_str!("manifests/llama-cpp.yaml");
 const SD_CPP_MANIFEST: &str = include_str!("manifests/sd-cpp.yaml");
+const AUDIO_CPP_MANIFEST: &str = include_str!("manifests/audio-cpp.yaml");
 
 /// Retrieve all available runtime manifests, optionally reading additional manifests from an extra folder.
 pub fn get_runtime_manifests(extra_folder: Option<&Path>) -> Vec<RuntimeManifest> {
@@ -19,6 +20,12 @@ pub fn get_runtime_manifests(extra_folder: Option<&Path>) -> Vec<RuntimeManifest
         manifests.push(m);
     } else {
         tracing::error!("Failed to parse embedded sd-cpp.yaml manifest");
+    }
+
+    if let Ok(m) = serde_yaml::from_str::<RuntimeManifest>(AUDIO_CPP_MANIFEST) {
+        manifests.push(m);
+    } else {
+        tracing::error!("Failed to parse embedded audio-cpp.yaml manifest");
     }
 
     // 2. Extra manifests folder if specified
@@ -128,7 +135,7 @@ mod tests {
     #[test]
     fn test_embedded_manifests_parse_correctly() {
         let manifests = get_runtime_manifests(None);
-        assert!(manifests.len() >= 2);
+        assert!(manifests.len() >= 3);
 
         let llama = manifests.iter().find(|m| m.id == "llama-cpp");
         assert!(llama.is_some());
@@ -137,6 +144,13 @@ mod tests {
 
         let sd = manifests.iter().find(|m| m.id == "sd-cpp");
         assert!(sd.is_some());
+        let sd = sd.unwrap();
+        assert_eq!(sd.binary_name, "sd-server");
+
+        let audio = manifests.iter().find(|m| m.id == "audio-cpp");
+        assert!(audio.is_some());
+        let audio = audio.unwrap();
+        assert_eq!(audio.binary_name, "audiocpp_server");
     }
 
     #[test]
