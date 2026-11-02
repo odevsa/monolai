@@ -7,6 +7,7 @@
 		Badge,
 		Button,
 		Card,
+		Dropzone,
 		ModelSelect,
 		Select,
 		Tabs
@@ -96,34 +97,12 @@
 		{ id: 'mic', label: t('audio.recordMicrophone'), icon: Mic }
 	];
 
-	function handleFileSelected(e: Event) {
-		const target = e.target as HTMLInputElement;
-		if (target.files && target.files.length > 0) {
-			const file = target.files[0];
-			uploadedFile = file;
-			if (fileAudioUrl) {
-				URL.revokeObjectURL(fileAudioUrl);
-			}
-			fileAudioUrl = URL.createObjectURL(file);
+	function handleFileSelected(file: File) {
+		uploadedFile = file;
+		if (fileAudioUrl) {
+			URL.revokeObjectURL(fileAudioUrl);
 		}
-	}
-
-	function handleDrop(e: DragEvent) {
-		e.preventDefault();
-		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-			const file = e.dataTransfer.files[0];
-			if (file.type.startsWith('audio/')) {
-				uploadedFile = file;
-				if (fileAudioUrl) {
-					URL.revokeObjectURL(fileAudioUrl);
-				}
-				fileAudioUrl = URL.createObjectURL(file);
-			}
-		}
-	}
-
-	function handleDragOver(e: DragEvent) {
-		e.preventDefault();
+		fileAudioUrl = URL.createObjectURL(file);
 	}
 
 	function handleRecordingComplete(blob: Blob, durationSecs: number) {
@@ -299,38 +278,17 @@
 			<Tabs variant="pills" items={inputTabs} bind:value={inputMethod} />
 
 			{#if inputMethod === 'file'}
-				<!-- File Upload Dropzone -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					ondrop={handleDrop}
-					ondragover={handleDragOver}
-					class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--border-color)] rounded-xl hover:border-[var(--primary)] transition-colors cursor-pointer bg-[var(--bg-hover)]/30 text-center relative"
-				>
-					<input
-						type="file"
-						accept="audio/*"
-						onchange={handleFileSelected}
-						disabled={isTranscribing}
-						class="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
-						aria-label={t('audio.uploadAudioFile')}
-					/>
-					<FileHeadphone size={28} class="text-[var(--text-muted)] mb-2 shrink-0" />
-					{#if uploadedFile}
-						<span class="text-xs font-semibold text-[var(--primary)] truncate max-w-xs">
-							{uploadedFile.name}
-						</span>
-						<span class="text-[11px] text-[var(--text-muted)]">
-							{(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
-						</span>
-					{:else}
-						<span class="text-xs font-semibold text-[var(--text-primary)]">
-							{t('audio.dragDropAudio')}
-						</span>
-						<span class="text-[11px] text-[var(--text-muted)] mt-1">
-							{t('audio.supportedFormats')}
-						</span>
-					{/if}
-				</div>
+				<!-- File Upload Dropzone (Global Molecule) -->
+				<Dropzone
+					accept="audio/*"
+					file={uploadedFile}
+					disabled={isTranscribing}
+					icon={FileHeadphone}
+					title={t('audio.dragDropAudio')}
+					subtitle={t('audio.supportedFormats')}
+					ariaLabel={t('audio.uploadAudioFile')}
+					onFileSelect={handleFileSelected}
+				/>
 			{:else}
 				<!-- Microphone Recording Studio -->
 				<AudioRecorder onRecordingComplete={handleRecordingComplete} />
@@ -406,4 +364,3 @@
 		<AudioTranscriptionCard transcript={lastTranscript} model={selectedModel} {isTranscribing} />
 	</div>
 </div>
-

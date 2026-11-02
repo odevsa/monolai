@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
 	import { AudioAsrStudio, AudioTtsStudio } from '$lib/components/audio';
 	import { FeatureGate, PageHeader, Tabs } from '$lib/components/ui';
@@ -9,8 +11,10 @@
 	import { Headphones, Mic } from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 
+	type AudioTabType = 'tts' | 'asr';
+
 	// Tab configuration for audio modes (extensible for future features)
-	let activeTab = $state('tts');
+	let activeTab = $state<AudioTabType>('tts');
 
 	let audioTabs = $derived([
 		{ id: 'tts', label: t('audio.ttsTab'), icon: Headphones },
@@ -117,6 +121,26 @@
 		}
 	});
 
+	// URL Query param tab synchronization (mirroring /models)
+	$effect(() => {
+		const tabParam = page.url.searchParams.get('tab');
+		if (tabParam === 'tts' || tabParam === 'asr') {
+			if (activeTab !== tabParam) {
+				activeTab = tabParam;
+			}
+		}
+	});
+
+	function setTab(newTab: AudioTabType) {
+		activeTab = newTab;
+		const url = new URL(page.url);
+		url.searchParams.set('tab', newTab);
+		const target = `${url.pathname}${url.search}`;
+		if (target !== `${page.url.pathname}${page.url.search}`) {
+			goto(target, { replaceState: true, noScroll: true, keepFocus: true });
+		}
+	}
+
 	let lastSelectionVersion = 0;
 
 	// Sync active tab only when an item is explicitly selected from sidebar history
@@ -127,10 +151,8 @@
 			untrack(() => {
 				const item = audioState.selectedItem;
 				if (item) {
-					if (item.type === 'tts') {
-						activeTab = 'tts';
-					} else if (item.type === 'asr') {
-						activeTab = 'asr';
+					if (item.type === 'tts' || item.type === 'asr') {
+						setTab(item.type);
 					}
 				}
 			});
@@ -153,7 +175,8 @@
 			<Tabs
 				variant="card"
 				items={audioTabs}
-				bind:value={activeTab}
+				value={activeTab}
+				onchange={(id) => setTab(id as AudioTabType)}
 				cardClass="p-5 sm:p-6 shadow-sm"
 			>
 				{#snippet header()}

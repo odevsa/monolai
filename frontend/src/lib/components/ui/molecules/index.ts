@@ -4,6 +4,7 @@ export { default as AudioPlayer } from './AudioPlayer.svelte';
 export { default as Card } from './Card.svelte';
 export { default as CodeBlock } from './CodeBlock.svelte';
 export { default as ContextIndicator } from './ContextIndicator.svelte';
+export { default as Dropzone } from './Dropzone.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as FeatureGate } from './FeatureGate.svelte';
 export { default as FormField } from './FormField.svelte';
