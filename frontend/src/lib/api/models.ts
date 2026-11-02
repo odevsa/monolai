@@ -8,7 +8,8 @@ import type {
 	ModelFileItem,
 	RunningModelStatus,
 	CreatePresetPayload,
-	UpdatePresetPayload
+	UpdatePresetPayload,
+	ModelVoicesResponse
 } from '$lib/types/models';
 import type { RuntimeManifest } from '$lib/types/runtimes';
 
@@ -204,6 +205,10 @@ export const modelsApi = {
 
 	delete: (id: string, deleteFile: boolean = false) =>
 		api.delete<void>(`/api/models/${encodeURIComponent(id)}`, { delete_file: deleteFile }),
+
+	// Model Voices
+	getVoices: (modelId: string) =>
+		api.get<ModelVoicesResponse>(`/api/models/${encodeURIComponent(modelId)}/voices`),
 
 	// Presets Management
 	getPresets: (modelId: string) =>

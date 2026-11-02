@@ -1,7 +1,7 @@
 use crate::core::error::AppResult;
 use crate::domain::{
-    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus, RuntimeManifest,
-    UpdatePresetPayload,
+    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, ModelVoicesResponse,
+    RunningModelStatus, RuntimeManifest, UpdatePresetPayload,
 };
 use crate::state::AppState;
 use async_stream::stream;
@@ -93,6 +93,27 @@ pub async fn get_model_by_id_handler(
 ) -> AppResult<Json<ModelRecord>> {
     let model = state.model_service.get_model_by_id(&id).await?;
     Ok(Json(model))
+}
+
+/// Get available voices for a TTS model
+#[utoipa::path(
+    get,
+    path = "/api/models/{id}/voices",
+    tag = "Models",
+    params(
+        ("id" = String, Path, description = "Model ID")
+    ),
+    responses(
+        (status = 200, description = "Model available voices", body = ModelVoicesResponse),
+        (status = 404, description = "Model not found")
+    )
+)]
+pub async fn get_model_voices_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> AppResult<Json<ModelVoicesResponse>> {
+    let voices = state.model_service.get_model_voices(&id).await?;
+    Ok(Json(voices))
 }
 
 /// Delete a registered model (optionally deleting physical file)

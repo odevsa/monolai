@@ -15,4 +15,5 @@ export { default as ModelBadge } from './ModelBadge.svelte';
 export { default as ModelSelect } from './ModelSelect.svelte';
 export { default as RandomPromptButton } from './RandomPromptButton.svelte';
 export { default as Select } from './Select.svelte';
+export type { SelectOption } from './Select.svelte';
 export { default as Tabs } from './Tabs.svelte';

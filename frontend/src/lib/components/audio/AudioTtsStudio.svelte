@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FeatureModelItem } from '$lib/api/models';
+	import { modelsApi, type FeatureModelItem } from '$lib/api/models';
 	import { generateSpeech } from '$lib/api/openai';
 	import {
 		Alert,
@@ -11,8 +11,14 @@
 		ModelSelect,
 		RandomPromptButton,
 		Select,
-		Textarea
+		Textarea,
+		type SelectOption
 	} from '$lib/components/ui';
+	import {
+		KOKORO_VOICE_OPTIONS,
+		formatVoiceOption,
+		resolveVoiceOptions
+	} from '$lib/constants/voices';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
 	import { copyToClipboard } from '$lib/utils/clipboard';
@@ -68,26 +74,49 @@
 		}
 	}
 
-	// TTS voice options including Kokoro & OpenAI defaults
-	const voiceOptions = [
-		{ value: 'af_heart', label: 'Heart (Female, en-US)' },
-		{ value: 'af_bella', label: 'Bella (Female, en-US)' },
-		{ value: 'af_nicole', label: 'Nicole (Female, en-US)' },
-		{ value: 'af_sarah', label: 'Sarah (Female, en-US)' },
-		{ value: 'af_sky', label: 'Sky (Female, en-US)' },
-		{ value: 'am_adam', label: 'Adam (Male, en-US)' },
-		{ value: 'am_michael', label: 'Michael (Male, en-US)' },
-		{ value: 'bf_emma', label: 'Emma (Female, en-GB)' },
-		{ value: 'bf_isabella', label: 'Isabella (Female, en-GB)' },
-		{ value: 'bm_george', label: 'George (Male, en-GB)' },
-		{ value: 'bm_lewis', label: 'Lewis (Male, en-GB)' },
-		{ value: 'alloy', label: 'Alloy (OpenAI Standard)' },
-		{ value: 'echo', label: 'Echo (OpenAI Standard)' },
-		{ value: 'fable', label: 'Fable (OpenAI Standard)' },
-		{ value: 'onyx', label: 'Onyx (OpenAI Standard)' },
-		{ value: 'nova', label: 'Nova (OpenAI Standard)' },
-		{ value: 'shimmer', label: 'Shimmer (OpenAI Standard)' }
-	];
+	let availableVoiceOptions = $state<SelectOption[]>(KOKORO_VOICE_OPTIONS);
+	let isLoadingVoices = $state(false);
+
+	// Dynamically load model voices when selectedModel changes
+	$effect(() => {
+		const modelId = selectedModel;
+		if (!modelId) {
+			availableVoiceOptions = KOKORO_VOICE_OPTIONS;
+			return;
+		}
+
+		let active = true;
+		isLoadingVoices = true;
+		const currentModel = models.find((m) => m.id === modelId || m.modelId === modelId);
+
+		modelsApi
+			.getVoices(modelId)
+			.then((res) => {
+				if (!active) return;
+				if (res && res.voices && res.voices.length > 0) {
+					availableVoiceOptions = resolveVoiceOptions(res.voices, res.family, modelId);
+				} else {
+					availableVoiceOptions = resolveVoiceOptions(
+						undefined,
+						currentModel?.architecture,
+						modelId
+					);
+				}
+			})
+			.catch(() => {
+				if (!active) return;
+				availableVoiceOptions = resolveVoiceOptions(undefined, currentModel?.architecture, modelId);
+			})
+			.finally(() => {
+				if (active) {
+					isLoadingVoices = false;
+				}
+			});
+
+		return () => {
+			active = false;
+		};
+	});
 
 	const formatOptions = [
 		{ value: 'mp3', label: 'MP3 (MPEG Audio)' },
@@ -130,7 +159,7 @@
 					if (item.model) {
 						selectedModel = item.model;
 					}
-					if (item.voice && voiceOptions.some((v) => v.value === item.voice)) {
+					if (item.voice) {
 						selectedVoice = item.voice;
 					}
 					if (item.format && formatOptions.some((f) => f.value === item.format)) {
@@ -259,13 +288,22 @@
 		<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 			<!-- Voice Selection -->
 			<div class="flex flex-col gap-1.5">
-				<label for="tts-voice-select" class="text-xs font-semibold text-[var(--text-secondary)]">
-					{t('audio.voice')}
-				</label>
+				<div class="flex items-center justify-between">
+					<label for="tts-voice-select" class="text-xs font-semibold text-[var(--text-secondary)]">
+						{t('audio.voice')}
+					</label>
+					{#if isLoadingVoices}
+						<span class="text-[10px] text-[var(--text-muted)] animate-pulse">
+							{t('common.loading')}...
+						</span>
+					{/if}
+				</div>
 				<Select
 					id="tts-voice-select"
 					bind:value={selectedVoice}
-					options={voiceOptions}
+					options={availableVoiceOptions}
+					writable={true}
+					searchable={true}
 					placeholder={t('audio.selectVoice')}
 					disabled={isGenerating}
 				/>

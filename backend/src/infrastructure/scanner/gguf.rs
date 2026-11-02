@@ -237,6 +237,185 @@ pub fn parse_safetensors_metadata<P: AsRef<Path>>(path: P) -> Option<serde_json:
     serde_json::from_slice(&buf).ok()
 }
 
+pub fn get_canonical_kokoro_voices() -> Vec<String> {
+    vec![
+        // Portuguese (pt-BR)
+        "pf_dora".to_string(),
+        "pm_alex".to_string(),
+        "pm_santa".to_string(),
+        // Spanish (es)
+        "ef_dora".to_string(),
+        "em_alex".to_string(),
+        "em_santa".to_string(),
+        // French (fr)
+        "ff_siwis".to_string(),
+        // Italian (it)
+        "if_sara".to_string(),
+        "im_nicola".to_string(),
+        // Japanese (ja)
+        "jf_alpha".to_string(),
+        "jf_gongitsune".to_string(),
+        "jf_nezumi".to_string(),
+        "jf_tebukuro".to_string(),
+        "jm_kumo".to_string(),
+        // Chinese (zh)
+        "zf_xiaobei".to_string(),
+        "zf_xiaoni".to_string(),
+        "zf_xiaoxiao".to_string(),
+        "zf_xiaoyi".to_string(),
+        "zm_yunjian".to_string(),
+        "zm_yunxi".to_string(),
+        "zm_yunxia".to_string(),
+        "zm_yunyang".to_string(),
+        // Hindi (hi)
+        "hf_alpha".to_string(),
+        "hf_beta".to_string(),
+        "hm_omega".to_string(),
+        "hm_psi".to_string(),
+        // American English (en-US)
+        "af_heart".to_string(),
+        "af_bella".to_string(),
+        "af_nicole".to_string(),
+        "af_sarah".to_string(),
+        "af_sky".to_string(),
+        "af_alloy".to_string(),
+        "af_aoede".to_string(),
+        "af_jessica".to_string(),
+        "af_kore".to_string(),
+        "af_nova".to_string(),
+        "af_river".to_string(),
+        "am_adam".to_string(),
+        "am_michael".to_string(),
+        "am_echo".to_string(),
+        "am_eric".to_string(),
+        "am_fenrir".to_string(),
+        "am_liam".to_string(),
+        "am_onyx".to_string(),
+        "am_puck".to_string(),
+        "am_santa".to_string(),
+        // British English (en-GB)
+        "bf_emma".to_string(),
+        "bf_isabella".to_string(),
+        "bf_alice".to_string(),
+        "bf_lily".to_string(),
+        "bm_george".to_string(),
+        "bm_lewis".to_string(),
+        "bm_daniel".to_string(),
+        "bm_fable".to_string(),
+    ]
+}
+
+pub fn get_openai_standard_voices() -> Vec<String> {
+    vec![
+        "alloy".to_string(),
+        "echo".to_string(),
+        "fable".to_string(),
+        "onyx".to_string(),
+        "nova".to_string(),
+        "shimmer".to_string(),
+        "default".to_string(),
+    ]
+}
+
+pub fn extract_gguf_voices<P: AsRef<Path>>(path: P) -> Option<Vec<String>> {
+    let file = File::open(path).ok()?;
+    let mut reader = BufReader::new(file);
+
+    let mut magic = [0u8; 4];
+    read_exact(&mut reader, &mut magic)?;
+    if &magic != b"GGUF" {
+        return None;
+    }
+
+    let version = read_u32(&mut reader)?;
+    if version == 0 || version > 10 {
+        return None;
+    }
+
+    let tensor_count = if version >= 2 {
+        read_u64(&mut reader)?
+    } else {
+        read_u32(&mut reader)? as u64
+    };
+
+    let kv_count = if version >= 2 {
+        read_u64(&mut reader)?
+    } else {
+        read_u32(&mut reader)? as u64
+    };
+
+    let mut metadata_voices: Vec<String> = Vec::new();
+
+    for _ in 0..kv_count {
+        let key = read_string(&mut reader, version)?;
+        let val_type = read_u32(&mut reader)?;
+
+        // If key is voices list in metadata
+        let is_voice_key = key == "voices" || key.ends_with(".voices") || key.contains("voice_list");
+        if is_voice_key && val_type == 9 {
+            let elem_type = read_u32(&mut reader)?;
+            let count = if version >= 2 {
+                read_u64(&mut reader)? as usize
+            } else {
+                read_u32(&mut reader)? as usize
+            };
+            if elem_type == 8 {
+                for _ in 0..count {
+                    if let Some(s) = read_string(&mut reader, version) {
+                        let trimmed = s.trim();
+                        if !trimmed.is_empty() {
+                            metadata_voices.push(trimmed.to_string());
+                        }
+                    }
+                }
+            } else {
+                for _ in 0..count {
+                    read_value(&mut reader, elem_type, version)?;
+                }
+            }
+        } else {
+            read_value(&mut reader, val_type, version)?;
+        }
+    }
+
+    if !metadata_voices.is_empty() {
+        metadata_voices.sort();
+        metadata_voices.dedup();
+        return Some(metadata_voices);
+    }
+
+    // Inspect tensor header names
+    let mut tensor_voices: Vec<String> = Vec::new();
+    for _ in 0..tensor_count {
+        let name = match read_string(&mut reader, version) {
+            Some(n) => n,
+            None => break,
+        };
+        let n_dims = match read_u32(&mut reader) {
+            Some(d) => d,
+            None => break,
+        };
+        let skip_bytes = (n_dims as i64) * 8 + 4 + 8;
+        if reader.seek(SeekFrom::Current(skip_bytes)).is_err() {
+            break;
+        }
+
+        if let Some(voice_name) = name.strip_prefix("voices.") {
+            tensor_voices.push(voice_name.to_string());
+        } else if let Some(voice_name) = name.strip_prefix("voice.") {
+            tensor_voices.push(voice_name.to_string());
+        }
+    }
+
+    if !tensor_voices.is_empty() {
+        tensor_voices.sort();
+        tensor_voices.dedup();
+        return Some(tensor_voices);
+    }
+
+    None
+}
+
 pub fn map_architecture_to_modality(arch: &str) -> &'static str {
     let lower = arch.to_lowercase();
     let trimmed = lower.trim();
@@ -493,5 +672,18 @@ mod tests {
         assert_eq!(map_architecture_to_modality("kokoro_tts"), "text-to-speech");
         assert_eq!(map_architecture_to_modality("qwen3_tts"), "text-to-speech");
         assert_eq!(map_architecture_to_modality("bert"), "embeddings");
+    }
+
+    #[test]
+    fn test_canonical_voices() {
+        let kokoro_voices = get_canonical_kokoro_voices();
+        assert_eq!(kokoro_voices.len(), 54);
+        assert!(kokoro_voices.contains(&"pf_dora".to_string()));
+        assert!(kokoro_voices.contains(&"pm_alex".to_string()));
+        assert!(kokoro_voices.contains(&"af_heart".to_string()));
+
+        let openai_voices = get_openai_standard_voices();
+        assert_eq!(openai_voices.len(), 7);
+        assert!(openai_voices.contains(&"alloy".to_string()));
     }
 }

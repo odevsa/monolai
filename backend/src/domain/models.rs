@@ -184,3 +184,10 @@ pub struct RunningModelStatus {
     pub state: ModelState,
     pub idle_seconds: u64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ModelVoicesResponse {
+    pub model_id: String,
+    pub family: String,
+    pub voices: Vec<String>,
+}

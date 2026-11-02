@@ -40,10 +40,10 @@ use crate::{
         models::{
             available_models_handler, create_model_preset_handler, delete_model_handler,
             delete_model_preset_handler, get_compatible_runtimes_handler, get_model_by_id_handler,
-            get_model_presets_handler, get_models_handler, get_running_models_handler,
-            load_model_handler, running_models_stream_handler, set_default_model_preset_handler,
-            swap_model_handler, unload_all_models_handler, unload_model_handler,
-            update_model_preset_handler,
+            get_model_presets_handler, get_model_voices_handler, get_models_handler,
+            get_running_models_handler, load_model_handler, running_models_stream_handler,
+            set_default_model_preset_handler, swap_model_handler, unload_all_models_handler,
+            unload_model_handler, update_model_preset_handler,
         },
         openai_proxy::{
             sdcpp_proxy_handler, v1_model_by_id_handler, v1_models_handler, v1_proxy_handler,
@@ -209,6 +209,7 @@ fn api_router() -> Router<AppState> {
             "/models/:id",
             get(get_model_by_id_handler).delete(delete_model_handler),
         )
+        .route("/models/:id/voices", get(get_model_voices_handler))
         .route(
             "/models/:id/presets",
             get(get_model_presets_handler).post(create_model_preset_handler),

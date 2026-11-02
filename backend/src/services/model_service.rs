@@ -1,8 +1,8 @@
 use crate::core::config::AppConfig;
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{
-    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, RunningModelStatus, RuntimeManifest,
-    UpdatePresetPayload,
+    CreatePresetPayload, ModelItem, ModelPreset, ModelRecord, ModelVoicesResponse,
+    RunningModelStatus, RuntimeManifest, UpdatePresetPayload,
 };
 use crate::infrastructure::db::{ModelRepository, SettingRepository};
 use crate::infrastructure::process::manager::{
@@ -291,10 +291,14 @@ impl ModelService {
     }
 
     pub async fn get_model_by_id(&self, id: &str) -> AppResult<ModelRecord> {
-        let mut model = self
-            .repo
-            .get_by_id(id)
-            .await?
+        let mut model_opt = self.repo.get_by_id(id).await?;
+        if model_opt.is_none() && id.contains(':') {
+            if let Some(base_id) = id.split(':').next() {
+                model_opt = self.repo.get_by_id(base_id).await?;
+            }
+        }
+
+        let mut model = model_opt
             .ok_or_else(|| AppError::not_found(format!("Model '{}' not found", id)))?;
 
         let models_dir = self.resolve_models_dir().await;
@@ -302,6 +306,51 @@ impl ModelService {
         model.file_exists = full_path.is_file();
 
         Ok(model)
+    }
+
+    pub async fn get_model_voices(&self, model_id: &str) -> AppResult<ModelVoicesResponse> {
+        let model = self.get_model_by_id(model_id).await?;
+        let models_dir = self.resolve_models_dir().await;
+        let full_path = models_dir.join(&model.relative_path);
+
+        let family = model.architecture.clone().unwrap_or_else(|| {
+            if model.filename.to_lowercase().contains("kokoro") {
+                "kokoro_tts".to_string()
+            } else {
+                "unknown".to_string()
+            }
+        });
+
+        // 1. Try extracting embedded voices from GGUF file
+        let mut voices = if full_path.is_file() && model.format.to_lowercase() == "gguf" {
+            tokio::task::spawn_blocking(move || {
+                crate::infrastructure::scanner::gguf::extract_gguf_voices(&full_path)
+            })
+            .await
+            .unwrap_or(None)
+            .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        // 2. Multi-tier fallback if no embedded voices found
+        if voices.is_empty() {
+            let is_kokoro = family.to_lowercase().contains("kokoro")
+                || model.filename.to_lowercase().contains("kokoro")
+                || model.name.to_lowercase().contains("kokoro");
+
+            if is_kokoro {
+                voices = crate::infrastructure::scanner::gguf::get_canonical_kokoro_voices();
+            } else if model.modality == "text-to-speech" {
+                voices = crate::infrastructure::scanner::gguf::get_openai_standard_voices();
+            }
+        }
+
+        Ok(ModelVoicesResponse {
+            model_id: model.id,
+            family,
+            voices,
+        })
     }
 
     pub async fn delete_model(&self, id: &str, delete_file: bool) -> AppResult<()> {

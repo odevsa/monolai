@@ -151,3 +151,9 @@ export interface HubModelItem {
 export interface HubModelReadme {
 	content: string;
 }
+
+export interface ModelVoicesResponse {
+	model_id: string;
+	family: string;
+	voices: string[];
+}

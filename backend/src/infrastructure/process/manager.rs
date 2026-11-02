@@ -592,13 +592,33 @@ pub async fn load_model_process(
             }
             cmd.env("LD_LIBRARY_PATH", ld_paths.join(":"));
 
-            let espeak_lib = lib_dir.join("libespeak-ng.so");
-            if espeak_lib.exists() {
-                cmd.env(
-                    "AUDIOCPP_ESPEAK_LIBRARY",
-                    espeak_lib.to_string_lossy().to_string(),
-                );
+            // Discover and pass eSpeak-ng library for Kokoro English, Portuguese, Spanish, etc.
+            if let Ok(custom_espeak) = std::env::var("AUDIOCPP_ESPEAK_LIBRARY") {
+                if !custom_espeak.is_empty() {
+                    cmd.env("AUDIOCPP_ESPEAK_LIBRARY", custom_espeak);
+                }
+            } else {
+                let espeak_candidates = [
+                    lib_dir.join("libespeak-ng.so"),
+                    lib_dir.join("libespeak-ng.so.1"),
+                    r_dir.join("libespeak-ng.so"),
+                    std::path::PathBuf::from("/usr/lib/libespeak-ng.so"),
+                    std::path::PathBuf::from("/usr/lib/libespeak-ng.so.1"),
+                    std::path::PathBuf::from("/usr/lib/x86_64-linux-gnu/libespeak-ng.so"),
+                    std::path::PathBuf::from("/usr/lib/x86_64-linux-gnu/libespeak-ng.so.1"),
+                    std::path::PathBuf::from("/usr/lib64/libespeak-ng.so"),
+                    std::path::PathBuf::from("/usr/lib64/libespeak-ng.so.1"),
+                    std::path::PathBuf::from("/usr/local/lib/libespeak-ng.so"),
+                    std::path::PathBuf::from("/opt/homebrew/lib/libespeak-ng.dylib"),
+                ];
+                if let Some(found_espeak) = espeak_candidates.iter().find(|p| p.exists()) {
+                    cmd.env(
+                        "AUDIOCPP_ESPEAK_LIBRARY",
+                        found_espeak.to_string_lossy().to_string(),
+                    );
+                }
             }
+
             let espeak_data = r_dir.join("espeak-ng-data");
             if espeak_data.exists() {
                 cmd.env(
