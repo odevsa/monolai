@@ -533,7 +533,7 @@ impl ProxyService {
     }
 }
 
-/// Helper to extract "model" field from multipart/form-data payload (e.g. ASR/speech-to-text audio requests)
+/// Helper to extract "model" field from multipart/form-data payload (e.g. ASR / transcription audio requests)
 fn extract_model_from_multipart(body: &[u8]) -> Option<String> {
     let needle1 = b"name=\"model\"";
     let needle2 = b"name='model'";

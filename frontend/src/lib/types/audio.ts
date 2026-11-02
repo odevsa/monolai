@@ -1,8 +1,8 @@
-export type AudioMode = 'text-to-speech' | 'speech-to-text';
+export type AudioMode = 'text-to-speech' | 'automatic-speech-recognition';
 
 export interface AudioGenerationItem {
 	id: string;
-	type: 'tts' | 'stt';
+	type: 'tts' | 'asr';
 	model: string;
 	timestamp: number;
 	// TTS fields
@@ -12,7 +12,7 @@ export interface AudioGenerationItem {
 	speed?: number;
 	format?: string;
 	durationSecs?: number;
-	// STT fields
+	// ASR fields
 	transcript?: string;
 	filename?: string;
 	language?: string;

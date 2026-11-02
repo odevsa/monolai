@@ -20,7 +20,7 @@
 	import AudioRecorder from './AudioRecorder.svelte';
 	import AudioTranscriptionCard from './AudioTranscriptionCard.svelte';
 
-	interface AudioSttStudioProps {
+	interface AudioAsrStudioProps {
 		models: FeatureModelItem[];
 		selectedModel: string;
 		isModelRunning?: boolean;
@@ -32,7 +32,7 @@
 		selectedModel = $bindable(''),
 		isModelRunning = false,
 		onLoadModels
-	}: AudioSttStudioProps = $props();
+	}: AudioAsrStudioProps = $props();
 
 	let inputMethod = $state<'file' | 'mic'>('file');
 	let selectedLanguage = $state('auto');
@@ -64,7 +64,7 @@
 			lastSelectionVersion = currentVersion;
 			untrack(() => {
 				const item = audioState.selectedItem;
-				if (item?.type === 'stt') {
+				if (item?.type === 'asr') {
 					lastTranscript = item.transcript || '';
 					if (item.model) {
 						selectedModel = item.model;
@@ -110,13 +110,15 @@
 
 	function handleDrop(e: DragEvent) {
 		e.preventDefault();
-		if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
 			const file = e.dataTransfer.files[0];
-			uploadedFile = file;
-			if (fileAudioUrl) {
-				URL.revokeObjectURL(fileAudioUrl);
+			if (file.type.startsWith('audio/')) {
+				uploadedFile = file;
+				if (fileAudioUrl) {
+					URL.revokeObjectURL(fileAudioUrl);
+				}
+				fileAudioUrl = URL.createObjectURL(file);
 			}
-			fileAudioUrl = URL.createObjectURL(file);
 		}
 	}
 
@@ -176,15 +178,15 @@
 					const { blob: convertedWav, duration: convDur } = await convertBlobToWav(file);
 					const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
 					uploadFile = new File([convertedWav], `${baseName}.wav`, { type: 'audio/wav' });
-					if (!recordedDuration && convDur) {
+					if (!recordedDuration && convDur > 0) {
 						recordedDuration = convDur;
 					}
 				} catch (convErr) {
-					console.warn('Could not pre-convert uploaded audio to WAV:', convErr);
+					console.warn('WAV conversion fallback skipped, uploading original file:', convErr);
 				}
 			}
 
-			const params: any = {
+			const params: { file: File; model: string; language?: string } = {
 				file: uploadFile,
 				model: selectedModel
 			};
@@ -199,8 +201,8 @@
 			// Add to global audio state
 			const wordCount = textResult.trim() ? textResult.trim().split(/\s+/).length : 0;
 			audioState.addItem({
-				id: `stt-${Date.now()}`,
-				type: 'stt',
+				id: `asr-${Date.now()}`,
+				type: 'asr',
 				model: selectedModel,
 				timestamp: Date.now(),
 				transcript: textResult,
@@ -211,12 +213,12 @@
 				audioUrl: activePreviewUrl || undefined
 			});
 		} catch (err: unknown) {
-			console.error('STT transcription error:', err);
+			console.error('ASR transcription error:', err);
 			if (err instanceof Error && err.name === 'AbortError') {
 				transcriptionError = t('audio.interrupted');
 			} else {
 				const msg = err instanceof Error ? err.message : String(err);
-				transcriptionError = msg || t('audio.sttError');
+				transcriptionError = msg || t('audio.asrError');
 			}
 		} finally {
 			if (transcriptionTimer) {
@@ -252,13 +254,13 @@
 </script>
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-	<!-- Left Column: Audio Input & STT Controls -->
+	<!-- Left Column: Audio Input & ASR Controls -->
 	<div class="lg:col-span-5 flex flex-col gap-4">
 		<!-- Model Selection -->
 		<div class="flex flex-col gap-1.5">
 			<div class="flex items-center justify-between">
-				<label for="stt-model-select" class="text-xs font-semibold text-[var(--text-secondary)]">
-					{t('audio.selectSttModel')}
+				<label for="asr-model-select" class="text-xs font-semibold text-[var(--text-secondary)]">
+					{t('audio.selectAsrModel')}
 				</label>
 				{#if isModelRunning}
 					<Badge variant="success" class="text-[10px]">
@@ -267,7 +269,7 @@
 				{/if}
 			</div>
 			<ModelSelect
-				id="stt-model-select"
+				id="asr-model-select"
 				bind:value={selectedModel}
 				{models}
 				placeholder={t('audio.selectModelPlaceholder')}
@@ -277,11 +279,11 @@
 
 		<!-- Language Selection -->
 		<div class="flex flex-col gap-1.5">
-			<label for="stt-lang-select" class="text-xs font-semibold text-[var(--text-secondary)]">
+			<label for="asr-lang-select" class="text-xs font-semibold text-[var(--text-secondary)]">
 				{t('audio.language')}
 			</label>
 			<Select
-				id="stt-lang-select"
+				id="asr-lang-select"
 				bind:value={selectedLanguage}
 				options={languageOptions}
 				placeholder={t('audio.selectLanguage')}
@@ -404,3 +406,4 @@
 		<AudioTranscriptionCard transcript={lastTranscript} model={selectedModel} {isTranscribing} />
 	</div>
 </div>
+

@@ -546,7 +546,9 @@ impl DownloadService {
             if !inspect.is_auxiliary {
                 let runtime_id = if inspect.modality == "text-to-image" {
                     "sd-cpp"
-                } else if inspect.modality == "text-to-speech" || inspect.modality == "speech-to-text" {
+                } else if inspect.modality == "text-to-speech"
+                    || inspect.modality == "automatic-speech-recognition"
+                {
                     "audio-cpp"
                 } else {
                     "llama-cpp"

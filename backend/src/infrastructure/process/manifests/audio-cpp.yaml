@@ -12,12 +12,12 @@ description: |
 version: "v0.9.3"
 features:
   - text-to-speech
-  - speech-to-text
+  - automatic-speech-recognition
   - voice-cloning
   - audio-generation
 supported_modalities:
   - text-to-speech
-  - speech-to-text
+  - automatic-speech-recognition
 supported_formats:
   - gguf
 binary_name: "audiocpp_server"
@@ -230,7 +230,7 @@ flags:
     default_value: ""
   - flag: "--audio"
     name: "Input Audio File"
-    description: "Path to input audio file for speech-to-text, conversion, or separation"
+    description: "Path to input audio file for automatic speech recognition (ASR), conversion, or separation"
     type: "file-auxiliary"
     default_value: ""
   - flag: "--text"

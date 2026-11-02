@@ -81,8 +81,8 @@
 			label: 'Audio',
 			icon: Headphones
 		},
-		'speech-to-text': {
-			label: 'Speech to Text',
+		'automatic-speech-recognition': {
+			label: 'Automatic Speech Recognition',
 			icon: Mic
 		},
 		'text-to-speech': {

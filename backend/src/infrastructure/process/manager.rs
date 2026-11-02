@@ -514,7 +514,7 @@ pub async fn load_model_process(
 
         let task = if let Some(t) = parsed_flags.get("--task").filter(|s| !s.trim().is_empty()) {
             t.clone()
-        } else if model_record.modality == "speech-to-text" {
+        } else if model_record.modality == "automatic-speech-recognition" {
             "asr".to_string()
         } else {
             "tts".to_string()

@@ -247,9 +247,9 @@ pub fn map_architecture_to_modality(arch: &str) -> &'static str {
         "flux" | "sd1" | "sd2" | "sdxl" | "sd3" | "sd3.5" | "stable-diffusion"
         | "stable_diffusion" | "diffusion" | "pony" => return "text-to-image",
 
-        // Speech-to-text (ASR)
+        // Automatic Speech Recognition (ASR)
         "whisper" | "sensevoice" | "funasr" | "paraformer" | "conformer" | "zipformer" => {
-            return "speech-to-text"
+            return "automatic-speech-recognition"
         }
 
         // Text-to-speech (TTS)
@@ -282,7 +282,7 @@ pub fn map_architecture_to_modality(arch: &str) -> &'static str {
         || trimmed.contains("whisper")
         || trimmed.contains("sensevoice")
     {
-        return "speech-to-text";
+        return "automatic-speech-recognition";
     }
 
     if trimmed.contains("diffusion") || trimmed.contains("flux") {
@@ -314,13 +314,13 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         if let std::path::Component::Normal(c) = component {
             let s = c.to_string_lossy();
             if s == "text-to-speech"
-                || s == "speech-to-text"
+                || s == "automatic-speech-recognition"
                 || s == "text-to-image"
                 || s == "embeddings"
             {
                 default_modality = match s.as_ref() {
                     "text-to-speech" => "text-to-speech",
-                    "speech-to-text" => "speech-to-text",
+                    "automatic-speech-recognition" => "automatic-speech-recognition",
                     "text-to-image" => "text-to-image",
                     "embeddings" => "embeddings",
                     _ => "text-to-text",
@@ -400,7 +400,7 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
         for comp in path_ref.components() {
             if let Some(s) = comp.as_os_str().to_str() {
                 match s {
-                    "text-to-image" | "text-to-text" | "text-to-speech" | "speech-to-text"
+                    "text-to-image" | "text-to-text" | "text-to-speech" | "automatic-speech-recognition"
                     | "embeddings" | "miscellaneous" => {
                         info.modality = s.to_string();
                         break;
@@ -487,8 +487,8 @@ mod tests {
         assert_eq!(map_architecture_to_modality("llama"), "text-to-text");
         assert_eq!(map_architecture_to_modality("qwen2"), "text-to-text");
         assert_eq!(map_architecture_to_modality("flux"), "text-to-image");
-        assert_eq!(map_architecture_to_modality("whisper"), "speech-to-text");
-        assert_eq!(map_architecture_to_modality("sensevoice"), "speech-to-text");
+        assert_eq!(map_architecture_to_modality("whisper"), "automatic-speech-recognition");
+        assert_eq!(map_architecture_to_modality("sensevoice"), "automatic-speech-recognition");
         assert_eq!(map_architecture_to_modality("kokoro"), "text-to-speech");
         assert_eq!(map_architecture_to_modality("kokoro_tts"), "text-to-speech");
         assert_eq!(map_architecture_to_modality("qwen3_tts"), "text-to-speech");

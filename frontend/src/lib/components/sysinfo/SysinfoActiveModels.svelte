@@ -47,7 +47,7 @@
 			class="border-0 bg-[var(--bg-surface-hover)]"
 		/>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+		<div class="grid grid-cols-1 md:grid-cols-{runningModels.length > 1 ? '2' : '1'} gap-3.5">
 			{#each runningModels as model (model.model_id)}
 				<SysinfoModelCard
 					{model}

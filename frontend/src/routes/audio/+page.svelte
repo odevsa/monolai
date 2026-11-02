@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getFeatureModels, type FeatureModelItem } from '$lib/api/models';
-	import { AudioSttStudio, AudioTtsStudio } from '$lib/components/audio';
+	import { AudioAsrStudio, AudioTtsStudio } from '$lib/components/audio';
 	import { FeatureGate, PageHeader, Tabs } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { runningModelsState } from '$lib/runningModelsStore';
@@ -14,13 +14,13 @@
 
 	let audioTabs = $derived([
 		{ id: 'tts', label: t('audio.ttsTab'), icon: Headphones },
-		{ id: 'stt', label: t('audio.sttTab'), icon: Mic }
+		{ id: 'asr', label: t('audio.asrTab'), icon: Mic }
 	]);
 
 	// Model state
 	let registeredAudioModels = $state<FeatureModelItem[]>([]);
 	let selectedTtsModel = $state<string>('');
-	let selectedSttModel = $state<string>('');
+	let selectedAsrModel = $state<string>('');
 
 	// Separate models by capability / modality
 	let ttsModels = $derived.by(() => {
@@ -34,10 +34,10 @@
 		return filtered.length > 0 ? filtered : registeredAudioModels;
 	});
 
-	let sttModels = $derived.by(() => {
+	let asrModels = $derived.by(() => {
 		const filtered = registeredAudioModels.filter(
 			(m) =>
-				m.modality === 'speech-to-text' ||
+				m.modality === 'automatic-speech-recognition' ||
 				(!m.modality && m.runtime.includes('audio')) ||
 				m.id.toLowerCase().includes('asr') ||
 				m.id.toLowerCase().includes('whisper') ||
@@ -52,13 +52,17 @@
 		selectedTtsModel ? activeRunningModels.some((m) => m.model_id === selectedTtsModel) : false
 	);
 
-	let isSttModelRunning = $derived(
-		selectedSttModel ? activeRunningModels.some((m) => m.model_id === selectedSttModel) : false
+	let isAsrModelRunning = $derived(
+		selectedAsrModel ? activeRunningModels.some((m) => m.model_id === selectedAsrModel) : false
 	);
 
 	async function loadAudioModels() {
 		try {
-			registeredAudioModels = await getFeatureModels(['audio', 'text-to-speech', 'speech-to-text']);
+			registeredAudioModels = await getFeatureModels([
+				'audio',
+				'text-to-speech',
+				'automatic-speech-recognition'
+			]);
 		} catch (err) {
 			console.error('Error fetching audio models via OpenAI SDK:', err);
 		}
@@ -87,15 +91,15 @@
 	});
 
 	$effect(() => {
-		if (sttModels.length > 0) {
+		if (asrModels.length > 0) {
 			const saved =
 				typeof localStorage !== 'undefined'
-					? localStorage.getItem('monolai:selected_stt_model')
+					? localStorage.getItem('monolai:selected_asr_model')
 					: null;
-			if (saved && sttModels.some((m) => m.id === saved)) {
-				selectedSttModel = saved;
-			} else if (!selectedSttModel || !sttModels.some((m) => m.id === selectedSttModel)) {
-				selectedSttModel = sttModels[0].id;
+			if (saved && asrModels.some((m) => m.id === saved)) {
+				selectedAsrModel = saved;
+			} else if (!selectedAsrModel || !asrModels.some((m) => m.id === selectedAsrModel)) {
+				selectedAsrModel = asrModels[0].id;
 			}
 		}
 	});
@@ -108,8 +112,8 @@
 	});
 
 	$effect(() => {
-		if (selectedSttModel && typeof localStorage !== 'undefined') {
-			localStorage.setItem('monolai:selected_stt_model', selectedSttModel);
+		if (selectedAsrModel && typeof localStorage !== 'undefined') {
+			localStorage.setItem('monolai:selected_asr_model', selectedAsrModel);
 		}
 	});
 
@@ -125,8 +129,8 @@
 				if (item) {
 					if (item.type === 'tts') {
 						activeTab = 'tts';
-					} else if (item.type === 'stt') {
-						activeTab = 'stt';
+					} else if (item.type === 'asr') {
+						activeTab = 'asr';
 					}
 				}
 			});
@@ -167,11 +171,11 @@
 						isModelRunning={isTtsModelRunning}
 						onLoadModels={loadAudioModels}
 					/>
-				{:else if activeTab === 'stt'}
-					<AudioSttStudio
-						models={sttModels}
-						bind:selectedModel={selectedSttModel}
-						isModelRunning={isSttModelRunning}
+				{:else if activeTab === 'asr'}
+					<AudioAsrStudio
+						models={asrModels}
+						bind:selectedModel={selectedAsrModel}
+						isModelRunning={isAsrModelRunning}
 						onLoadModels={loadAudioModels}
 					/>
 				{/if}

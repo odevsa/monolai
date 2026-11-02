@@ -115,9 +115,9 @@
 								class="w-10 h-10 rounded-lg flex flex-col gap-1 items-center justify-center shrink-0 bg-[var(--primary-light)] text-[var(--primary)]"
 							>
 								{#if item.type === 'tts'}
-									<Mic size={18} />
-								{:else}
 									<Headphones size={18} />
+								{:else}
+									<Mic size={18} />
 								{/if}
 
 								<span class="uppercase text-[9px]">

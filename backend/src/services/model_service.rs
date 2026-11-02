@@ -59,7 +59,7 @@ impl ModelService {
             "text-to-text",
             "text-to-image",
             "text-to-speech",
-            "speech-to-text",
+            "automatic-speech-recognition",
             "embeddings",
             "miscellaneous",
         ];
@@ -137,7 +137,7 @@ impl ModelService {
                 // but resides in an audio or image folder or has an audio architecture
                 let needs_migration = existing_record.modality == "text-to-text"
                     && (norm_path.starts_with("text-to-speech/")
-                        || norm_path.starts_with("speech-to-text/")
+                        || norm_path.starts_with("automatic-speech-recognition/")
                         || norm_path.starts_with("text-to-image/")
                         || norm_path.starts_with("embeddings/")
                         || existing_record.architecture.as_deref() == Some("kokoro_tts"));
@@ -162,7 +162,7 @@ impl ModelService {
                         let target_runtime = if inspect.modality == "text-to-image" {
                             "sd-cpp"
                         } else if inspect.modality == "text-to-speech"
-                            || inspect.modality == "speech-to-text"
+                            || inspect.modality == "automatic-speech-recognition"
                         {
                             "audio-cpp"
                         } else {
@@ -219,7 +219,7 @@ impl ModelService {
                     let runtime_id = if inspect.modality == "text-to-image" {
                         "sd-cpp"
                     } else if inspect.modality == "text-to-speech"
-                        || inspect.modality == "speech-to-text"
+                        || inspect.modality == "automatic-speech-recognition"
                     {
                         "audio-cpp"
                     } else {

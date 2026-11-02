@@ -7,7 +7,7 @@ export const MODEL_MODALITIES = [
 	'text-to-text',
 	'text-to-image',
 	'text-to-speech',
-	'speech-to-text',
+	'automatic-speech-recognition',
 	'embeddings'
 ] as const;
 
@@ -22,7 +22,10 @@ export function getModalityOptions(): { value: string; label: string }[] {
 		{ value: 'text-to-text', label: t('models.modalities.textToText') },
 		{ value: 'text-to-image', label: t('models.modalities.textToImage') },
 		{ value: 'text-to-speech', label: t('models.modalities.textToSpeech') },
-		{ value: 'speech-to-text', label: t('models.modalities.speechToText') },
+		{
+			value: 'automatic-speech-recognition',
+			label: t('models.modalities.automaticSpeechRecognition')
+		},
 		{ value: 'embeddings', label: t('models.modalities.embeddings') }
 	];
 }
@@ -38,8 +41,9 @@ export function getModalityLabel(modality: string): string {
 			return t('models.modalities.textToImage');
 		case 'text-to-speech':
 			return t('models.modalities.textToSpeech');
+		case 'automatic-speech-recognition':
 		case 'speech-to-text':
-			return t('models.modalities.speechToText');
+			return t('models.modalities.automaticSpeechRecognition');
 		case 'embeddings':
 			return t('models.modalities.embeddings');
 		default:
@@ -59,6 +63,7 @@ export function getModalityBadgeVariant(
 		case 'text-to-image':
 			return 'info';
 		case 'text-to-speech':
+		case 'automatic-speech-recognition':
 		case 'speech-to-text':
 			return 'warning';
 		case 'embeddings':
@@ -160,9 +165,13 @@ export function formatCanonicalModelString(
 		const parts = normFirst.split('/');
 		if (
 			parts.length >= 3 &&
-			['text-to-text', 'text-to-image', 'text-to-speech', 'speech-to-text', 'embeddings'].includes(
-				parts[0]
-			)
+			[
+				'text-to-text',
+				'text-to-image',
+				'text-to-speech',
+				'automatic-speech-recognition',
+				'embeddings'
+			].includes(parts[0])
 		) {
 			return `${parts.slice(1).join('/')}:${file}`;
 		}

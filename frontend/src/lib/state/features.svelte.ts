@@ -88,7 +88,12 @@ class FeaturesStateManager {
 				rFeatures.includes(featLower) ||
 				(featLower === 'audio' &&
 					rFeatures.some((f) =>
-						['audio', 'text-to-speech', 'speech-to-text', 'audio-generation'].includes(f)
+						[
+							'audio',
+							'text-to-speech',
+							'automatic-speech-recognition',
+							'audio-generation'
+						].includes(f)
 					));
 
 			if (matchesFeature) {
@@ -110,7 +115,7 @@ class FeaturesStateManager {
 			} else if (
 				featLower === 'audio' ||
 				featLower === 'text-to-speech' ||
-				featLower === 'speech-to-text'
+				featLower === 'automatic-speech-recognition'
 			) {
 				candidateIds.add('audio-cpp');
 				candidateTitles.push('Audio C++ Server');
@@ -132,12 +137,16 @@ class FeaturesStateManager {
 			if (candidateIds.has(mRuntime)) return true;
 			if (
 				featLower === 'audio' &&
-				(m.modality === 'text-to-speech' || m.modality === 'speech-to-text')
+				(m.modality === 'text-to-speech' || m.modality === 'automatic-speech-recognition')
 			) {
 				return true;
 			}
 			if (featLower === 'text-to-speech' && m.modality === 'text-to-speech') return true;
-			if (featLower === 'speech-to-text' && m.modality === 'speech-to-text') return true;
+			if (
+				featLower === 'automatic-speech-recognition' &&
+				m.modality === 'automatic-speech-recognition'
+			)
+				return true;
 			return false;
 		});
 

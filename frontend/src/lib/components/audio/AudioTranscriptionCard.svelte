@@ -130,7 +130,7 @@
 			<!-- Empty State Placeholder -->
 			<EmptyState
 				title={t('audio.noTranscriptionYet')}
-				description={t('audio.sttEmptyGuide')}
+				description={t('audio.asrEmptyGuide')}
 				icon={Mic}
 				class="border-0 bg-transparent max-w-sm"
 			/>

@@ -135,9 +135,9 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 			normalizedFeatures.includes('audio') &&
 			(rtLower.includes('audio') ||
 				manifestFeatures.includes('text-to-speech') ||
-				manifestFeatures.includes('speech-to-text') ||
+				manifestFeatures.includes('automatic-speech-recognition') ||
 				modLower === 'text-to-speech' ||
-				modLower === 'speech-to-text')
+				modLower === 'automatic-speech-recognition')
 		) {
 			return true;
 		}
@@ -148,8 +148,10 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 			return true;
 		}
 		if (
-			(normalizedFeatures.includes('speech-to-text') || normalizedFeatures.includes('stt')) &&
-			(modLower === 'speech-to-text' || manifestFeatures.includes('speech-to-text'))
+			(normalizedFeatures.includes('automatic-speech-recognition') ||
+				normalizedFeatures.includes('asr')) &&
+			(modLower === 'automatic-speech-recognition' ||
+				manifestFeatures.includes('automatic-speech-recognition'))
 		) {
 			return true;
 		}

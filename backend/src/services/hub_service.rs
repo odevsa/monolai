@@ -221,7 +221,7 @@ impl HubService {
                 "text-to-text" => Some("text-generation"),
                 "text-to-image" => Some("text-to-image"),
                 "text-to-speech" => Some("text-to-speech"),
-                "speech-to-text" => Some("automatic-speech-recognition"),
+                "automatic-speech-recognition" => Some("automatic-speech-recognition"),
                 "embeddings" => Some("feature-extraction"),
                 _ => None,
             };
@@ -306,7 +306,7 @@ impl HubService {
                 Some("text-generation") | Some("text2text-generation") => "text-to-text",
                 Some("text-to-image") | Some("image-to-image") => "text-to-image",
                 Some("text-to-speech") => "text-to-speech",
-                Some("automatic-speech-recognition") => "speech-to-text",
+                Some("automatic-speech-recognition") => "automatic-speech-recognition",
                 Some("feature-extraction") | Some("sentence-similarity") => "embeddings",
                 _ => "text-to-text",
             };
@@ -403,7 +403,7 @@ impl HubService {
         let modality = match pipeline_tag.as_deref() {
             Some("text-to-image") | Some("image-to-image") => "text-to-image",
             Some("text-to-speech") => "text-to-speech",
-            Some("automatic-speech-recognition") => "speech-to-text",
+            Some("automatic-speech-recognition") => "automatic-speech-recognition",
             Some("feature-extraction") => "embeddings",
             _ => "text-to-text",
         };
