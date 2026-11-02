@@ -355,7 +355,7 @@
 			"textToText": "Текст (LLM)",
 			"textToImage": "Изображение (Диффузия)",
 			"textToSpeech": "Аудио TTS",
-			"speechToText": "Аудио SST",
+			"speechToText": "Аудио ASR",
 			"embeddings": "Эмбеддинги"
 		}
 	},

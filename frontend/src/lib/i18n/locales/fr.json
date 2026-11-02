@@ -355,7 +355,7 @@
 			"textToText": "Texte (LLM)",
 			"textToImage": "Image (Diffusion)",
 			"textToSpeech": "Audio TTS",
-			"speechToText": "Audio SST",
+			"speechToText": "Audio ASR",
 			"embeddings": "Plongements (Embeddings)"
 		}
 	},

@@ -355,7 +355,7 @@
 			"textToText": "文本 (LLM)",
 			"textToImage": "图像 (扩散模型)",
 			"textToSpeech": "语音合成 (TTS)",
-			"speechToText": "语音识别 (SST)",
+			"speechToText": "语音识别 (ASR)",
 			"embeddings": "嵌入向量 (Embeddings)"
 		}
 	},

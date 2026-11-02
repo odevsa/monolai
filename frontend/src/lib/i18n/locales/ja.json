@@ -355,7 +355,7 @@
 			"textToText": "テキスト (LLM)",
 			"textToImage": "画像 (Diffusion)",
 			"textToSpeech": "音声 TTS",
-			"speechToText": "音声 SST",
+			"speechToText": "音声 ASR",
 			"embeddings": "埋め込み (Embeddings)"
 		}
 	},
