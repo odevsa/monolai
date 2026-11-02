@@ -44,6 +44,14 @@
 
 	let effectiveDuration = $derived(totalDuration > 0 ? totalDuration : durationSecs);
 
+	$effect(() => {
+		if (src) {
+			currentTime = 0;
+			isPlaying = false;
+			totalDuration = 0;
+		}
+	});
+
 	function togglePlay() {
 		if (!audioEl || !src) return;
 		if (isPlaying) {

@@ -11,7 +11,7 @@
 		footer,
 		children
 	}: {
-		variant?: 'surface' | 'glass';
+		variant?: 'surface' | 'glass' | 'dashed';
 		padding?: 'none' | 'sm' | 'md' | 'lg';
 		title?: string;
 		class?: string;
@@ -30,7 +30,8 @@
 
 	const variantClasses = {
 		surface: 'bg-[var(--bg-surface)]',
-		glass: 'bg-[var(--bg-surface)]/60 backdrop-blur-md'
+		glass: 'bg-[var(--bg-surface)]/60 backdrop-blur-md',
+		dashed: 'border border-dashed border-[var(--border-color)]'
 	};
 </script>
 

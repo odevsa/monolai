@@ -270,7 +270,7 @@
 		"stopRecording": "Stop Recording",
 		"micNotSupported": "Microphone recording is not supported in this browser.",
 		"micAccessDenied": "Microphone access was denied or could not be initialized.",
-		"sessionHistory": "Audio History",
+		"sessionHistory": "Session History",
 		"searchHistory": "Search audio history...",
 		"noHistoryFound": "No Audio History Found",
 		"noHistoryFoundDesc": "Synthesized speech and transcripts will appear here during this session.",

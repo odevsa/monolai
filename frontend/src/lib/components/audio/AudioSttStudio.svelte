@@ -4,6 +4,7 @@
 	import { Alert, Badge, Button, ModelSelect, Select, Tabs } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
+	import { convertBlobToWav } from '$lib/utils/audio';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import { FileHeadphone, Mic, Sparkles, Upload } from '@lucide/svelte';
 	import { onDestroy, untrack } from 'svelte';
@@ -127,8 +128,8 @@
 	let activeAudioFile = $derived.by(() => {
 		if (inputMethod === 'file') return uploadedFile;
 		if (inputMethod === 'mic' && recordedBlob) {
-			return new File([recordedBlob], `recording-${Date.now()}.webm`, {
-				type: recordedBlob.type || 'audio/webm'
+			return new File([recordedBlob], `recording-${Date.now()}.wav`, {
+				type: 'audio/wav'
 			});
 		}
 		return null;
@@ -151,8 +152,22 @@
 		}, 100);
 
 		try {
+			let uploadFile = file;
+			if (!file.name.toLowerCase().endsWith('.wav')) {
+				try {
+					const { blob: convertedWav, duration: convDur } = await convertBlobToWav(file);
+					const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+					uploadFile = new File([convertedWav], `${baseName}.wav`, { type: 'audio/wav' });
+					if (!recordedDuration && convDur) {
+						recordedDuration = convDur;
+					}
+				} catch (convErr) {
+					console.warn('Could not pre-convert uploaded audio to WAV:', convErr);
+				}
+			}
+
 			const params: any = {
-				file,
+				file: uploadFile,
 				model: selectedModel
 			};
 			if (selectedLanguage && selectedLanguage !== 'auto') {
@@ -174,6 +189,7 @@
 				filename: file.name,
 				language: selectedLanguage !== 'auto' ? selectedLanguage : undefined,
 				wordCount,
+				durationSecs: recordedDuration || undefined,
 				audioUrl: activePreviewUrl || undefined
 			});
 		} catch (err: unknown) {
@@ -307,6 +323,7 @@
 				<AudioPlayerCard
 					src={activePreviewUrl}
 					title={uploadedFile ? uploadedFile.name : t('audio.recordedClip')}
+					durationSecs={inputMethod === 'mic' ? recordedDuration : 0}
 				/>
 			</div>
 		{/if}

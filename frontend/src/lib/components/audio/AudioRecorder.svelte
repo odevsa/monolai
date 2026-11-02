@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Alert, Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import { convertBlobToWav } from '$lib/utils/audio';
 	import { Mic, Square, Trash2 } from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
 
@@ -54,11 +55,18 @@
 				}
 			};
 
-			mediaRecorder.onstop = () => {
+			mediaRecorder.onstop = async () => {
 				const finalType = mediaRecorder?.mimeType || 'audio/webm';
-				const audioBlob = new Blob(audioChunks, { type: finalType });
-				onRecordingComplete(audioBlob, recordingElapsed);
-				cleanupStream();
+				const rawBlob = new Blob(audioChunks, { type: finalType });
+				try {
+					const { blob: wavBlob, duration } = await convertBlobToWav(rawBlob);
+					onRecordingComplete(wavBlob, duration || recordingElapsed);
+				} catch (convErr) {
+					console.warn('WAV conversion fallback:', convErr);
+					onRecordingComplete(rawBlob, recordingElapsed);
+				} finally {
+					cleanupStream();
+				}
 			};
 
 			mediaRecorder.start(250); // Slice chunks every 250ms

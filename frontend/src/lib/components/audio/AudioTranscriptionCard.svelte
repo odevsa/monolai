@@ -108,7 +108,7 @@
 		{:else if transcript}
 			<!-- Transcript Text Content Area -->
 			<div
-				class="w-full h-full min-h-[260px] max-h-[460px] overflow-y-auto text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap select-text font-sans p-4 pb-16 rounded-lg bg-[var(--bg-surface)]/60 border border-[var(--border-color)]/60"
+				class="w-full h-full flex-1 overflow-y-auto text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap select-text font-sans p-4 pb-12 rounded-lg bg-[var(--bg-surface)]/60 border border-[var(--border-color)]/60"
 			>
 				{transcript}
 			</div>
@@ -118,12 +118,12 @@
 				class="absolute bottom-3 left-3 right-3 p-3 rounded-lg bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)]/80 flex items-center justify-between gap-3 text-xs pointer-events-auto"
 			>
 				<div class="flex items-center gap-2 text-[var(--text-muted)]">
-					<span>{wordCount} {t('audio.words')}</span>
+					<span class="whitespace-nowrap">{wordCount} {t('audio.words')}</span>
 					<span>•</span>
-					<span>{charCount} {t('audio.characters')}</span>
+					<span class="whitespace-nowrap">{charCount} {t('audio.characters')}</span>
 				</div>
 				{#if model}
-					<Badge variant="muted" rounded="rounded-md">{model}</Badge>
+					<Badge variant="muted" rounded="rounded-md" class="truncate">{model}</Badge>
 				{/if}
 			</div>
 		{:else}
