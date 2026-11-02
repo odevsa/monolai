@@ -11,6 +11,7 @@
 	import type { RuntimeManifest } from '$lib/types/runtimes';
 	import { Plus, SlidersVertical } from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import { generateUUID } from '$lib/utils/common';
 	import FlagRow from './FlagRow.svelte';
 
 	interface FlagItem {
@@ -91,7 +92,7 @@
 
 		const important = manifest.flags?.filter((f) => f.important && f.flag !== modelItem.key) || [];
 		const otherItems = important.map((f) => ({
-			id: crypto.randomUUID(),
+			id: generateUUID(),
 			key: f.flag,
 			value: f.default_value ?? ''
 		}));
@@ -126,7 +127,7 @@
 		);
 
 		const otherItems = otherEntries.map(([k, v]) => ({
-			id: crypto.randomUUID(),
+			id: generateUUID(),
 			key: k,
 			value: v
 		}));
@@ -185,7 +186,7 @@
 	);
 
 	function addFlag() {
-		flagsList = [...flagsList, { id: crypto.randomUUID(), key: '', value: '' }];
+		flagsList = [...flagsList, { id: generateUUID(), key: '', value: '' }];
 	}
 
 	function removeFlag(index: number) {
