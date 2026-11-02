@@ -1,14 +1,22 @@
 <script lang="ts">
 	import type { FeatureModelItem } from '$lib/api/models';
 	import { transcribeAudio } from '$lib/api/openai';
-	import { Alert, Badge, Button, ModelSelect, Select, Tabs } from '$lib/components/ui';
+	import {
+		Alert,
+		AudioPlayer,
+		Badge,
+		Button,
+		Card,
+		ModelSelect,
+		Select,
+		Tabs
+	} from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
 	import { convertBlobToWav } from '$lib/utils/audio';
 	import { formatElapsedTime } from '$lib/utils/format';
-	import { FileHeadphone, Mic, Sparkles, Upload } from '@lucide/svelte';
+	import { Download, FileHeadphone, Mic, Sparkles, Upload } from '@lucide/svelte';
 	import { onDestroy, untrack } from 'svelte';
-	import AudioPlayerCard from './AudioPlayerCard.svelte';
 	import AudioRecorder from './AudioRecorder.svelte';
 	import AudioTranscriptionCard from './AudioTranscriptionCard.svelte';
 
@@ -136,6 +144,16 @@
 	});
 
 	let activePreviewUrl = $derived(inputMethod === 'file' ? fileAudioUrl : recordedAudioUrl);
+
+	function handleDownloadPreview() {
+		if (!activePreviewUrl) return;
+		const a = document.createElement('a');
+		a.href = activePreviewUrl;
+		a.download = uploadedFile ? uploadedFile.name : `recorded-audio-${Date.now()}.wav`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}
 
 	async function handleTranscribe() {
 		const file = activeAudioFile;
@@ -320,11 +338,33 @@
 		<!-- Audio Playback Preview if file or recording is loaded -->
 		{#if activePreviewUrl}
 			<div class="pt-1">
-				<AudioPlayerCard
-					src={activePreviewUrl}
-					title={uploadedFile ? uploadedFile.name : t('audio.recordedClip')}
-					durationSecs={inputMethod === 'mic' ? recordedDuration : 0}
-				/>
+				<Card variant="dashed">
+					<div class="flex flex-col gap-2">
+						<!-- Header: Title and Download Button -->
+						<div class="flex items-center justify-between gap-3">
+							<div class="flex items-center gap-2 min-w-0">
+								<div class="w-2.5 h-2.5 rounded-full shrink-0 bg-[var(--success)]"></div>
+								<span class="text-sm font-semibold text-[var(--text-primary)] truncate">
+									{uploadedFile ? uploadedFile.name : t('audio.recordedClip')}
+								</span>
+							</div>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								onclick={handleDownloadPreview}
+								title={t('common.download')}
+								ariaLabel={t('common.download')}
+							>
+								<Download size={15} />
+							</Button>
+						</div>
+
+						<AudioPlayer
+							src={activePreviewUrl}
+							durationSecs={inputMethod === 'mic' ? recordedDuration : 0}
+						/>
+					</div>
+				</Card>
 			</div>
 		{/if}
 

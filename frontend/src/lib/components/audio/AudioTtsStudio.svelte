@@ -3,8 +3,11 @@
 	import { generateSpeech } from '$lib/api/openai';
 	import {
 		Alert,
+		AudioPlayer,
 		Badge,
 		Button,
+		EmptyState,
+		Loader,
 		ModelSelect,
 		RandomPromptButton,
 		Select,
@@ -12,10 +15,10 @@
 	} from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
+	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { formatElapsedTime } from '$lib/utils/format';
-	import { Sparkles } from '@lucide/svelte';
+	import { Check, Copy, Download, Headphones, Sparkles } from '@lucide/svelte';
 	import { onDestroy, untrack } from 'svelte';
-	import AudioPreviewCard from './AudioPreviewCard.svelte';
 
 	interface AudioTtsStudioProps {
 		models: FeatureModelItem[];
@@ -44,6 +47,26 @@
 
 	let lastGeneratedAudioUrl = $state<string | null>(null);
 	let lastGeneratedDuration = $state<number>(0);
+	let copied = $state(false);
+
+	function handleDownload() {
+		if (!lastGeneratedAudioUrl) return;
+		const a = document.createElement('a');
+		a.href = lastGeneratedAudioUrl;
+		a.download = `monolai-audio-${Date.now()}.${selectedFormat || 'wav'}`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}
+
+	async function handleCopy() {
+		if (!promptText) return;
+		const success = await copyToClipboard(promptText);
+		if (success) {
+			copied = true;
+			setTimeout(() => (copied = false), 2000);
+		}
+	}
 
 	// TTS voice options including Kokoro & OpenAI defaults
 	const voiceOptions = [
@@ -334,13 +357,96 @@
 	</div>
 
 	<!-- Right Column: Audio Output Player & Preview (Mirroring ImagePreviewCard) -->
-	<div class="lg:col-span-7 flex flex-col gap-5">
-		<AudioPreviewCard
-			src={lastGeneratedAudioUrl}
-			title={promptText}
-			model={selectedModel}
-			durationSecs={lastGeneratedDuration}
-			{isGenerating}
-		/>
+	<div class="lg:col-span-7 flex flex-col gap-4">
+		<!-- Header with Action Toolbar -->
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<Headphones size={16} class="text-[var(--primary)] shrink-0" />
+				<h3 class="m-0 text-sm font-bold text-[var(--text-primary)]">
+					{t('audio.audioOutput')}
+				</h3>
+			</div>
+
+			{#if lastGeneratedAudioUrl}
+				<div class="flex items-center gap-1.5 ml-auto">
+					<Button
+						variant="secondary"
+						size="icon-sm"
+						onclick={handleDownload}
+						title={t('common.download')}
+						ariaLabel={t('common.download')}
+					>
+						<Download size={13} />
+					</Button>
+
+					<Button
+						variant="secondary"
+						size="icon-sm"
+						onclick={handleCopy}
+						title={t('common.copy')}
+						ariaLabel={t('common.copy')}
+					>
+						{#if copied}
+							<Check size={13} class="text-[var(--success-text)]" />
+						{:else}
+							<Copy size={13} />
+						{/if}
+					</Button>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Main Audio Display Canvas -->
+		<div
+			class="w-full min-h-[380px] max-h-[580px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] flex flex-col items-center justify-center relative overflow-hidden group select-none p-6"
+		>
+			{#if isGenerating}
+				<!-- Loading State -->
+				<div class="flex flex-col items-center justify-center gap-3 p-8 text-center">
+					<div class="relative w-16 h-16 flex items-center justify-center">
+						<Loader size={64} />
+					</div>
+					<span class="text-xs text-[var(--text-muted)] animate-pulse">
+						{t('audio.generatingAudio')}
+					</span>
+				</div>
+			{:else if lastGeneratedAudioUrl}
+				<!-- Center Playback Player using AudioPlayer variant="preview" -->
+				<div class="my-auto w-full">
+					<AudioPlayer
+						src={lastGeneratedAudioUrl}
+						durationSecs={lastGeneratedDuration}
+						variant="preview"
+					/>
+				</div>
+
+				<!-- Meta Overlay Pill at Bottom -->
+				<div
+					class="absolute bottom-3 left-3 right-3 p-3 rounded-lg bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-color)]/80 flex items-center justify-between gap-3 text-xs pointer-events-auto"
+				>
+					<span class="truncate text-[var(--text-primary)] font-medium">
+						"{promptText}"
+					</span>
+					<div class="flex items-center gap-2 truncate">
+						{#if selectedModel}
+							<Badge variant="muted" rounded="rounded-md">{selectedModel}</Badge>
+						{/if}
+						{#if lastGeneratedDuration}
+							<Badge variant="muted" rounded="rounded-md">
+								{formatElapsedTime(lastGeneratedDuration)}
+							</Badge>
+						{/if}
+					</div>
+				</div>
+			{:else}
+				<!-- Empty State Placeholder -->
+				<EmptyState
+					title={t('audio.noAudioGeneratedYet')}
+					description={t('audio.ttsEmptyGuide')}
+					icon={Headphones}
+					class="border-0 bg-transparent max-w-sm"
+				/>
+			{/if}
+		</div>
 	</div>
 </div>

@@ -1,25 +1,23 @@
 <script lang="ts">
-	import { Badge, Button, Card } from '$lib/components/ui';
+	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
-	import { Download, Pause, Play, RotateCcw, Volume2, VolumeX } from '@lucide/svelte';
+	import { Pause, Play, RotateCcw, Volume2, VolumeX } from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
-	import ProgressBar from '../ui/atoms/ProgressBar.svelte';
+	import ProgressBar from '../atoms/ProgressBar.svelte';
 
-	interface AudioPlayerCardProps {
+	interface AudioPlayerProps {
 		src?: string | null;
-		title?: string;
-		model?: string;
 		durationSecs?: number;
-		onDownload?: () => void;
+		variant?: 'default' | 'preview';
+		class?: string;
 	}
 
 	let {
 		src = null,
-		title = '',
-		model = '',
 		durationSecs = 0,
-		onDownload = undefined
-	}: AudioPlayerCardProps = $props();
+		variant = 'default',
+		class: className = ''
+	}: AudioPlayerProps = $props();
 
 	let audioEl = $state<HTMLAudioElement | null>(null);
 	let isPlaying = $state(false);
@@ -161,20 +159,6 @@
 		return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 	}
 
-	function handleDownload() {
-		if (onDownload) {
-			onDownload();
-			return;
-		}
-		if (!src) return;
-		const a = document.createElement('a');
-		a.href = src;
-		a.download = `audio-${Date.now()}.wav`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-	}
-
 	onDestroy(() => {
 		stopProgressLoop();
 		if (longPressTimer) {
@@ -220,65 +204,57 @@
 	></audio>
 {/if}
 
-<Card variant="dashed">
-	<div class="flex flex-col gap-2">
-		<!-- Header: Title and Model Badge -->
-		<div class="flex items-center justify-between gap-3">
-			<div class="flex items-center gap-2 min-w-0">
-				<div
-					class="w-2.5 h-2.5 rounded-full shrink-0 bg-[var(--success)] {isPlaying
-						? 'animate-pulse'
-						: ''}"
-				></div>
-				<span class="text-sm font-semibold text-[var(--text-primary)] truncate">
-					{title || t('audio.audioOutput')}
-				</span>
-			</div>
-			<div class="flex items-center gap-2 shrink-0">
-				{#if model}
-					<Badge variant="muted" class="text-xs">{model}</Badge>
-				{/if}
-				{#if src}
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						onclick={handleDownload}
-						title={t('common.download')}
-						ariaLabel={t('common.download')}
-					>
-						<Download size={15} />
-					</Button>
-				{/if}
-			</div>
+<div
+	class="flex flex-col items-center justify-center w-full {variant === 'preview'
+		? 'max-w-md mx-auto gap-6'
+		: 'gap-1'} {className}"
+>
+	{#if variant === 'preview'}
+		<!-- Large Center Play/Pause Button for Preview Variant -->
+		<button
+			type="button"
+			disabled={!src}
+			onclick={togglePlay}
+			class="w-20 h-20 rounded-full bg-[var(--primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-lg focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+			aria-label={isPlaying ? t('audio.pause') : t('audio.play')}
+		>
+			{#if isPlaying}
+				<Pause size={32} class="fill-current" />
+			{:else}
+				<Play size={32} class="fill-current translate-x-0.5" />
+			{/if}
+		</button>
+	{/if}
+
+	<!-- Seek Bar & Timing Controls -->
+	<div class="flex flex-col gap-1 w-full">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="relative w-full flex items-center cursor-pointer py-1"
+			onclick={handleSeekClick}
+			role="slider"
+			tabindex="0"
+			aria-valuenow={currentTime}
+			aria-valuemin="0"
+			aria-valuemax={effectiveDuration}
+			aria-label={t('audio.playbackProgress')}
+		>
+			<ProgressBar
+				value={progressPercent}
+				class={isPlaying ? '[&>div]:transition-none pointer-events-none' : 'pointer-events-none'}
+			/>
 		</div>
 
-		<!-- Seek Bar & Timing -->
-		<div class="flex flex-col gap-1">
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<div
-				class="relative w-full flex items-center cursor-pointer py-1"
-				onclick={handleSeekClick}
-				role="slider"
-				tabindex="0"
-				aria-valuenow={currentTime}
-				aria-valuemin="0"
-				aria-valuemax={effectiveDuration}
-				aria-label={t('audio.playbackProgress')}
-			>
-				<ProgressBar
-					value={progressPercent}
-					class={isPlaying ? '[&>div]:transition-none pointer-events-none' : 'pointer-events-none'}
-				/>
-			</div>
-			<div
-				class="flex items-center justify-between gap-2 text-[11px] font-mono text-[var(--text-muted)]"
-			>
-				<span>{formatTime(currentTime)}</span>
+		<div
+			class="flex items-center justify-between gap-2 text-[11px] font-mono text-[var(--text-muted)]"
+		>
+			<span>{formatTime(currentTime)}</span>
 
-				<!-- Controls Bar -->
-				<div class="flex justify-center gap-2 relative grow-1">
-					<!-- Play/Pause -->
+			<!-- Controls Bar -->
+			<div class="flex justify-center gap-2 relative grow-1">
+				{#if variant !== 'preview'}
+					<!-- Standard Play/Pause Button for Default Variant -->
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -293,69 +269,70 @@
 							<Play size={15} />
 						{/if}
 					</Button>
+				{/if}
 
-					<!-- Restart -->
+				<!-- Restart -->
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					disabled={!src}
+					onclick={handleRestart}
+					title={t('audio.restart')}
+					ariaLabel={t('audio.restart')}
+				>
+					<RotateCcw size={14} />
+				</Button>
+
+				<!-- Volume with Hover Popover (Desktop) & Touch-hold/toggle (Mobile) -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					bind:this={volumeContainerEl}
+					class="relative flex items-center justify-center group/vol"
+					onmouseenter={() => (isHoveringVolume = true)}
+					onmouseleave={() => (isHoveringVolume = false)}
+					ontouchstart={handleTouchStart}
+					ontouchend={handleTouchEnd}
+				>
+					{#if isHoveringVolume || showVolumeSlider}
+						<div
+							class="absolute bottom-full w-10 left-1/2 -translate-x-1/2 p-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-xl z-50 flex flex-col items-center gap-2 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+						>
+							<span class="text-[10px] font-mono text-[var(--text-muted)] font-bold select-none">
+								{Math.round((isMuted ? 0 : volume) * 100)}%
+							</span>
+							<input
+								type="range"
+								min="0"
+								max="1"
+								step="0.01"
+								value={isMuted ? 0 : volume}
+								oninput={handleVolumeChange}
+								style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
+								class="w-1.5 h-20 accent-[var(--primary)] cursor-pointer"
+								aria-label={t('audio.volume')}
+							/>
+						</div>
+					{/if}
+
 					<Button
 						variant="ghost"
 						size="icon-sm"
+						onclick={handleVolumeClick}
 						disabled={!src}
-						onclick={handleRestart}
-						title={t('audio.restart')}
-						ariaLabel={t('audio.restart')}
+						title={isMuted ? t('audio.unmute') : t('audio.mute')}
+						ariaLabel={isMuted ? t('audio.unmute') : t('audio.mute')}
 					>
-						<RotateCcw size={14} />
-					</Button>
-
-					<!-- Volume with Hover Popover (Desktop) & Touch-hold/toggle (Mobile) -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						bind:this={volumeContainerEl}
-						class="relative flex items-center justify-center group/vol"
-						onmouseenter={() => (isHoveringVolume = true)}
-						onmouseleave={() => (isHoveringVolume = false)}
-						ontouchstart={handleTouchStart}
-						ontouchend={handleTouchEnd}
-					>
-						{#if isHoveringVolume || showVolumeSlider}
-							<div
-								class="absolute bottom-full w-10 left-1/2 -translate-x-1/2 p-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-xl z-50 flex flex-col items-center gap-2 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
-							>
-								<span class="text-[10px] font-mono text-[var(--text-muted)] font-bold select-none">
-									{Math.round((isMuted ? 0 : volume) * 100)}%
-								</span>
-								<input
-									type="range"
-									min="0"
-									max="1"
-									step="0.01"
-									value={isMuted ? 0 : volume}
-									oninput={handleVolumeChange}
-									style="writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;"
-									class="w-1.5 h-20 accent-[var(--primary)] cursor-pointer"
-									aria-label={t('audio.volume')}
-								/>
-							</div>
+						{#if isMuted || volume === 0}
+							<VolumeX size={15} class="shrink-0" />
+						{:else}
+							<Volume2 size={15} class="shrink-0" />
 						{/if}
-
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onclick={handleVolumeClick}
-							disabled={!src}
-							title={isMuted ? t('audio.unmute') : t('audio.mute')}
-							ariaLabel={isMuted ? t('audio.unmute') : t('audio.mute')}
-						>
-							{#if isMuted || volume === 0}
-								<VolumeX size={15} class="shrink-0" />
-							{:else}
-								<Volume2 size={15} class="shrink-0" />
-							{/if}
-						</Button>
-					</div>
+					</Button>
 				</div>
-
-				<span>{formatTime(effectiveDuration)}</span>
 			</div>
+
+			<span>{formatTime(effectiveDuration)}</span>
 		</div>
 	</div>
-</Card>
+</div>
+
