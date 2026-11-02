@@ -5,6 +5,7 @@
 		Activity,
 		Box,
 		Boxes,
+		Headphones,
 		Image as ImageIcon,
 		MessageSquare,
 		ScrollText
@@ -24,6 +25,7 @@
 		currentPath === '/chat' || currentPath === '/' || currentPath.startsWith('/chat')
 	);
 	let isImagePage = $derived(currentPath.startsWith('/image'));
+	let isAudioPage = $derived(currentPath.startsWith('/audio'));
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
 	let isLogsPage = $derived(currentPath === '/logs');
 	let isRuntimesPage = $derived(currentPath.startsWith('/runtimes'));
@@ -62,6 +64,15 @@
 			label={t('navigation.image')}
 			icon={ImageIcon}
 			isActive={isImagePage}
+			{isExpanded}
+			onclick={onCloseMobile}
+		/>
+
+		<SidebarNavLink
+			href="/audio"
+			label={t('navigation.audio')}
+			icon={Headphones}
+			isActive={isAudioPage}
 			{isExpanded}
 			onclick={onCloseMobile}
 		/>

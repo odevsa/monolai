@@ -105,8 +105,9 @@ impl ProxyService {
     }
 
     pub async fn get_v1_model(&self, id: &str) -> AppResult<OpenAiModelItem> {
+        let decoded_id = crate::core::url_decode(id);
         let (model, _preset) =
-            crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, id)
+            crate::infrastructure::process::manager::resolve_model_and_preset(&self.model_repo, &decoded_id)
                 .await
                 .map_err(|_| {
                     AppError::openai(
@@ -155,7 +156,7 @@ impl ProxyService {
         if !body_bytes.is_empty() {
             if let Ok(json_val) = serde_json::from_slice::<Value>(&body_bytes) {
                 if let Some(m) = json_val.get("model").and_then(|v| v.as_str()) {
-                    model_id_opt = Some(m.to_string());
+                    model_id_opt = Some(crate::core::url_decode(m));
                 }
             }
         }
@@ -166,7 +167,7 @@ impl ProxyService {
                     let mut parts = pair.splitn(2, '=');
                     if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
                         if k == "model" {
-                            model_id_opt = Some(v.to_string());
+                            model_id_opt = Some(crate::core::url_decode(v));
                             break;
                         }
                     }
@@ -174,7 +175,21 @@ impl ProxyService {
             }
         }
 
-        let (target_port, target_model_id): (u16, Option<String>) = if let Some(model_id) = model_id_opt {
+        if model_id_opt.is_none() && !body_bytes.is_empty() {
+            let is_multipart = headers
+                .get(axum::http::header::CONTENT_TYPE)
+                .and_then(|ct| ct.to_str().ok())
+                .map(|ct| ct.starts_with("multipart/form-data"))
+                .unwrap_or(false);
+
+            if is_multipart {
+                model_id_opt =
+                    extract_model_from_multipart(&body_bytes).map(|s| crate::core::url_decode(&s));
+            }
+        }
+
+        let (target_port, target_model_id): (u16, Option<String>) = if let Some(raw_model_id) = model_id_opt {
+            let model_id = crate::core::url_decode(&raw_model_id);
             match crate::infrastructure::process::manager::resolve_model_and_preset(
                 &self.model_repo,
                 &model_id,
@@ -515,5 +530,72 @@ impl ProxyService {
         response_builder.body(response_body).unwrap_or_else(|_| {
             (StatusCode::INTERNAL_SERVER_ERROR, "Proxy response error").into_response()
         })
+    }
+}
+
+/// Helper to extract "model" field from multipart/form-data payload (e.g. ASR/speech-to-text audio requests)
+fn extract_model_from_multipart(body: &[u8]) -> Option<String> {
+    let needle1 = b"name=\"model\"";
+    let needle2 = b"name='model'";
+
+    let pos = body
+        .windows(needle1.len())
+        .position(|w| w == needle1)
+        .or_else(|| body.windows(needle2.len()).position(|w| w == needle2))?;
+
+    let after_needle = &body[pos + needle1.len()..];
+
+    // Find end of header section (double newline \r\n\r\n or \n\n)
+    let content_start = if let Some(p) = after_needle.windows(4).position(|w| w == b"\r\n\r\n") {
+        p + 4
+    } else if let Some(p) = after_needle.windows(2).position(|w| w == b"\n\n") {
+        p + 2
+    } else {
+        return None;
+    };
+
+    let content_slice = &after_needle[content_start..];
+
+    // Find end of field value (next boundary or newline)
+    let end_pos = content_slice
+        .windows(2)
+        .position(|w| w == b"\r\n" || w == b"--")
+        .or_else(|| content_slice.iter().position(|&b| b == b'\n'))
+        .unwrap_or(content_slice.len());
+
+    let val = std::str::from_utf8(&content_slice[..end_pos]).ok()?.trim();
+    if val.is_empty() {
+        None
+    } else {
+        Some(val.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_model_from_multipart_crlf() {
+        let payload = b"--Boundary123\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-large-v3\r\n--Boundary123--\r\n";
+        assert_eq!(
+            extract_model_from_multipart(payload),
+            Some("whisper-large-v3".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_model_from_multipart_lf() {
+        let payload = b"--Boundary123\nContent-Disposition: form-data; name=\"model\"\n\nkokoro-82m:default\n--Boundary123--\n";
+        assert_eq!(
+            extract_model_from_multipart(payload),
+            Some("kokoro-82m:default".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_model_from_multipart_missing() {
+        let payload = b"--Boundary123\r\nContent-Disposition: form-data; name=\"file\"; filename=\"test.wav\"\r\n\r\nRIFF...\r\n--Boundary123--\r\n";
+        assert_eq!(extract_model_from_multipart(payload), None);
     }
 }

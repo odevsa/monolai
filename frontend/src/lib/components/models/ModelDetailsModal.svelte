@@ -295,7 +295,7 @@
 			items={modalTabs}
 			bind:value={activeModalTab}
 			onchange={handleModalTabChange}
-			cardClass="p-4 border border-[var(--border-color)]/50 bg-[var(--bg-surface-hover)]/20 rounded-b-2xl"
+			cardClass="p-4 sm:p-5"
 		>
 			{#if activeModalTab === 'readme'}
 				{#if isLoadingReadme}

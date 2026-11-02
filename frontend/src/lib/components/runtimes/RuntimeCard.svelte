@@ -4,6 +4,7 @@
 	import type { Runtime } from '$lib/types/runtimes';
 	import { Download, RefreshCw, Trash } from '@lucide/svelte';
 	import RuntimeCardHeader from './RuntimeCardHeader.svelte';
+	import RuntimeDependencies from './RuntimeDependencies.svelte';
 	import RuntimeHardwareSelect from './RuntimeHardwareSelect.svelte';
 	import RuntimeInstallProgress from './RuntimeInstallProgress.svelte';
 	import RuntimePathHint from './RuntimePathHint.svelte';
@@ -69,6 +70,11 @@
 					installedPath={runtime.installed_path}
 					acceleration={runtime.installed_acceleration}
 				/>
+			{/if}
+
+			<!-- System Dependencies Requirements / Notice -->
+			{#if runtime.system_dependencies && runtime.system_dependencies.length > 0}
+				<RuntimeDependencies dependencies={runtime.system_dependencies} />
 			{/if}
 
 			<!-- Hardware Acceleration Selector -->

@@ -18,6 +18,8 @@ export interface FeatureModelItem {
 	presetName?: string;
 	runtime: string;
 	flags: string;
+	modality?: string;
+	architecture?: string;
 }
 
 export type OpenAIChatModelItem = FeatureModelItem;
@@ -91,7 +93,9 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 			modelId: canonicalModelId || om.id,
 			presetName: matchedPreset?.name,
 			runtime: matchedRuntime,
-			flags: matchedFlags
+			flags: matchedFlags,
+			modality: matchedModel?.modality,
+			architecture: matchedModel?.architecture
 		});
 	}
 
@@ -113,15 +117,39 @@ export async function getFeatureModels(features: string[] = []): Promise<Feature
 		if (hasManifestFeature) return true;
 
 		const rtLower = m.runtime.toLowerCase();
+		const modLower = (m.modality || '').toLowerCase();
+
 		if (
 			normalizedFeatures.includes('chat') &&
-			(rtLower.includes('chat') || rtLower === 'llama-cpp')
+			(rtLower.includes('chat') || rtLower === 'llama-cpp' || modLower === 'text-to-text')
 		) {
 			return true;
 		}
 		if (
 			(normalizedFeatures.includes('image-generation') || normalizedFeatures.includes('image')) &&
-			(rtLower === 'sd-cpp' || rtLower.includes('diffusion'))
+			(rtLower === 'sd-cpp' || rtLower.includes('diffusion') || modLower === 'text-to-image')
+		) {
+			return true;
+		}
+		if (
+			normalizedFeatures.includes('audio') &&
+			(rtLower.includes('audio') ||
+				manifestFeatures.includes('text-to-speech') ||
+				manifestFeatures.includes('speech-to-text') ||
+				modLower === 'text-to-speech' ||
+				modLower === 'speech-to-text')
+		) {
+			return true;
+		}
+		if (
+			(normalizedFeatures.includes('text-to-speech') || normalizedFeatures.includes('tts')) &&
+			(modLower === 'text-to-speech' || manifestFeatures.includes('text-to-speech'))
+		) {
+			return true;
+		}
+		if (
+			(normalizedFeatures.includes('speech-to-text') || normalizedFeatures.includes('stt')) &&
+			(modLower === 'speech-to-text' || manifestFeatures.includes('speech-to-text'))
 		) {
 			return true;
 		}

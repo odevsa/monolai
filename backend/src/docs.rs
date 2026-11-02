@@ -71,6 +71,8 @@ use utoipa::OpenApi;
         crate::handlers::openai_proxy::v1_completions_doc,
         crate::handlers::openai_proxy::v1_embeddings_doc,
         crate::handlers::openai_proxy::v1_images_generations_doc,
+        crate::handlers::openai_proxy::v1_audio_speech_doc,
+        crate::handlers::openai_proxy::v1_audio_transcriptions_doc,
     ),
     components(
         schemas(
@@ -122,6 +124,8 @@ use utoipa::OpenApi;
             crate::domain::OpenAiImageGenerationRequest,
             crate::domain::OpenAiImageData,
             crate::domain::OpenAiImageGenerationResponse,
+            crate::domain::OpenAiAudioSpeechRequest,
+            crate::domain::OpenAiAudioTranscriptionResponse,
         )
     ),
     tags(

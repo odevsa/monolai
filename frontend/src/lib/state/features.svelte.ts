@@ -83,11 +83,15 @@ class FeaturesStateManager {
 		const candidateTitles: string[] = [];
 
 		for (const r of this.runtimes) {
-			if (
-				r.features &&
-				Array.isArray(r.features) &&
-				r.features.some((f) => f.toLowerCase() === featLower)
-			) {
+			const rFeatures = (r.features || []).map((f) => f.toLowerCase().trim());
+			const matchesFeature =
+				rFeatures.includes(featLower) ||
+				(featLower === 'audio' &&
+					rFeatures.some((f) =>
+						['audio', 'text-to-speech', 'speech-to-text', 'audio-generation'].includes(f)
+					));
+
+			if (matchesFeature) {
 				candidateIds.add(r.id.toLowerCase());
 				if (!candidateTitles.includes(r.name || r.id)) {
 					candidateTitles.push(r.name || r.id);
@@ -103,6 +107,13 @@ class FeaturesStateManager {
 			} else if (featLower === 'image-generation' || featLower === 'image') {
 				candidateIds.add('sd-cpp');
 				candidateTitles.push('Stable Diffusion C++');
+			} else if (
+				featLower === 'audio' ||
+				featLower === 'text-to-speech' ||
+				featLower === 'speech-to-text'
+			) {
+				candidateIds.add('audio-cpp');
+				candidateTitles.push('Audio C++ Server');
 			}
 		}
 
@@ -110,9 +121,25 @@ class FeaturesStateManager {
 			(r) => r.is_installed && candidateIds.has(r.id.toLowerCase())
 		);
 
-		const hasRegisteredModel = this.models.some((m) =>
-			candidateIds.has((m.runtime || '').toLowerCase())
-		);
+		const hasRegisteredModel = this.models.some((m) => {
+			const mRuntime = (
+				m.runtime ||
+				m.presets?.find((p) => p.is_default)?.runtime_id ||
+				m.presets?.[0]?.runtime_id ||
+				''
+			).toLowerCase();
+
+			if (candidateIds.has(mRuntime)) return true;
+			if (
+				featLower === 'audio' &&
+				(m.modality === 'text-to-speech' || m.modality === 'speech-to-text')
+			) {
+				return true;
+			}
+			if (featLower === 'text-to-speech' && m.modality === 'text-to-speech') return true;
+			if (featLower === 'speech-to-text' && m.modality === 'speech-to-text') return true;
+			return false;
+		});
 
 		return {
 			isSatisfied: hasInstalledRuntime && hasRegisteredModel,

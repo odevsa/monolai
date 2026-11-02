@@ -15,6 +15,23 @@ export interface InstallProgress {
 	message?: string | null;
 }
 
+export interface SystemDependency {
+	id: string;
+	name: string;
+	description: string;
+	check_library?: string;
+	check_binary?: string;
+	instructions?: Record<string, string>;
+}
+
+export interface SystemDependencyStatus {
+	id: string;
+	name: string;
+	description: string;
+	is_satisfied: boolean;
+	install_command?: string | null;
+}
+
 export interface Runtime {
 	id: string;
 	name: string;
@@ -33,6 +50,7 @@ export interface Runtime {
 	install_progress: InstallProgress | null;
 	binary_path?: string | null;
 	release_notes_url?: string | null;
+	system_dependencies?: SystemDependencyStatus[];
 }
 
 export interface ManifestFlag {
@@ -54,4 +72,5 @@ export interface RuntimeManifest {
 	variables?: Record<string, string>;
 	features?: string[];
 	flags: ManifestFlag[];
+	system_dependencies?: SystemDependency[];
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import {
+		SidebarAudioHistory,
 		SidebarChatHistory,
 		SidebarFooter,
 		SidebarHeader,
@@ -30,6 +31,7 @@
 		currentPath === '/chat' || currentPath === '/' || currentPath.startsWith('/chat')
 	);
 	let isImagePage = $derived(currentPath.startsWith('/image'));
+	let isAudioPage = $derived(currentPath.startsWith('/audio'));
 	let isSysInfoPage = $derived(currentPath === '/sysinfo');
 	let isExpanded = $derived(!collapsed || mobileOpen);
 
@@ -76,6 +78,8 @@
 				<SidebarChatHistory bind:activeChatId onCloseMobile={closeMobile} />
 			{:else if isImagePage}
 				<SidebarImageGallery onCloseMobile={closeMobile} />
+			{:else if isAudioPage}
+				<SidebarAudioHistory onCloseMobile={closeMobile} />
 			{:else if isSysInfoPage}
 				<SidebarSysInfo />
 			{/if}

@@ -1,9 +1,18 @@
 <script lang="ts">
 	import type { FeatureModelItem } from '$lib/api/models';
-	import { Alert, Badge, Button, Card, ModelSelect, Select, Textarea } from '$lib/components/ui';
+	import {
+		Alert,
+		Badge,
+		Button,
+		Card,
+		ModelSelect,
+		RandomPromptButton,
+		Select,
+		Textarea
+	} from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { formatElapsedTime } from '$lib/utils/format';
-	import { Dices, Sparkles } from '@lucide/svelte';
+	import { Sparkles } from '@lucide/svelte';
 	import ImageAdvancedParams from './ImageAdvancedParams.svelte';
 
 	interface ImagePromptStudioProps {
@@ -109,17 +118,7 @@
 					</label>
 					<span class="text-[11px] text-[var(--text-muted)]">{t('image.ctrlEnterHint')}</span>
 				</div>
-				<Button
-					variant="secondary"
-					size="xs"
-					onclick={onInsertRandomPrompt}
-					title={t('image.randomPromptTitle')}
-					ariaLabel={t('image.randomPromptTitle')}
-					disabled={isGenerating}
-				>
-					<Dices size={13} class="text-[var(--primary)]" />
-					<span>{t('image.randomPromptBtn')}</span>
-				</Button>
+				<RandomPromptButton onclick={onInsertRandomPrompt} disabled={isGenerating} />
 			</div>
 			<Textarea
 				id="image-prompt"

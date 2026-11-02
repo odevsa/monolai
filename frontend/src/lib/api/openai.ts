@@ -1,4 +1,9 @@
 import OpenAI from 'openai';
+import type { SpeechCreateParams } from 'openai/resources/audio/speech';
+import type {
+	Transcription,
+	TranscriptionCreateParamsNonStreaming
+} from 'openai/resources/audio/transcriptions';
 import type {
 	ChatCompletionChunk,
 	ChatCompletionMessageParam
@@ -88,4 +93,37 @@ export async function generateImages(
 		timeout: LOCAL_INFERENCE_TIMEOUT_MS
 	});
 	return res as ImagesResponse;
+}
+
+/**
+ * Generates speech audio from text using the official OpenAI client (POST /v1/audio/speech).
+ * Returns a Blob containing the synthesized audio data.
+ */
+export async function generateSpeech(
+	params: SpeechCreateParams,
+	signal?: AbortSignal
+): Promise<Blob> {
+	const client = createOpenAIClient();
+	const response = await client.audio.speech.create(params, {
+		signal,
+		timeout: LOCAL_INFERENCE_TIMEOUT_MS
+	});
+	return await response.blob();
+}
+
+/**
+ * Transcribes audio file or recording into text using the official OpenAI client (POST /v1/audio/transcriptions).
+ * Returns the Transcription object containing the transcribed text.
+ */
+export async function transcribeAudio(
+	params: TranscriptionCreateParamsNonStreaming,
+	signal?: AbortSignal
+): Promise<Transcription> {
+	const client = createOpenAIClient();
+	const response = await client.audio.transcriptions.create(params, {
+		signal,
+		timeout: LOCAL_INFERENCE_TIMEOUT_MS,
+		query: { model: params.model }
+	});
+	return response as Transcription;
 }

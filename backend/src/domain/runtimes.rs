@@ -110,6 +110,28 @@ pub struct UpstreamRuntimeEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct SystemDependency {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(default)]
+    pub check_library: Option<String>,
+    #[serde(default)]
+    pub check_binary: Option<String>,
+    #[serde(default)]
+    pub instructions: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct SystemDependencyStatus {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub is_satisfied: bool,
+    pub install_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct RuntimeManifest {
     pub id: String,
     pub name: String,
@@ -136,6 +158,8 @@ pub struct RuntimeManifest {
     pub downloads: HashMap<String, HashMap<String, HashMap<String, DownloadTarget>>>,
     #[serde(default)]
     pub flags: Vec<ManifestFlag>,
+    #[serde(default)]
+    pub system_dependencies: Vec<SystemDependency>,
 }
 
 impl RuntimeManifest {
@@ -296,4 +320,6 @@ pub struct RuntimeItem {
     pub install_progress: Option<InstallProgress>,
     #[serde(default)]
     pub release_notes_url: Option<String>,
+    #[serde(default)]
+    pub system_dependencies: Vec<SystemDependencyStatus>,
 }

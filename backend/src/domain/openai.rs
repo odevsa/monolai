@@ -85,3 +85,20 @@ pub struct OpenAiImageGenerationResponse {
     pub created: u64,
     pub data: Vec<OpenAiImageData>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct OpenAiAudioSpeechRequest {
+    pub model: String,
+    pub input: String,
+    #[serde(default)]
+    pub voice: Option<String>,
+    #[serde(default)]
+    pub response_format: Option<String>,
+    #[serde(default)]
+    pub speed: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct OpenAiAudioTranscriptionResponse {
+    pub text: String,
+}

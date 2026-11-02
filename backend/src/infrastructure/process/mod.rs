@@ -1,3 +1,4 @@
+pub mod dependencies;
 pub mod manager;
 pub mod manifests;
 

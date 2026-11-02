@@ -22,14 +22,27 @@ supported_formats:
   - gguf
 binary_name: "audiocpp_server"
 
+system_dependencies:
+  - id: espeak-ng
+    name: "eSpeak-ng"
+    description: "Required for Text-to-Speech phonemization (Kokoro, SanoTTS, etc.)"
+    check_library: "libespeak-ng"
+    instructions:
+      arch: "sudo pacman -S espeak-ng"
+      ubuntu: "sudo apt install espeak-ng libespeak-ng-dev"
+      debian: "sudo apt install espeak-ng libespeak-ng-dev"
+      fedora: "sudo dnf install espeak-ng espeak-ng-devel"
+      macos: "brew install espeak-ng"
+      windows: "Download and install from https://github.com/espeak-ng/espeak-ng/releases"
+
 downloads:
   linux:
     x86_64:
       cpu:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cpu.tar.gz"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cpu-portable.tar.gz"
         archive_type: "tar.gz"
       vulkan:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-vulkan.tar.gz"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-vulkan-portable.tar.gz"
         archive_type: "tar.gz"
       cuda:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
@@ -50,7 +63,7 @@ downloads:
   windows:
     x86_64:
       cpu:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cpu.zip"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cpu-portable.zip"
         archive_type: "zip"
       cuda:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
@@ -59,7 +72,7 @@ downloads:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
         archive_type: "zip"
       vulkan:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-vulkan.zip"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-vulkan-portable.zip"
         archive_type: "zip"
   macos:
     arm64:
@@ -104,6 +117,7 @@ flags:
       - "fish_speech"
       - "drama3"
       - "ming3"
+      - "moonshine_asr"
       - "coqui_xtts"
       - "f5_tts"
       - "cosyvoice"
@@ -145,13 +159,11 @@ flags:
     name: "Host Address"
     description: "IP interface to bind HTTP server endpoints"
     type: "string"
-    important: true
     default_value: "127.0.0.1"
   - flag: "--port"
     name: "Port"
     description: "TCP port number for incoming HTTP API requests"
     type: "int"
-    important: true
     default_value: "8080"
   - flag: "--config"
     name: "Server Configuration"
@@ -315,4 +327,3 @@ flags:
     description: "Print discovered tensors, capabilities, and parameters for the specified model"
     type: "bool"
     default_value: "false"
-

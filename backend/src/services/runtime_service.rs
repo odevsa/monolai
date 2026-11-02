@@ -237,6 +237,34 @@ impl RuntimeService {
                 .get(&manifest.id)
                 .and_then(|u| u.release_notes_url.clone());
 
+            let runtime_dir = runtimes_dir.join(&manifest.id);
+            let platform_key =
+                crate::infrastructure::process::dependencies::detect_current_platform_key();
+            let mut dep_statuses = Vec::new();
+            for dep in &manifest.system_dependencies {
+                let satisfied =
+                    crate::infrastructure::process::dependencies::check_system_dependency_satisfied(
+                        dep,
+                        if is_installed {
+                            Some(&runtime_dir)
+                        } else {
+                            None
+                        },
+                    );
+                let install_cmd =
+                    crate::infrastructure::process::dependencies::resolve_install_command(
+                        &dep.instructions,
+                        &platform_key,
+                    );
+                dep_statuses.push(crate::domain::runtimes::SystemDependencyStatus {
+                    id: dep.id.clone(),
+                    name: dep.name.clone(),
+                    description: dep.description.clone(),
+                    is_satisfied: satisfied,
+                    install_command: install_cmd,
+                });
+            }
+
             items.push(RuntimeItem {
                 id: manifest.id,
                 name: manifest.name,
@@ -254,6 +282,7 @@ impl RuntimeService {
                 available_accelerations: avail_options,
                 install_progress: progress,
                 release_notes_url,
+                system_dependencies: dep_statuses,
             });
         }
 

@@ -192,6 +192,13 @@ pub async fn resolve_model_and_preset(
     model_repo: &ModelRepository,
     target: &str,
 ) -> AppResult<(crate::domain::ModelRecord, crate::domain::ModelPreset)> {
+    let decoded = if target.contains('%') {
+        crate::core::url_decode(target)
+    } else {
+        target.to_string()
+    };
+    let target = decoded.as_str();
+
     // 1. Direct match by exact model ID (e.g. "Qwen/Qwen2.5-GGUF:qwen2.5-1.5b-instruct-q4_k_m.gguf")
     if let Some(m) = model_repo.get_by_id(target).await? {
         let preset = m
@@ -281,6 +288,13 @@ pub async fn load_model_process(
     config: &AppConfig,
     model_id: &str,
 ) -> AppResult<RunningModelStatus> {
+    let decoded_id = if model_id.contains('%') {
+        crate::core::url_decode(model_id)
+    } else {
+        model_id.to_string()
+    };
+    let model_id = decoded_id.as_str();
+
     let (model_record, preset) = resolve_model_and_preset(model_repo, model_id).await?;
 
     let models_dir_str = config.models.as_deref().unwrap_or("");
@@ -315,6 +329,36 @@ pub async fn load_model_process(
             )));
         }
     };
+
+    // Validate any system dependencies declared in the runtime manifest before attempting to spawn
+    let runtime_dir_path = runtimes_dir.join(&runtime_id);
+    let platform_key =
+        crate::infrastructure::process::dependencies::detect_current_platform_key();
+    for dep in &manifest.system_dependencies {
+        let is_ok =
+            crate::infrastructure::process::dependencies::check_system_dependency_satisfied(
+                dep,
+                Some(&runtime_dir_path),
+            );
+        if !is_ok {
+            let cmd_hint = crate::infrastructure::process::dependencies::resolve_install_command(
+                &dep.instructions,
+                &platform_key,
+            )
+            .map(|cmd| {
+                format!(
+                    "\nTo install on your system ({}), run:\n  {}",
+                    platform_key, cmd
+                )
+            })
+            .unwrap_or_default();
+
+            return Err(AppError::bad_request(format!(
+                "Missing required system dependency '{}' for runtime '{}'.\n{}{}",
+                dep.name, runtime_id, dep.description, cmd_hint
+            )));
+        }
+    }
 
     {
         let mut map = pm.running.lock().await;
@@ -388,6 +432,9 @@ pub async fn load_model_process(
     let is_sd_server = runtime_id == "sd-cpp"
         || manifest.binary_name == "sd-server"
         || binary_path.ends_with("sd-server");
+    let is_audio_server = runtime_id == "audio-cpp"
+        || manifest.binary_name == "audiocpp_server"
+        || binary_path.ends_with("audiocpp_server");
     let port_flag = if is_sd_server {
         "--listen-port"
     } else {
@@ -444,28 +491,190 @@ pub async fn load_model_process(
 
     let mut cmd_args: Vec<String> = Vec::new();
 
-    for (k, v) in &parsed_flags {
-        let val_substituted = v.replace("${PORT}", &allocated_port.to_string());
-        if k == "--port" || k == "--listen-port" || k == "-p" {
-            port_injected = true;
-            cmd.arg(port_flag).arg(&val_substituted);
-            cmd_args.push(port_flag.to_string());
-            cmd_args.push(val_substituted);
-        } else if v.trim().is_empty() {
-            cmd.arg(k);
-            cmd_args.push(k.to_string());
+    if is_audio_server {
+        // audio.cpp server requires a JSON config file declaring loaded models and runtime tasks
+        let family = if let Some(f) = parsed_flags.get("--family").filter(|s| !s.trim().is_empty()) {
+            f.clone()
+        } else if let Some(ref arch) = model_record.architecture {
+            arch.clone()
+        } else if model_record.filename.to_lowercase().contains("kokoro") {
+            "kokoro_tts".to_string()
+        } else if model_record.filename.to_lowercase().contains("whisper") {
+            "whisper".to_string()
+        } else if model_record.filename.to_lowercase().contains("sensevoice") {
+            "sensevoice".to_string()
         } else {
-            cmd.arg(k).arg(&val_substituted);
-            cmd_args.push(k.to_string());
-            cmd_args.push(val_substituted);
-        }
-    }
+            "kokoro_tts".to_string()
+        };
+        let family = if family == "kokoro" {
+            "kokoro_tts".to_string()
+        } else {
+            family
+        };
 
-    if !port_injected {
+        let task = if let Some(t) = parsed_flags.get("--task").filter(|s| !s.trim().is_empty()) {
+            t.clone()
+        } else if model_record.modality == "speech-to-text" {
+            "asr".to_string()
+        } else {
+            "tts".to_string()
+        };
+
+        let sanitized_id: String = model_id
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+            .collect();
+        let config_path = pm.db_dir.join(format!("audiocpp_config_{}.json", sanitized_id));
+        let config_data = serde_json::json!({
+            "models": [
+                {
+                    "id": model_id,
+                    "path": full_model_path.to_string_lossy().to_string(),
+                    "family": family,
+                    "task": task
+                }
+            ]
+        });
+        let _ = std::fs::write(
+            &config_path,
+            serde_json::to_string_pretty(&config_data).unwrap_or_default(),
+        );
+
+        let config_str = config_path.to_string_lossy().to_string();
+        cmd.arg("--config").arg(&config_str);
+        cmd_args.push("--config".to_string());
+        cmd_args.push(config_str);
+
         let p_str = allocated_port.to_string();
-        cmd.arg(port_flag).arg(&p_str);
-        cmd_args.push(port_flag.to_string());
+        cmd.arg("--port").arg(&p_str);
+        cmd_args.push("--port".to_string());
         cmd_args.push(p_str);
+
+        let installed_accel = crate::infrastructure::downloader::installer::get_installed_metadata(
+            &runtimes_dir,
+            &runtime_id,
+        )
+        .map(|m| m.acceleration);
+
+        let target_backend = if let Some(ref accel) = installed_accel {
+            if accel == "vulkan" {
+                "vulkan".to_string()
+            } else if accel.starts_with("cuda") {
+                "cuda".to_string()
+            } else if accel == "rocm" || accel == "hip" {
+                "rocm".to_string()
+            } else if accel == "metal" {
+                "metal".to_string()
+            } else {
+                parsed_flags
+                    .get("--backend")
+                    .cloned()
+                    .unwrap_or_else(|| "cpu".to_string())
+            }
+        } else {
+            parsed_flags
+                .get("--backend")
+                .cloned()
+                .unwrap_or_else(|| "cpu".to_string())
+        };
+
+        let runtime_parent = std::path::Path::new(&binary_path).parent();
+        if let Some(r_dir) = runtime_parent {
+            let lib_dir = r_dir.join("lib");
+            let mut ld_paths = vec![r_dir.to_string_lossy().to_string()];
+            if lib_dir.exists() {
+                ld_paths.push(lib_dir.to_string_lossy().to_string());
+            }
+            if let Ok(current_ld) = std::env::var("LD_LIBRARY_PATH") {
+                if !current_ld.is_empty() {
+                    ld_paths.push(current_ld);
+                }
+            }
+            cmd.env("LD_LIBRARY_PATH", ld_paths.join(":"));
+
+            let espeak_lib = lib_dir.join("libespeak-ng.so");
+            if espeak_lib.exists() {
+                cmd.env(
+                    "AUDIOCPP_ESPEAK_LIBRARY",
+                    espeak_lib.to_string_lossy().to_string(),
+                );
+            }
+            let espeak_data = r_dir.join("espeak-ng-data");
+            if espeak_data.exists() {
+                cmd.env(
+                    "AUDIOCPP_ESPEAK_DATA",
+                    espeak_data.to_string_lossy().to_string(),
+                );
+            }
+        }
+
+        cmd.arg("--backend").arg(&target_backend);
+        cmd_args.push("--backend".to_string());
+        cmd_args.push(target_backend);
+
+        cmd.arg("--no-ui");
+        cmd_args.push("--no-ui".to_string());
+
+        // Forward other valid CLI flags, omitting model/config/task flags already written to config
+        for (k, v) in &parsed_flags {
+            if k == "--model"
+                || k == "--family"
+                || k == "--task"
+                || k == "--mode"
+                || k == "--config"
+                || k == "--port"
+                || k == "--backend"
+                || k == "-m"
+            {
+                continue;
+            }
+
+            let val_substituted = v.replace("${PORT}", &allocated_port.to_string());
+            if val_substituted.trim().is_empty() {
+                let is_boolean_flag = manifest.flags.iter().any(|f| {
+                    (f.flag == *k || f.flag.split(',').any(|part| part.trim() == *k))
+                        && (f.flag_type == "boolean" || f.flag_type == "bool")
+                });
+                if is_boolean_flag {
+                    cmd.arg(k);
+                    cmd_args.push(k.to_string());
+                }
+            } else {
+                cmd.arg(k).arg(&val_substituted);
+                cmd_args.push(k.to_string());
+                cmd_args.push(val_substituted);
+            }
+        }
+    } else {
+        for (k, v) in &parsed_flags {
+            let val_substituted = v.replace("${PORT}", &allocated_port.to_string());
+            if k == "--port" || k == "--listen-port" || k == "-p" {
+                port_injected = true;
+                cmd.arg(port_flag).arg(&val_substituted);
+                cmd_args.push(port_flag.to_string());
+                cmd_args.push(val_substituted);
+            } else if v.trim().is_empty() {
+                let is_boolean_flag = manifest.flags.iter().any(|f| {
+                    (f.flag == *k || f.flag.split(',').any(|part| part.trim() == *k))
+                        && (f.flag_type == "boolean" || f.flag_type == "bool")
+                });
+                if is_boolean_flag {
+                    cmd.arg(k);
+                    cmd_args.push(k.to_string());
+                }
+            } else {
+                cmd.arg(k).arg(&val_substituted);
+                cmd_args.push(k.to_string());
+                cmd_args.push(val_substituted);
+            }
+        }
+
+        if !port_injected {
+            let p_str = allocated_port.to_string();
+            cmd.arg(port_flag).arg(&p_str);
+            cmd_args.push(port_flag.to_string());
+            cmd_args.push(p_str);
+        }
     }
 
     let bin_display = std::path::Path::new(&binary_path)
@@ -1013,6 +1222,13 @@ pub async fn swap_model_process(
     config: &AppConfig,
     model_id: &str,
 ) -> AppResult<RunningModelStatus> {
+    let decoded_id = if model_id.contains('%') {
+        crate::core::url_decode(model_id)
+    } else {
+        model_id.to_string()
+    };
+    let model_id = decoded_id.as_str();
+
     let (_model_record, _preset) = resolve_model_and_preset(model_repo, model_id).await?;
 
     let wait_start = Instant::now();

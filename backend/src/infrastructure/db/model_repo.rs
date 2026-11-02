@@ -39,10 +39,17 @@ impl ModelRepository {
     }
 
     pub async fn get_by_id(&self, id: &str) -> AppResult<Option<ModelRecord>> {
+        let decoded = if id.contains('%') {
+            crate::core::url_decode(id)
+        } else {
+            id.to_string()
+        };
+        let target_id = decoded.as_str();
+
         let mut model = sqlx::query_as::<_, ModelRecord>(
             "SELECT id, name, filename, relative_path, size_bytes, format, modality, architecture, source_repo, is_auxiliary, auxiliary_type, created_at FROM models WHERE id = ?1",
         )
-        .bind(id)
+        .bind(target_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -170,10 +177,17 @@ impl ModelRepository {
     }
 
     pub async fn get_preset_by_id(&self, preset_id: &str) -> AppResult<Option<ModelPreset>> {
+        let decoded = if preset_id.contains('%') {
+            crate::core::url_decode(preset_id)
+        } else {
+            preset_id.to_string()
+        };
+        let target_preset_id = decoded.as_str();
+
         let preset = sqlx::query_as::<_, ModelPreset>(
             "SELECT id, model_id, name, runtime_id, flags, is_default, created_at FROM model_presets WHERE id = ?1",
         )
-        .bind(preset_id)
+        .bind(target_preset_id)
         .fetch_optional(&self.pool)
         .await?;
 

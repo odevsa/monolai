@@ -43,6 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     curl \
     libgomp1 \
+    espeak-ng \
+    libespeak-ng-dev \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN mkdir -p /app/data /app/models /app/runtimes

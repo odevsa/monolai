@@ -1,7 +1,8 @@
 use crate::core::error::{AppError, AppResult};
 use crate::domain::{
-    OpenAiChatCompletionRequest, OpenAiCompletionRequest, OpenAiEmbeddingRequest,
-    OpenAiImageGenerationRequest, OpenAiImageGenerationResponse, OpenAiModelItem, OpenAiModelList,
+    OpenAiAudioSpeechRequest, OpenAiAudioTranscriptionResponse, OpenAiChatCompletionRequest,
+    OpenAiCompletionRequest, OpenAiEmbeddingRequest, OpenAiImageGenerationRequest,
+    OpenAiImageGenerationResponse, OpenAiModelItem, OpenAiModelList,
 };
 use crate::state::AppState;
 use axum::{
@@ -43,7 +44,8 @@ pub async fn v1_model_by_id_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> AppResult<Json<OpenAiModelItem>> {
-    let model = state.proxy_service.get_v1_model(&id).await?;
+    let decoded_id = crate::core::url_decode(&id);
+    let model = state.proxy_service.get_v1_model(&decoded_id).await?;
     Ok(Json(model))
 }
 
@@ -158,3 +160,32 @@ pub async fn v1_embeddings_doc() {}
 )]
 #[allow(dead_code)]
 pub async fn v1_images_generations_doc() {}
+
+/// Generate speech from text (OpenAI standard POST /v1/audio/speech)
+#[utoipa::path(
+    post,
+    path = "/v1/audio/speech",
+    tag = "OpenAI Compatibility",
+    request_body = OpenAiAudioSpeechRequest,
+    responses(
+        (status = 200, description = "Audio stream response (e.g. audio/mpeg or audio/wav)"),
+        (status = 400, description = "Invalid request payload or missing model"),
+        (status = 502, description = "Upstream runtime process connection error")
+    )
+)]
+#[allow(dead_code)]
+pub async fn v1_audio_speech_doc() {}
+
+/// Transcribe audio to text (OpenAI standard POST /v1/audio/transcriptions)
+#[utoipa::path(
+    post,
+    path = "/v1/audio/transcriptions",
+    tag = "OpenAI Compatibility",
+    responses(
+        (status = 200, description = "Transcription response in OpenAI standard format", body = OpenAiAudioTranscriptionResponse),
+        (status = 400, description = "Invalid request payload or missing file/model"),
+        (status = 502, description = "Upstream runtime process connection error")
+    )
+)]
+#[allow(dead_code)]
+pub async fn v1_audio_transcriptions_doc() {}
