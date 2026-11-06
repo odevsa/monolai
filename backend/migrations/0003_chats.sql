@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     speed TEXT,
     model_tags TEXT,
     status TEXT,
+    attachments TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
 );

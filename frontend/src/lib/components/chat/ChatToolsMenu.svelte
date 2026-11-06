@@ -1,22 +1,38 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import { buildAcceptAttribute, type ModelSupportedModalities } from '$lib/utils/attachments';
 	import { REASONING_PRESETS, type ReasoningPreset } from '$lib/utils/context';
-	import { Check, ChevronRight, Lightbulb, Plus, Trash } from '@lucide/svelte';
+	import {
+		Check,
+		ChevronRight,
+		Files,
+		FileText,
+		Image,
+		Lightbulb,
+		Mic,
+		Plus,
+		Trash,
+		Video
+	} from '@lucide/svelte';
 	import { onMount, tick } from 'svelte';
 
 	interface ChatToolsMenuProps {
 		selectedReasoning: ReasoningPreset['id'];
 		promptHistoryCount: number;
+		supportedModalities?: ModelSupportedModalities;
 		onSelectReasoning: (presetId: ReasoningPreset['id']) => void;
 		onClearPromptHistory: () => void;
+		onAddFiles?: (files: FileList | File[]) => void;
 	}
 
 	let {
 		selectedReasoning = $bindable('medium'),
 		promptHistoryCount = 0,
+		supportedModalities = { text: true, image: false, audio: false, video: false },
 		onSelectReasoning,
-		onClearPromptHistory
+		onClearPromptHistory,
+		onAddFiles
 	}: ChatToolsMenuProps = $props();
 
 	let toolsMenuOpen = $state(false);
@@ -24,6 +40,9 @@
 	let toolsWrapper: HTMLDivElement | null = $state(null);
 	let submenuRef: HTMLDivElement | null = $state(null);
 	let submenuDirection = $state<'right' | 'left'>('right');
+	let fileInputRef: HTMLInputElement | null = $state(null);
+
+	let acceptAttribute = $derived(buildAcceptAttribute(supportedModalities));
 
 	let currentReasoningPreset = $derived(
 		REASONING_PRESETS.find((r) => r.id === selectedReasoning) || REASONING_PRESETS[3]
@@ -32,6 +51,20 @@
 	function toggleToolsMenu() {
 		toolsMenuOpen = !toolsMenuOpen;
 		if (!toolsMenuOpen) reasoningMenuOpen = false;
+	}
+
+	function triggerFileInput() {
+		toolsMenuOpen = false;
+		reasoningMenuOpen = false;
+		fileInputRef?.click();
+	}
+
+	function handleFileChange(e: Event) {
+		const input = e.target as HTMLInputElement;
+		if (input.files && input.files.length > 0 && onAddFiles) {
+			onAddFiles(input.files);
+			input.value = '';
+		}
 	}
 
 	function checkSubmenuPlacement() {
@@ -61,6 +94,15 @@
 </script>
 
 <div class="relative inline-flex items-center" bind:this={toolsWrapper}>
+	<input
+		bind:this={fileInputRef}
+		type="file"
+		multiple
+		accept={acceptAttribute}
+		onchange={handleFileChange}
+		class="hidden"
+	/>
+
 	<Button
 		variant="secondary"
 		size="icon"
@@ -85,8 +127,36 @@
 			role="presentation"
 		></div>
 		<div
-			class="absolute bottom-[calc(100%+8px)] left-0 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-1.5 flex flex-col min-w-[200px] z-[100]"
+			class="absolute bottom-[calc(100%+8px)] left-0 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-1.5 flex flex-col min-w-[210px] z-[100]"
 		>
+			<!-- Add files option -->
+			<button
+				type="button"
+				class="flex items-center justify-between gap-3 py-2 px-2.5 rounded-lg border-0 bg-transparent text-[var(--text-secondary)] text-[0.8rem] cursor-pointer w-full transition-all duration-150 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+				onclick={triggerFileInput}
+			>
+				<div class="flex items-center gap-2">
+					<Files size={16} />
+					<span>{t('chat.attachments.addFiles')}</span>
+				</div>
+				<div class="flex items-center gap-1.5 text-[var(--text-muted)]">
+					{#if supportedModalities.text}
+						<FileText size={13} />
+					{/if}
+					{#if supportedModalities.image}
+						<Image size={13} />
+					{/if}
+					{#if supportedModalities.audio}
+						<Mic size={13} />
+					{/if}
+					{#if supportedModalities.video}
+						<Video size={13} />
+					{/if}
+				</div>
+			</button>
+
+			<div class="h-px bg-[var(--border-color)] my-1"></div>
+
 			<!-- Reasoning Selection item with auto-positioning submenu -->
 			<div
 				class="relative"

@@ -5,3 +5,5 @@ export { default as ChatMessageItem } from './ChatMessageItem.svelte';
 export { default as ChatToolsMenu } from './ChatToolsMenu.svelte';
 export { default as ChatModelSelector } from './ChatModelSelector.svelte';
 export { default as ChatInputBar } from './ChatInputBar.svelte';
+export { default as ChatAttachmentChip } from './ChatAttachmentChip.svelte';
+export { default as ChatMessageAttachments } from './ChatMessageAttachments.svelte';

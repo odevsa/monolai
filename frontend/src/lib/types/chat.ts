@@ -5,6 +5,19 @@ export interface ChatConversation {
 	updated_at?: string;
 }
 
+export type AttachmentType = 'image' | 'text' | 'audio' | 'video' | 'file';
+
+export interface ChatAttachment {
+	id: string;
+	type: AttachmentType;
+	name: string;
+	size: number;
+	mimeType: string;
+	dataUrl: string;
+	thumbnailUrl?: string;
+	textContent?: string;
+}
+
 export interface ChatMessage {
 	id: string;
 	role: 'user' | 'assistant' | 'system';
@@ -17,6 +30,7 @@ export interface ChatMessage {
 	modelTags?: string[];
 	model_tags?: string;
 	status?: string;
+	attachments?: ChatAttachment[] | string;
 	created_at?: string;
 }
 

@@ -18,23 +18,37 @@
 		type ReasoningPreset,
 		type TokenUsageDetails
 	} from '$lib/utils/context';
+	import type { ChatAttachment } from '$lib/types/chat';
+	import {
+		detectModelSupportedModalities,
+		isFileTypeSupported,
+		processAttachmentFile
+	} from '$lib/utils/attachments';
 	import { onMount, tick } from 'svelte';
 
 	let { chatId = '' }: { chatId?: string } = $props();
 
 	interface RegisteredModel {
 		id: string;
+		modelId?: string;
+		presetName?: string;
 		runtime: string;
 		flags: string;
+		modality?: string;
+		architecture?: string;
 	}
 
 	let messages = $state<Message[]>([]);
 	let inputMessage = $state('');
+	let pendingAttachments = $state<ChatAttachment[]>([]);
 	let isGenerating = $state(false);
 	let currentAbortController: AbortController | null = null;
 
 	let registeredChatModels = $state<RegisteredModel[]>([]);
 	let selectedModel = $state<string>('');
+
+	let activeModelRecord = $derived(registeredChatModels.find((m) => m.id === selectedModel));
+	let supportedModalities = $derived(detectModelSupportedModalities(activeModelRecord));
 
 	let messagesContainer: HTMLDivElement | null = $state(null);
 	let chatInputBarRef = $state<ReturnType<typeof ChatInputBar> | null>(null);
@@ -291,6 +305,15 @@
 						content = thinkMatch[3].trim();
 					}
 
+					let attachments: ChatAttachment[] | undefined = undefined;
+					if (r.attachments) {
+						try {
+							attachments = JSON.parse(r.attachments);
+						} catch {
+							attachments = undefined;
+						}
+					}
+
 					return {
 						id: r.id,
 						role: r.role,
@@ -301,7 +324,8 @@
 						duration: r.duration || undefined,
 						speed: r.speed || undefined,
 						modelTags: tags,
-						status: r.status || undefined
+						status: r.status || undefined,
+						attachments
 					};
 				});
 
@@ -461,9 +485,30 @@
 		}
 	}
 
+	async function handleAddFiles(files: FileList | File[]) {
+		const fileArr = Array.from(files);
+		for (const file of fileArr) {
+			if (!isFileTypeSupported(file, supportedModalities)) {
+				await showAlert(t('chat.attachments.unsupportedFileType'), t('common.warning'), 'warning');
+				continue;
+			}
+			try {
+				const att = await processAttachmentFile(file);
+				pendingAttachments = [...pendingAttachments, att];
+			} catch (err) {
+				console.error('Error processing attachment file:', err);
+			}
+		}
+	}
+
+	function handleRemoveAttachment(id: string) {
+		pendingAttachments = pendingAttachments.filter((a) => a.id !== id);
+	}
+
 	async function handleSendMessage() {
 		const text = inputMessage.trim();
-		if (!text || isGenerating) return;
+		const currentAttachments = [...pendingAttachments];
+		if ((!text && currentAttachments.length === 0) || isGenerating) return;
 
 		if (!selectedModel) {
 			if (registeredChatModels.length === 0) {
@@ -479,7 +524,9 @@
 			return;
 		}
 
-		savePromptToHistory(text);
+		if (text) {
+			savePromptToHistory(text);
+		}
 
 		let activeId = sessionChatId || chatId;
 		isGenerating = true;
@@ -498,7 +545,8 @@
 		const userMsg: Message = {
 			id: userMsgId,
 			role: 'user',
-			content: text
+			content: text,
+			attachments: currentAttachments.length > 0 ? currentAttachments : undefined
 		};
 
 		const assistantMsgId = generateUUID();
@@ -515,15 +563,17 @@
 
 		messages = [...messages, userMsg, assistantMsg];
 		inputMessage = '';
+		pendingAttachments = [];
 		chatInputBarRef?.resetHeight();
 
 		autoScrollChat = true;
 		scrollToBottom();
 		chatInputBarRef?.focus();
 
+		const promptTitle = text || currentAttachments[0]?.name || 'Chat';
 		if (!chatId && sessionChatId === activeId) {
 			try {
-				const chatTitle = text.length > 25 ? text.slice(0, 25) + '...' : text;
+				const chatTitle = promptTitle.length > 25 ? promptTitle.slice(0, 25) + '...' : promptTitle;
 				await chatsApi.create({ id: activeId, title: chatTitle });
 				goto(`/chat/${activeId}`, { replaceState: true, keepFocus: true });
 				chatsState.notifyUpdated(activeId);
@@ -536,11 +586,12 @@
 			await chatsApi.createMessage(activeId, {
 				id: userMsgId,
 				role: 'user',
-				content: text
+				content: text,
+				attachments: currentAttachments.length > 0 ? JSON.stringify(currentAttachments) : undefined
 			});
 
 			if (messages.length <= 2) {
-				const newTitle = text.length > 25 ? text.slice(0, 25) + '...' : text;
+				const newTitle = promptTitle.length > 25 ? promptTitle.slice(0, 25) + '...' : promptTitle;
 				await chatsApi.update(activeId, newTitle);
 				chatsState.notifyUpdated(activeId);
 			}
@@ -999,12 +1050,16 @@
 		{contextInfo}
 		{showScrollButton}
 		{scrollbarWidth}
+		attachments={pendingAttachments}
+		{supportedModalities}
 		onSendMessage={handleSendMessage}
 		onStopGeneration={handleStopGeneration}
 		onScrollToBottom={scrollToBottom}
 		onClearPromptHistory={clearPromptHistory}
 		onSelectModel={selectModel}
 		onSelectReasoning={(presetId) => (selectedReasoning = presetId)}
+		onRemoveAttachment={handleRemoveAttachment}
+		onAddFiles={handleAddFiles}
 		onFocus={handleTextareaFocus}
 		onBlur={handleTextareaBlur}
 	/>

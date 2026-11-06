@@ -73,6 +73,10 @@
 		"noConversationsFound": "No conversations found"
 	},
 	"chat": {
+		"attachments": {
+			"addFiles": "Add files",
+			"unsupportedFileType": "The selected model does not support this file type."
+		},
 		"deleteChatConfirmTitle": "Delete Conversation",
 		"deleteChatConfirmMsg": "Are you sure you want to delete this conversation?",
 		"sendMessage": "Send message",

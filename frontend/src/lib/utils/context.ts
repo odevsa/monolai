@@ -1,6 +1,7 @@
 /**
  * Context window, token estimation, and sliding window management utilities
  */
+import type { ChatAttachment } from '$lib/types/chat';
 
 export const DEFAULT_SYSTEM_PROMPT =
 	'You are a helpful, respectful, and precise AI assistant. Provide clear, accurate, and direct answers while maintaining context across the conversation. Format code, tables, and lists neatly when requested.';
@@ -62,6 +63,7 @@ export interface ChatMessageLike {
 	tokens?: number;
 	duration?: string;
 	speed?: string;
+	attachments?: ChatAttachment[];
 }
 
 export interface TokenUsageDetails {
@@ -82,7 +84,7 @@ export interface TokenUsageDetails {
 }
 
 export interface PreparedContext {
-	messages: { role: string; content: string }[];
+	messages: { role: string; content: string | any[] }[];
 	usedTokens: number;
 	maxTokens: number;
 	percentage: number;
@@ -114,22 +116,71 @@ export function prepareSlidingWindowContext(
 	// Filter valid dialogue messages
 	const cleanMessages: {
 		role: 'user' | 'assistant';
-		content: string;
+		content: string | any[];
 		tokens: number;
 		speed?: string;
 		duration?: string;
 	}[] = [];
 	for (const m of messages) {
 		if (m.role !== 'user' && m.role !== 'assistant') continue;
-		const content = m.content?.trim();
-		if (!content) continue;
-		if (m.status === 'ERROR' || content.startsWith('⚠️')) continue;
-		if (content === '(Cancelled by user)') continue;
+		const rawContent = m.content?.trim();
+		const hasAttachments = m.attachments && m.attachments.length > 0;
+		if (!rawContent && !hasAttachments) continue;
+		if (m.status === 'ERROR' || rawContent?.startsWith('⚠️')) continue;
+		if (rawContent === '(Cancelled by user)') continue;
+
+		// Estimate extra tokens from attachments
+		let attachmentTokens = 0;
+		if (m.attachments) {
+			for (const att of m.attachments) {
+				if (att.type === 'image') {
+					attachmentTokens += 800;
+				} else if (att.type === 'text' && att.textContent) {
+					attachmentTokens += estimateTokens(att.textContent);
+				}
+			}
+		}
+
+		const baseTokens = m.tokens && m.tokens > 0 ? m.tokens : estimateTokens(rawContent) + 4;
+		const totalTokens = baseTokens + attachmentTokens;
+
+		// Format content with attachments
+		let formattedContent: string | any[] = rawContent || '';
+		if (hasAttachments && m.attachments) {
+			let textWithDocs = rawContent || '';
+			const textFiles = m.attachments.filter((a) => a.type === 'text' && a.textContent);
+			if (textFiles.length > 0) {
+				const docBlocks = textFiles
+					.map(
+						(f) =>
+							`--- Attached File: ${f.name} ---\n\`\`\`\n${f.textContent}\n\`\`\`\n--- End of ${f.name} ---`
+					)
+					.join('\n\n');
+				textWithDocs = textWithDocs ? `${docBlocks}\n\n${textWithDocs}` : docBlocks;
+			}
+
+			const images = m.attachments.filter((a) => a.type === 'image' && a.dataUrl);
+			if (images.length > 0) {
+				const parts: any[] = [];
+				if (textWithDocs) {
+					parts.push({ type: 'text', text: textWithDocs });
+				}
+				for (const img of images) {
+					parts.push({
+						type: 'image_url',
+						image_url: { url: img.dataUrl }
+					});
+				}
+				formattedContent = parts;
+			} else {
+				formattedContent = textWithDocs;
+			}
+		}
 
 		cleanMessages.push({
 			role: m.role,
-			content,
-			tokens: m.tokens && m.tokens > 0 ? m.tokens : estimateTokens(content) + 4,
+			content: formattedContent,
+			tokens: totalTokens,
 			speed: m.speed,
 			duration: m.duration
 		});
@@ -180,7 +231,7 @@ export function prepareSlidingWindowContext(
 		}
 	}
 
-	const finalMessages: { role: string; content: string }[] = [];
+	const finalMessages: { role: string; content: string | any[] }[] = [];
 	if (systemPrompt && systemPrompt.trim()) {
 		finalMessages.push({ role: 'system', content: systemPrompt.trim() });
 	}

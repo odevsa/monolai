@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { MarkdownRenderer, ModelBadge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import type { ChatAttachment } from '$lib/types/chat';
 	import { Box, CircleAlert, Clock, Square, Zap } from '@lucide/svelte';
 	import Loader from '../ui/atoms/Loader.svelte';
 	import ChatMessageActions from './ChatMessageActions.svelte';
+	import ChatMessageAttachments from './ChatMessageAttachments.svelte';
 	import ChatReasoningBlock from './ChatReasoningBlock.svelte';
 
 	export interface Message {
@@ -17,6 +19,7 @@
 		speed?: string;
 		modelTags?: string[];
 		status?: string;
+		attachments?: ChatAttachment[];
 	}
 
 	interface ChatMessageItemProps {
@@ -39,12 +42,17 @@
 
 <div class="group/message flex flex-col gap-2 {message.role === 'user' ? 'items-end' : ''}">
 	{#if message.role === 'user'}
-		<div class="flex justify-end max-w-[80%] max-sm:max-w-[95%]">
-			<div
-				class="bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-primary)] py-3.5 px-4.5 rounded-[1.25rem_1.25rem_0.25rem_1.25rem] text-base leading-normal whitespace-pre-wrap break-words"
-			>
-				{message.content}
-			</div>
+		<div class="flex flex-col items-end gap-1.5 max-w-[80%] max-sm:max-w-[95%]">
+			{#if message.attachments && message.attachments.length > 0}
+				<ChatMessageAttachments attachments={message.attachments} />
+			{/if}
+			{#if message.content}
+				<div
+					class="bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-primary)] py-3.5 px-4.5 rounded-[1.25rem_1.25rem_0.25rem_1.25rem] text-base leading-normal whitespace-pre-wrap break-words"
+				>
+					{message.content}
+				</div>
+			{/if}
 		</div>
 		<ChatMessageActions
 			role="user"

@@ -81,7 +81,7 @@ impl ChatRepository {
 
     pub async fn get_chat_messages(&self, chat_id: &str) -> AppResult<Vec<ChatMessageRecord>> {
         let rows = sqlx::query_as::<_, ChatMessageRecord>(
-            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, created_at FROM chat_messages WHERE chat_id = ? ORDER BY created_at ASC",
+            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, attachments, created_at FROM chat_messages WHERE chat_id = ? ORDER BY created_at ASC",
         )
         .bind(chat_id)
         .fetch_all(&self.pool)
@@ -100,7 +100,7 @@ impl ChatRepository {
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
         sqlx::query(
-            "INSERT INTO chat_messages (id, chat_id, role, content, tokens, duration, speed, model_tags, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO chat_messages (id, chat_id, role, content, tokens, duration, speed, model_tags, status, attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&msg_id)
         .bind(chat_id)
@@ -111,13 +111,14 @@ impl ChatRepository {
         .bind(&payload.speed)
         .bind(&payload.model_tags)
         .bind(&payload.status)
+        .bind(&payload.attachments)
         .execute(&self.pool)
         .await?;
 
         let _ = self.touch_chat_updated_at(chat_id).await;
 
         let row = sqlx::query_as::<_, ChatMessageRecord>(
-            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, created_at FROM chat_messages WHERE id = ?",
+            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, attachments, created_at FROM chat_messages WHERE id = ?",
         )
         .bind(&msg_id)
         .fetch_one(&self.pool)
@@ -132,7 +133,7 @@ impl ChatRepository {
         payload: &UpdateChatMessagePayload,
     ) -> AppResult<ChatMessageRecord> {
         sqlx::query(
-            "UPDATE chat_messages SET content = ?, tokens = ?, duration = ?, speed = ?, model_tags = COALESCE(?, model_tags), status = COALESCE(?, status) WHERE id = ?",
+            "UPDATE chat_messages SET content = ?, tokens = ?, duration = ?, speed = ?, model_tags = COALESCE(?, model_tags), status = COALESCE(?, status), attachments = COALESCE(?, attachments) WHERE id = ?",
         )
         .bind(&payload.content)
         .bind(payload.tokens)
@@ -140,12 +141,13 @@ impl ChatRepository {
         .bind(&payload.speed)
         .bind(&payload.model_tags)
         .bind(&payload.status)
+        .bind(&payload.attachments)
         .bind(msg_id)
         .execute(&self.pool)
         .await?;
 
         let row = sqlx::query_as::<_, ChatMessageRecord>(
-            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, created_at FROM chat_messages WHERE id = ?",
+            "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, attachments, created_at FROM chat_messages WHERE id = ?",
         )
         .bind(msg_id)
         .fetch_one(&self.pool)

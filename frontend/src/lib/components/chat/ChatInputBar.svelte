@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { Button, ContextIndicator, ModelSelect } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
+	import type { ChatAttachment } from '$lib/types/chat';
+	import type { ModelSupportedModalities } from '$lib/utils/attachments';
 	import type { PreparedContext, ReasoningPreset } from '$lib/utils/context';
 	import { ArrowUp, ChevronDown, Square } from '@lucide/svelte';
 	import { tick } from 'svelte';
+	import ChatAttachmentChip from './ChatAttachmentChip.svelte';
 	import ChatToolsMenu from './ChatToolsMenu.svelte';
 
 	interface RegisteredModel {
@@ -12,6 +15,8 @@
 		presetName?: string;
 		runtime: string;
 		flags: string;
+		modality?: string;
+		architecture?: string;
 	}
 
 	interface ChatInputBarProps {
@@ -25,12 +30,16 @@
 		showScrollButton: boolean;
 		scrollbarWidth: number;
 		inputSectionHeight?: number;
+		attachments?: ChatAttachment[];
+		supportedModalities?: ModelSupportedModalities;
 		onSendMessage: () => void;
 		onStopGeneration: () => void;
 		onScrollToBottom: () => void;
 		onClearPromptHistory: () => void;
 		onSelectModel: (modelId: string) => void;
 		onSelectReasoning: (presetId: ReasoningPreset['id']) => void;
+		onRemoveAttachment?: (id: string) => void;
+		onAddFiles?: (files: FileList | File[]) => void;
 		onFocus?: () => void;
 		onBlur?: () => void;
 	}
@@ -46,12 +55,16 @@
 		showScrollButton,
 		scrollbarWidth,
 		inputSectionHeight = $bindable(110),
+		attachments = [],
+		supportedModalities,
 		onSendMessage,
 		onStopGeneration,
 		onScrollToBottom,
 		onClearPromptHistory,
 		onSelectModel,
 		onSelectReasoning,
+		onRemoveAttachment,
+		onAddFiles,
 		onFocus,
 		onBlur
 	}: ChatInputBarProps = $props();
@@ -60,6 +73,33 @@
 	let textareaRef = $state<HTMLTextAreaElement | null>(null);
 	let historyIndex = $state<number>(-1);
 	let currentDraft = $state<string>('');
+	let isDraggingOver = $state(false);
+
+	function handleDragOver(e: DragEvent) {
+		e.preventDefault();
+		isDraggingOver = true;
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		e.preventDefault();
+		isDraggingOver = false;
+	}
+
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		isDraggingOver = false;
+		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0 && onAddFiles) {
+			onAddFiles(e.dataTransfer.files);
+		}
+	}
+
+	function handlePaste(e: ClipboardEvent) {
+		const files = e.clipboardData?.files;
+		if (files && files.length > 0 && onAddFiles) {
+			e.preventDefault();
+			onAddFiles(files);
+		}
+	}
 
 	function adjustTextareaHeight() {
 		if (textareaRef) {
@@ -168,13 +208,29 @@
 	{/if}
 
 	<div
-		class="w-full max-w-[840px] rounded-3xl py-3.5 pr-4 pb-3 pl-4.5 flex flex-col gap-2 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--border-hover)] focus-within:shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60"
+		class="w-full max-w-[840px] rounded-3xl py-3.5 pr-4 pb-3 pl-4.5 flex flex-col gap-2 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--border-hover)] focus-within:shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60 {isDraggingOver
+			? '!border-[var(--primary)] ring-2 ring-[var(--primary)]/30'
+			: ''}"
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+		role="region"
+		aria-label={t('chat.typeMessagePlaceholder')}
 	>
+		{#if attachments && attachments.length > 0}
+			<div class="flex flex-wrap items-center gap-2 mb-1.5 max-h-[160px] overflow-y-auto pr-1">
+				{#each attachments as att (att.id)}
+					<ChatAttachmentChip attachment={att} onRemove={(id) => onRemoveAttachment?.(id)} />
+				{/each}
+			</div>
+		{/if}
+
 		<textarea
 			bind:this={textareaRef}
 			bind:value={inputMessage}
 			oninput={adjustTextareaHeight}
 			onkeydown={handleKeyDown}
+			onpaste={handlePaste}
 			onfocus={onFocus}
 			onblur={onBlur}
 			placeholder={t('chat.typeMessagePlaceholder')}
@@ -188,8 +244,10 @@
 				<ChatToolsMenu
 					bind:selectedReasoning
 					promptHistoryCount={promptHistory.length}
+					{supportedModalities}
 					{onSelectReasoning}
 					{onClearPromptHistory}
+					{onAddFiles}
 				/>
 			</div>
 
@@ -231,7 +289,7 @@
 							variant="primary"
 							size="icon"
 							class="!rounded-full hover:not-disabled:scale-105"
-							disabled={!inputMessage.trim()}
+							disabled={!inputMessage.trim() && (!attachments || attachments.length === 0)}
 							onclick={onSendMessage}
 							ariaLabel={t('chat.sendMessage')}
 							title={t('chat.sendMessage')}
