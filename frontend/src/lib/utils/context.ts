@@ -135,6 +135,8 @@ export function prepareSlidingWindowContext(
 			for (const att of m.attachments) {
 				if (att.type === 'image') {
 					attachmentTokens += 800;
+				} else if (att.type === 'audio') {
+					attachmentTokens += 500;
 				} else if (att.type === 'text' && att.textContent) {
 					attachmentTokens += estimateTokens(att.textContent);
 				}
@@ -160,7 +162,9 @@ export function prepareSlidingWindowContext(
 			}
 
 			const images = m.attachments.filter((a) => a.type === 'image' && a.dataUrl);
-			if (images.length > 0) {
+			const audios = m.attachments.filter((a) => a.type === 'audio' && a.dataUrl);
+
+			if (images.length > 0 || audios.length > 0) {
 				const parts: any[] = [];
 				if (textWithDocs) {
 					parts.push({ type: 'text', text: textWithDocs });
@@ -169,6 +173,17 @@ export function prepareSlidingWindowContext(
 					parts.push({
 						type: 'image_url',
 						image_url: { url: img.dataUrl }
+					});
+				}
+				for (const aud of audios) {
+					const base64Data = aud.dataUrl.split(',')[1] || '';
+					const format = aud.mimeType?.includes('mp3') ? 'mp3' : 'wav';
+					parts.push({
+						type: 'input_audio',
+						input_audio: {
+							data: base64Data,
+							format
+						}
 					});
 				}
 				formattedContent = parts;

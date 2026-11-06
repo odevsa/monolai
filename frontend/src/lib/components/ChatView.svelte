@@ -549,19 +549,7 @@
 			attachments: currentAttachments.length > 0 ? currentAttachments : undefined
 		};
 
-		const assistantMsgId = generateUUID();
-		const assistantMsg: Message = {
-			id: assistantMsgId,
-			role: 'assistant',
-			content: '',
-			tokens: 0,
-			duration: '0s',
-			speed: '0 t/s',
-			modelTags: [selectedModel],
-			status: 'RUNNING'
-		};
-
-		messages = [...messages, userMsg, assistantMsg];
+		messages = [...messages, userMsg];
 		inputMessage = '';
 		pendingAttachments = [];
 		chatInputBarRef?.resetHeight();
@@ -590,12 +578,41 @@
 				attachments: currentAttachments.length > 0 ? JSON.stringify(currentAttachments) : undefined
 			});
 
-			if (messages.length <= 2) {
+			if (messages.length <= 1) {
 				const newTitle = promptTitle.length > 25 ? promptTitle.slice(0, 25) + '...' : promptTitle;
 				await chatsApi.update(activeId, newTitle);
 				chatsState.notifyUpdated(activeId);
 			}
+		} catch (err) {
+			console.error('Error persisting message start to DB:', err);
+		}
 
+		await executeAssistantGeneration(activeId);
+	}
+
+	async function executeAssistantGeneration(activeId: string) {
+		isGenerating = true;
+		wasInterruptedByUnload = false;
+		wasStoppedByUser = false;
+
+		const assistantMsgId = generateUUID();
+		const assistantMsg: Message = {
+			id: assistantMsgId,
+			role: 'assistant',
+			content: '',
+			tokens: 0,
+			duration: '0s',
+			speed: '0 t/s',
+			modelTags: [selectedModel],
+			status: 'RUNNING'
+		};
+
+		messages = [...messages, assistantMsg];
+		autoScrollChat = true;
+		scrollToBottom();
+		chatInputBarRef?.focus();
+
+		try {
 			await chatsApi.createMessage(activeId, {
 				id: assistantMsgId,
 				role: 'assistant',
@@ -604,7 +621,7 @@
 				status: 'RUNNING'
 			});
 		} catch (err) {
-			console.error('Error persisting message start to DB:', err);
+			console.error('Error persisting assistant message start to DB:', err);
 		}
 
 		currentAbortController = new AbortController();
@@ -966,16 +983,17 @@
 	}
 
 	async function deleteMessage(id: string) {
-		if (!chatId) return;
+		const activeId = sessionChatId || chatId;
+		if (!activeId) return;
 		messages = messages.filter((m) => m.id !== id);
 		try {
-			await chatsApi.deleteMessage(chatId, id);
+			await chatsApi.deleteMessage(activeId, id);
 		} catch (e) {
 			console.error('Error deleting message:', e);
 		}
 	}
 
-	function retryAssistantMessage(assistantMsgId: string) {
+	async function retryAssistantMessage(assistantMsgId: string) {
 		if (isGenerating) return;
 		const idx = messages.findIndex((m) => m.id === assistantMsgId);
 		if (idx === -1) return;
@@ -986,10 +1004,37 @@
 			.find((m) => m.role === 'user');
 		if (!userMsg) return;
 
-		deleteMessage(assistantMsgId);
-		inputMessage = userMsg.content;
-		deleteMessage(userMsg.id);
-		handleSendMessage();
+		if (!selectedModel) {
+			if (registeredChatModels.length === 0) {
+				await loadChatModels();
+			}
+			if (registeredChatModels.length > 0 && !selectedModel) {
+				selectedModel = registeredChatModels[0].id;
+			}
+		}
+
+		if (!selectedModel) {
+			await showAlert(t('chat.selectModelPrompt'), t('navigation.models'), 'warning');
+			return;
+		}
+
+		const activeId = sessionChatId || chatId;
+		if (!activeId) return;
+
+		// Delete the assistant message being retried (and any messages that followed it in this branch)
+		const msgsToDelete = messages.slice(idx);
+		const idsToDelete = new Set(msgsToDelete.map((m) => m.id));
+		messages = messages.filter((m) => !idsToDelete.has(m.id));
+
+		for (const msg of msgsToDelete) {
+			try {
+				await chatsApi.deleteMessage(activeId, msg.id);
+			} catch (e) {
+				console.error('Error deleting message on retry:', e);
+			}
+		}
+
+		await executeAssistantGeneration(activeId);
 	}
 </script>
 
