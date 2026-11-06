@@ -42,7 +42,7 @@
 
 	let flagOptions: SelectOption[] = $derived(
 		manifestFlags
-			.filter((f) => !f.model)
+			.filter((f) => !f.model || f.flag === key)
 			.map((f) => ({
 				value: f.flag,
 				label: `${f.flag} (${f.name || f.flag})`,

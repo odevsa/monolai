@@ -292,7 +292,7 @@
 			aria-label={ariaLabel || placeholder}
 		>
 			<span class="truncate text-left mr-2">
-				{selectedOption ? selectedOption.label : placeholder}
+				{selectedOption ? selectedOption.label : value || placeholder}
 			</span>
 			<ChevronDown
 				size={13}

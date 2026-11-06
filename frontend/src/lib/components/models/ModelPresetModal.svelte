@@ -122,8 +122,22 @@
 			}
 		}
 
+		const manifest = runtimesList.find((r) => r.id === runtimeId);
+		const manifestModelFlags = new Set(
+			(
+				manifest?.flags?.filter((f) => f.model || f.type === 'file').map((f) => f.flag) || []
+			).concat(['--model', '--checkpoint', '-m'])
+		);
+
+		const existingModelEntry = rawEntries.find(
+			([k]) => manifestModelFlags.has(k) || k === modelItem.key
+		);
+		if (existingModelEntry && existingModelEntry[1]) {
+			modelItem.value = existingModelEntry[1];
+		}
+
 		const otherEntries = rawEntries.filter(
-			([k]) => k !== modelItem.key && k !== '--model' && k !== '--checkpoint' && k !== '-m'
+			([k]) => !manifestModelFlags.has(k) && k !== modelItem.key
 		);
 
 		const otherItems = otherEntries.map(([k, v]) => ({
@@ -139,7 +153,7 @@
 		if (newRuntimeId === previousRuntime) return;
 		previousRuntime = newRuntimeId;
 		selectedRuntime = newRuntimeId;
-		flagsList = getImportantFlagsForRuntime(newRuntimeId);
+		flagsList = getImportantFlagsForRuntime(newRuntimeId, compatibleRuntimes);
 	}
 
 	onMount(async () => {
