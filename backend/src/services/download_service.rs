@@ -125,12 +125,34 @@ impl DownloadService {
             }
         }
 
-        let modality = payload
+        let initial_modality = payload
             .modality
             .filter(|m| !m.trim().is_empty())
             .unwrap_or_else(|| "text-to-text".to_string());
 
         let model_name = payload.model_name.trim();
+
+        // Single Source of Truth heuristic: ensure models like SD-Turbo or Whisper
+        // aren't mistakenly stored in text-to-text if caller didn't specify or passed default
+        let modality = if initial_modality == "text-to-text" {
+            let siblings = [filename.clone()];
+            let classified = crate::domain::ModalityClassifier::classify(&crate::domain::ClassificationContext {
+                raw_pipeline_tag: None,
+                tags: &[],
+                model_id: model_name,
+                sibling_filenames: &siblings,
+                architecture: None,
+                directory_hint: None,
+            });
+            if classified.confidence != crate::domain::ClassificationConfidence::Fallback {
+                classified.modality.as_str().to_string()
+            } else {
+                initial_modality
+            }
+        } else {
+            initial_modality
+        };
+
         let models_dir = self.resolve_models_dir().await;
 
         // Canonical directory structure: {type}/{user}/{model}/{filename}

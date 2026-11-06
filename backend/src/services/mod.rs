@@ -1,6 +1,7 @@
 pub mod chat_service;
 pub mod download_service;
 pub mod host_service;
+pub mod hub;
 pub mod hub_service;
 pub mod log_service;
 pub mod model_service;

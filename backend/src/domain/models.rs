@@ -145,6 +145,8 @@ pub struct HubModelItem {
     pub is_gated: bool,
     #[serde(default)]
     pub requires_auth: bool,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]

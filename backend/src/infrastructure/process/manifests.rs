@@ -73,6 +73,32 @@ pub fn get_manifest_for_runtime(
         .find(|m| m.id.eq_ignore_ascii_case(runtime_id))
 }
 
+/// Find the best default runtime ID that supports the given modality and model format,
+/// querying runtime manifests dynamically (SSoT).
+pub fn find_default_runtime_for_modality(
+    extra_folder: Option<&Path>,
+    modality: &str,
+    format: &str,
+) -> String {
+    let manifests = get_runtime_manifests(extra_folder);
+    for m in &manifests {
+        let supports_modality = m
+            .supported_modalities
+            .iter()
+            .any(|sm| sm.eq_ignore_ascii_case(modality));
+        let supports_format = m.supported_formats.is_empty()
+            || m.supported_formats
+                .iter()
+                .any(|sf| sf.eq_ignore_ascii_case(format));
+
+        if supports_modality && supports_format {
+            return m.id.clone();
+        }
+    }
+
+    "llama-cpp".to_string()
+}
+
 /// Generate default preset flags from a runtime manifest, prioritizing important flags
 /// and mapping the primary model path dynamically to the manifest flag marked with `model: true`.
 pub fn build_preset_flags_from_manifest(

@@ -144,4 +144,3 @@ export function resolveVoiceOptions(
 
 	return OPENAI_STANDARD_VOICES;
 }
-

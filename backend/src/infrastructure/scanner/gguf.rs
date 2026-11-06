@@ -574,17 +574,33 @@ pub fn inspect_model_file<P: AsRef<Path>>(path: P) -> ModelFileInfo {
     }
 
     // Single Source of Truth fallback: If modality wasn't specified in binary metadata,
-    // inspect canonical directory structure component (e.g. text-to-image, text-to-text)
+    // inspect filename patterns and canonical directory structure component via ModalityClassifier
     if info.modality == "text-to-text" {
-        for comp in path_ref.components() {
-            if let Some(s) = comp.as_os_str().to_str() {
-                match s {
-                    "text-to-image" | "text-to-text" | "text-to-speech" | "automatic-speech-recognition"
-                    | "embeddings" | "miscellaneous" => {
-                        info.modality = s.to_string();
-                        break;
+        let file_str = path_ref.file_name().and_then(|f| f.to_str()).unwrap_or("");
+        let parent_str = path_ref.parent().and_then(|p| p.file_name()).and_then(|f| f.to_str()).unwrap_or("");
+        let combined = format!("{}/{}", parent_str, file_str);
+        let siblings = [file_str.to_string()];
+        let classified = crate::domain::ModalityClassifier::classify(&crate::domain::ClassificationContext {
+            raw_pipeline_tag: None,
+            tags: &[],
+            model_id: &combined,
+            sibling_filenames: &siblings,
+            architecture: info.architecture.as_deref(),
+            directory_hint: Some(default_modality),
+        });
+        if classified.confidence != crate::domain::ClassificationConfidence::Fallback {
+            info.modality = classified.modality.as_str().to_string();
+        } else {
+            for comp in path_ref.components() {
+                if let Some(s) = comp.as_os_str().to_str() {
+                    match s {
+                        "text-to-image" | "text-to-text" | "text-to-speech" | "automatic-speech-recognition"
+                        | "embeddings" | "miscellaneous" => {
+                            info.modality = s.to_string();
+                            break;
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }

@@ -52,13 +52,13 @@
 	let isRefreshing = $state(false);
 
 	let tabItems = $derived([
-		{ id: 'discover', label: t('models.tabs.discover'), icon: Sparkles },
 		{
 			id: 'installed',
 			label: t('models.tabs.installed'),
 			icon: HardDrive,
 			badge: registeredModels.length || undefined
 		},
+		{ id: 'discover', label: t('models.tabs.discover'), icon: Sparkles },
 		{
 			id: 'downloads',
 			label: t('models.tabs.downloads'),

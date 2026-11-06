@@ -9,6 +9,6 @@ pub use manager::{
 };
 #[allow(unused_imports)]
 pub use manifests::{
-    build_default_preset_flags, build_preset_flags_from_manifest, get_manifest_for_runtime,
-    get_runtime_manifests,
+    build_default_preset_flags, build_preset_flags_from_manifest, find_default_runtime_for_modality,
+    get_manifest_for_runtime, get_runtime_manifests,
 };

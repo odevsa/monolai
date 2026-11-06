@@ -9,6 +9,7 @@
 		EmptyState,
 		MarkdownRenderer,
 		Modal,
+		Select,
 		Spinner,
 		Tabs
 	} from '$lib/components/ui';
@@ -19,6 +20,7 @@
 	import type { HubModelItem, HubModelSibling, ModelRecord } from '$lib/types/models';
 	import { formatBytes } from '$lib/utils/format';
 	import { resolveMarkdownRelativeUrls, stripMarkdownFrontmatter } from '$lib/utils/markdown';
+	import { getModalityOptions } from '$lib/utils/model';
 	import {
 		ArrowDownToLine,
 		Box,
@@ -62,6 +64,16 @@
 	let detailsError = $state<string | null>(null);
 	let enqueuedFiles = $state<Record<string, boolean>>({});
 	let deletingModelId = $state<string | null>(null);
+	let fileModalities = $state<Record<string, string>>({});
+
+	let modalitySelectionOptions = $derived(getModalityOptions().filter((o) => o.value !== 'all'));
+
+	function getFileModality(rfilename: string, downloadedModel?: ModelRecord): string {
+		if (downloadedModel?.modality) {
+			return downloadedModel.modality;
+		}
+		return fileModalities[rfilename] || modelDetails?.modality || initialModality || 'text-to-text';
+	}
 
 	// Normalize model ID: remove colon preset if present (e.g., "TheBloke/Llama-2:default" -> "TheBloke/Llama-2")
 	let cleanRepoId = $derived.by(() => {
@@ -223,7 +235,7 @@
 		const resolvedUrl =
 			file.download_url || `https://huggingface.co/${cleanRepoId}/resolve/main/${file.rfilename}`;
 
-		const effectiveModality = modelDetails?.modality || initialModality || 'text-to-text';
+		const effectiveModality = getFileModality(file.rfilename);
 
 		try {
 			await downloadStore.enqueue({
@@ -269,6 +281,7 @@
 		readmeError = null;
 		modelFiles = [];
 		detailsError = null;
+		fileModalities = {};
 		onclose?.();
 	}
 </script>
@@ -351,7 +364,9 @@
 										? 'border border-[var(--primary)] bg-[var(--primary-light)] shadow-xs'
 										: 'border border-[var(--border-color)]/70'}"
 								>
-									<div class="flex items-center justify-between gap-3 text-xs">
+									<div
+										class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+									>
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2 flex-wrap">
 												<span
@@ -371,7 +386,7 @@
 											</div>
 											<div class="flex items-center gap-2 mt-1">
 												{#if fileSize > 0}
-													<span class="text-[11px] text-[var(--text-muted)] font-mono">
+													<span class="text-[11px] text-[var(--text-muted)] whitespace-nowrap">
 														{formatBytes(fileSize)}
 													</span>
 													<span class="text-[10px] text-[var(--border-color)]">•</span>
@@ -385,7 +400,18 @@
 											</div>
 										</div>
 
-										<div class="shrink-0 flex items-center gap-2">
+										<div class="shrink-0 flex justify-between items-center gap-2">
+											<div class="w-36 sm:w-44">
+												<Select
+													options={modalitySelectionOptions}
+													value={getFileModality(file.rfilename, downloadedModel)}
+													disabled={!!downloadedModel || isDownloading}
+													onchange={(v) => {
+														fileModalities[file.rfilename] = v;
+													}}
+												/>
+											</div>
+
 											{#if isDownloading}
 												<Button variant="success" size="sm" disabled>
 													<ArrowDownToLine

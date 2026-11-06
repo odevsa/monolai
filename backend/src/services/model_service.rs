@@ -159,23 +159,19 @@ impl ModelService {
                             )
                             .await;
 
-                        let target_runtime = if inspect.modality == "text-to-image" {
-                            "sd-cpp"
-                        } else if inspect.modality == "text-to-speech"
-                            || inspect.modality == "automatic-speech-recognition"
-                        {
-                            "audio-cpp"
-                        } else {
-                            "llama-cpp"
-                        };
+                        let target_runtime = crate::infrastructure::process::find_default_runtime_for_modality(
+                            None,
+                            &inspect.modality,
+                            &file.format,
+                        );
 
                         if let Ok(presets) = self.repo.get_presets_for_model(&current_id).await {
                             for mut p in presets {
                                 if p.is_default && p.runtime_id != target_runtime {
-                                    p.runtime_id = target_runtime.to_string();
+                                    p.runtime_id = target_runtime.clone();
                                     p.flags = crate::infrastructure::process::build_default_preset_flags(
                                         None,
-                                        target_runtime,
+                                        &target_runtime,
                                         &file.relative_path,
                                     );
                                     let _ = self.repo.update_preset(&p).await;
@@ -216,24 +212,20 @@ impl ModelService {
                 let _ = self.repo.insert_model(&record).await;
 
                 if !inspect.is_auxiliary {
-                    let runtime_id = if inspect.modality == "text-to-image" {
-                        "sd-cpp"
-                    } else if inspect.modality == "text-to-speech"
-                        || inspect.modality == "automatic-speech-recognition"
-                    {
-                        "audio-cpp"
-                    } else {
-                        "llama-cpp"
-                    };
+                    let runtime_id = crate::infrastructure::process::find_default_runtime_for_modality(
+                        None,
+                        &inspect.modality,
+                        &file.format,
+                    );
 
                     let default_preset = ModelPreset {
                         id: format!("{}:default", canonical_id),
                         model_id: canonical_id,
                         name: "Default".to_string(),
-                        runtime_id: runtime_id.to_string(),
+                        runtime_id: runtime_id.clone(),
                         flags: crate::infrastructure::process::build_default_preset_flags(
                             None,
-                            runtime_id,
+                            &runtime_id,
                             &file.relative_path,
                         ),
                         is_default: true,

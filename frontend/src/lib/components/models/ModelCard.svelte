@@ -10,6 +10,8 @@
 		Box,
 		Check,
 		Copy,
+		File,
+		FileBox,
 		FolderOpen,
 		Info,
 		Layers,
@@ -84,33 +86,42 @@
 </script>
 
 <Card>
-	<div class="flex h-full flex-col justify-between gap-3.5">
+	<div class="flex h-full flex-col justify-between gap-2">
 		<!-- Top: Avatar + Title + Badges + Real-time Status -->
 		<div class="flex items-start justify-between gap-3">
 			<div class="flex flex-col gap-1.5 min-w-0 flex-1">
-				<div class="flex justify-start items-center gap-1">
-					<Box size={18} class="text-[var(--primary)] shrink-0" />
+				<div>
+					<div class="flex justify-start items-center gap-1">
+						<Box size={18} class="text-[var(--primary)] shrink-0" />
 
-					<h4
-						class="mr-auto text-sm font-semibold text-[var(--text-primary)] truncate"
-						title={model.name || model.id}
-					>
-						{model.name || model.id}
-					</h4>
+						<h4
+							class="mr-auto text-sm font-semibold text-[var(--text-primary)] truncate"
+							title={model.name || model.id}
+						>
+							{model.name || model.id}
+						</h4>
 
-					<Button
-						variant="ghost"
-						size="icon-xs"
-						onclick={() => onCopyId?.(model.id)}
-						title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-						ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-					>
-						{#if isCopied}
-							<Check size={12} class="text-[var(--success-text)]" />
-						{:else}
-							<Copy size={12} />
-						{/if}
-					</Button>
+						<Button
+							variant="ghost"
+							size="icon-xs"
+							onclick={() => onCopyId?.(model.id)}
+							title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+							ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+						>
+							{#if isCopied}
+								<Check size={12} class="text-[var(--success-text)]" />
+							{:else}
+								<Copy size={12} />
+							{/if}
+						</Button>
+					</div>
+
+					{#if model.filename}
+						<div class="flex items-center gap-1 text-sm font-semibold text-[var(--text-muted)]">
+							<FileBox size={14} class="w-[16px] text-[var(--text-muted)]" />
+							<span title={model.filename} class="truncate">{model.filename}</span>
+						</div>
+					{/if}
 				</div>
 
 				<div class="flex items-center gap-1 truncate">

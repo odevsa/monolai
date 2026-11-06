@@ -146,6 +146,7 @@ export interface HubModelItem {
 	siblings: HubModelSibling[];
 	is_gated?: boolean;
 	requires_auth?: boolean;
+	tags?: string[];
 }
 
 export interface HubModelReadme {
