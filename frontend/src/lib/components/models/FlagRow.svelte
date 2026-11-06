@@ -142,7 +142,7 @@
 	function setType(type: FlagValueType) {
 		customType = type;
 		typeMenuOpen = false;
-		if (type === 'bool' && value !== 'true' && value !== 'false') {
+		if (type === 'bool' && String(value) !== 'true' && String(value) !== 'false') {
 			value = 'true';
 		}
 	}
@@ -215,11 +215,11 @@
 					: ''}"
 			>
 				<span class="text-xs text-[var(--text-secondary)] font-mono">
-					{value === 'true' ? 'true' : 'false'}
+					{String(value) === 'true' ? 'true' : 'false'}
 				</span>
 				<Toggle
 					{disabled}
-					checked={value === 'true'}
+					checked={String(value) === 'true'}
 					onchange={(checked) => {
 						value = checked ? 'true' : 'false';
 					}}
@@ -229,7 +229,10 @@
 			<Input
 				{disabled}
 				type="number"
-				bind:value
+				{value}
+				oninput={(e) => {
+					value = (e.target as HTMLInputElement).value;
+				}}
 				title={value}
 				placeholder={flagDef?.default_value || '0'}
 				class="w-full h-[34px]"

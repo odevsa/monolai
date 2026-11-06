@@ -210,9 +210,10 @@
 
 		const flagsObj: Record<string, string> = {};
 		for (const item of flagsList) {
-			const k = item.key.trim();
+			const k = String(item.key || '').trim();
 			if (k) {
-				flagsObj[k] = item.value.trim();
+				const val = item.value != null ? String(item.value).trim() : '';
+				flagsObj[k] = val;
 			}
 		}
 
