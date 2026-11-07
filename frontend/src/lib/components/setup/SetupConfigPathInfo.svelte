@@ -43,7 +43,7 @@
 	>
 		{#if copied}
 			<Check size={12} class="text-[var(--success-text)]" />
-			<span>{t('setup.copied')}</span>
+			<span>{t('common.copied')}</span>
 		{:else}
 			<Copy size={12} />
 			<span>{t('common.copy')}</span>

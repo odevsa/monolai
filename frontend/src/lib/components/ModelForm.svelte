@@ -494,8 +494,8 @@
 											size="icon-xs"
 											class="ml-auto text-[var(--text-muted)] hover:text-[var(--danger-text)]"
 											onclick={() => removeFlag(flagKey)}
-											title={t('models.removeFlag')}
-											ariaLabel={t('models.removeFlag')}
+											title={t('common.remove')}
+											ariaLabel={t('common.remove')}
 										>
 											<Trash size={14} />
 										</Button>

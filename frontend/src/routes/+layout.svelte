@@ -308,7 +308,7 @@
 								{/if}
 								<span class="truncate">
 									{!headerState.logsEnabled
-										? t('logs.paused')
+										? t('common.paused')
 										: headerState.logsConnected
 											? t('sysinfo.streamActive')
 											: t('sysinfo.connecting')}

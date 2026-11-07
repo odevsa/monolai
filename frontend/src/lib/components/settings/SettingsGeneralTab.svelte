@@ -95,9 +95,9 @@
 			case 'database':
 				return t('settings.cleanDatabaseAction');
 			case 'storage':
-				return t('settings.cleanStorageAction');
+				return t('settings.cleanStorage');
 			case 'factory':
-				return t('settings.factoryResetAction');
+				return t('settings.factoryReset');
 		}
 	});
 
@@ -242,7 +242,7 @@
 			<SettingGroup title={t('settings.groupAppearance')}>
 				<SettingRow
 					icon={Globe}
-					title={t('settings.languageTitle')}
+					title={t('common.language')}
 					subtitle={t('settings.languageDesc')}
 				>
 					<div class="w-40 sm:w-48">
@@ -253,8 +253,8 @@
 								i18n.setLocale(val);
 								settingsApi.updateAll({ language: val }).catch(console.error);
 							}}
-							placeholder={t('settings.languageTitle')}
-							ariaLabel={t('settings.languageTitle')}
+							placeholder={t('common.language')}
+							ariaLabel={t('common.language')}
 						/>
 					</div>
 				</SettingRow>
@@ -409,7 +409,7 @@
 							isMaintenanceOpen = true;
 						}}
 					>
-						{t('settings.cleanStorageAction')}
+						{t('settings.cleanStorage')}
 					</Button>
 				</SettingRow>
 
@@ -426,7 +426,7 @@
 							isMaintenanceOpen = true;
 						}}
 					>
-						{t('settings.factoryResetAction')}
+						{t('settings.factoryReset')}
 					</Button>
 				</SettingRow>
 			</SettingGroup>

@@ -389,7 +389,7 @@
 {#if showAddModal}
 	<Modal
 		open={showAddModal}
-		title={t('settings.repositories.addCustomModalTitle')}
+		title={t('settings.repositories.addCustomRepoTitle')}
 		onclose={() => (showAddModal = false)}
 	>
 		<div class="space-y-4">

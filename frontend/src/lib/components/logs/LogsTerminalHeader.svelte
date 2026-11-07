@@ -36,7 +36,7 @@
 		<span
 			class="text-xs font-semibold tracking-wider uppercase text-[var(--text-secondary)] font-mono"
 		>
-			{t('logs.terminalTitle')}
+			{t('navigation.logs')}
 		</span>
 		<span class="text-[11px] text-[var(--text-muted)] font-mono">
 			({t('logs.linesCount', { count: filteredCount })})

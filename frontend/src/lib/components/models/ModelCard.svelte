@@ -105,8 +105,8 @@
 							variant="ghost"
 							size="icon-xs"
 							onclick={() => onCopyId?.(model.id)}
-							title={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
-							ariaLabel={isCopied ? t('models.copyIdSuccess') : t('models.copyId')}
+							title={isCopied ? t('common.copied') : t('common.copy')}
+							ariaLabel={isCopied ? t('common.copied') : t('common.copy')}
 						>
 							{#if isCopied}
 								<Check size={12} class="text-[var(--success-text)]" />
@@ -179,7 +179,7 @@
 
 				<Button variant="ghost" size="xs" onclick={openAddPreset}>
 					<Plus size={12} />
-					<span>{t('models.presets.addPreset')}</span>
+					<span>{t('common.add')}</span>
 				</Button>
 			</div>
 

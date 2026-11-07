@@ -54,7 +54,7 @@
 	let tabItems = $derived([
 		{
 			id: 'installed',
-			label: t('models.tabs.installed'),
+			label: t('common.installed'),
 			icon: HardDrive,
 			badge: registeredModels.length || undefined
 		},

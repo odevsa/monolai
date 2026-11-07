@@ -76,8 +76,8 @@
 					variant="secondary"
 					size="icon-xs"
 					onclick={handleCopy}
-					title={isCopied ? t('models.auxiliary.pathCopied') : t('models.auxiliary.copyPath')}
-					ariaLabel={t('models.auxiliary.copyPath')}
+					title={isCopied ? t('common.copied') : t('common.copy')}
+					ariaLabel={t('common.copy')}
 				>
 					{#if isCopied}
 						<Check size={12} class="text-[var(--success-text)]" />

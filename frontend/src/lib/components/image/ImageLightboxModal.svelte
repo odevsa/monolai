@@ -53,11 +53,11 @@
 						variant="secondary"
 						size="sm"
 						onclick={() => onDownload(image!)}
-						title={t('image.download')}
-						ariaLabel={t('image.download')}
+						title={t('common.download')}
+						ariaLabel={t('common.download')}
 					>
 						<Download size={13} />
-						<span>{t('image.download')}</span>
+						<span>{t('common.download')}</span>
 					</Button>
 
 					<Button

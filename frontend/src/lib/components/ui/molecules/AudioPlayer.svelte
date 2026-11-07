@@ -216,7 +216,7 @@
 			disabled={!src}
 			onclick={togglePlay}
 			class="w-20 h-20 rounded-full bg-[var(--primary)] text-[var(--bg-primary)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-lg focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-			aria-label={isPlaying ? t('audio.pause') : t('audio.play')}
+			aria-label={isPlaying ? t('common.pause') : t('audio.play')}
 		>
 			{#if isPlaying}
 				<Pause size={32} class="fill-current" />
@@ -260,8 +260,8 @@
 						size="icon-sm"
 						disabled={!src}
 						onclick={togglePlay}
-						title={isPlaying ? t('audio.pause') : t('audio.play')}
-						ariaLabel={isPlaying ? t('audio.pause') : t('audio.play')}
+						title={isPlaying ? t('common.pause') : t('audio.play')}
+						ariaLabel={isPlaying ? t('common.pause') : t('audio.play')}
 					>
 						{#if isPlaying}
 							<Pause size={15} />

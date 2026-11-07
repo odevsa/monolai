@@ -93,7 +93,7 @@
 	<div class="flex flex-col gap-3">
 		<div class="flex items-center justify-between px-1">
 			<span class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-				{t('chat.sessionHistory')}
+				{t('common.sessionHistory')}
 			</span>
 			<div class="flex items-center gap-1">
 				<Button

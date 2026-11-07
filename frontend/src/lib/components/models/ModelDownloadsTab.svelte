@@ -86,7 +86,7 @@
 	async function handleClearInactive() {
 		const confirmed = await askConfirm(
 			t('models.downloads.clearCompletedConfirm'),
-			t('models.downloads.clearCompleted'),
+			t('common.clear'),
 			'danger',
 			t('common.clear'),
 			t('common.cancel')
@@ -135,7 +135,7 @@
 					onclick={handleClearInactive}
 				>
 					<Trash size={14} />
-					<span>{t('models.downloads.clearCompleted')}</span>
+					<span>{t('common.clear')}</span>
 				</Button>
 			</div>
 		{/if}
@@ -168,7 +168,7 @@
 									</Badge>
 								{:else if d.status === 'paused'}
 									<Badge variant="warning">
-										{t('models.downloads.paused')}
+										{t('common.paused')}
 									</Badge>
 								{:else if d.status === 'completed'}
 									<Badge variant="success">
@@ -198,8 +198,8 @@
 									class="group hover:text-[var(--warning-text)]"
 									loading={actionLoading[d.id]}
 									onclick={() => handlePause(d.id)}
-									title={t('models.downloads.pause')}
-									ariaLabel={t('models.downloads.pause')}
+									title={t('common.pause')}
+									ariaLabel={t('common.pause')}
 								>
 									<Pause
 										size={14}

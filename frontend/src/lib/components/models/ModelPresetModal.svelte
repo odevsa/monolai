@@ -303,7 +303,7 @@
 				for="preset-runtime"
 				class="text-xs font-medium text-[var(--text-secondary)] block mb-1"
 			>
-				{t('models.presets.runtime')}
+				{t('models.runtimeEngine')}
 			</label>
 			{#if isLoadingRuntimes}
 				<div class="flex items-center gap-2 text-xs text-[var(--text-muted)] py-2">
@@ -334,7 +334,7 @@
 			<div class="flex items-center justify-between">
 				<label class="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
 					<SlidersVertical size={13} />
-					<span>{t('models.presets.flags')}</span>
+					<span>{t('models.executionFlags')}</span>
 				</label>
 			</div>
 

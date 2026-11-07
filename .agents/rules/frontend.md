@@ -15,7 +15,12 @@
 5. **Internationalization (i18n)**:
    - All user-facing UI text must use the reactive helper `t('key.path')` from `src/lib/i18n`.
    - Hardcoded UI text strings are strictly forbidden. All entries belong in `src/lib/i18n/locales/en.json`.
-   - **DRY & Semantic Optimization Policy**: Always reuse generic actions and controls from `common.*` (`common.save`, `common.cancel`, `common.delete`, `common.new`, `common.add`, `common.edit`, `common.close`, `common.copy`, `common.clear`, `common.refresh`, `common.download`, `common.unload`, etc.) for buttons and tooltips instead of creating redundant domain-specific variations (e.g. avoid `models.saveModel`, `image.deleteImage`). Reserve domain namespaces exclusively for domain-specific descriptions, dialog messages, and unique labels. Run `just i18n-check` to verify zero missing and zero unused keys.
+   - **DRY & Semantic Optimization Policy (Lean Translation Footprint)**:
+     - Always reuse generic actions and controls from `common.*` (`common.save`, `common.cancel`, `common.delete`, `common.new`, `common.add`, `common.edit`, `common.close`, `common.copy`, `common.copied`, `common.clear`, `common.refresh`, `common.download`, `common.unload`, `common.pause`, `common.paused`, `common.language`, `common.sessionHistory`, etc.) for buttons and tooltips instead of creating redundant domain-specific variations (e.g. avoid `models.saveModel`, `image.deleteImage`, `models.removeFlag`, `models.copyId`).
+     - Zero duplicate values across domain namespaces: promote any shared label or status across domains to `common.*`.
+     - Synthesize composite button labels (`Add`, `Remove`, `Copy`, `Clear`) where visual context/iconography already clarifies the target.
+     - Keep sample prompt arrays (e.g., `image.randomPrompts`, `audio.randomPrompts`) concise and capped (20 short sentences).
+     - Reserve domain namespaces exclusively for domain-specific descriptions, dialog messages, and unique labels. Run `just i18n-check` to verify zero missing and zero unused keys.
 6. **Styling, Theme Tokens & Zero Hardcoded Colors Policy**:
    - Centralized Theme Tokens: All theme colors, semantic status tokens, and syntax highlighting variables MUST reside exclusively in `src/themes.css` (imported by `src/app.css`) under `@theme` and `[data-theme='...']`. Components must NEVER define local theme overrides or arbitrary color values.
    - Mandatory Semantic CSS Variables: Always use theme variables (`var(--bg-primary)`, `var(--bg-surface)`, `var(--border-color)`, `var(--text-primary)`, `var(--primary)`, `var(--success)`, `var(--warning)`, `var(--danger)`, `var(--info)`, etc.).

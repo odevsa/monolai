@@ -19,7 +19,7 @@
 		formatVoiceOption,
 		resolveVoiceOptions
 	} from '$lib/constants/voices';
-	import { t } from '$lib/i18n';
+	import { t, tArray } from '$lib/i18n';
 	import { audioState } from '$lib/state';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { formatElapsedTime } from '$lib/utils/format';
@@ -125,15 +125,13 @@
 		{ value: 'flac', label: 'FLAC (Lossless)' }
 	];
 
-	const samplePrompts = [
-		'Welcome to Monolai! The local, private, and high-performance AI engine for text, image, and audio.',
-		'Artificial intelligence is evolving rapidly, bringing powerful open-source models right into your machine.',
-		'The quick brown fox jumps over the lazy dog, showcasing the clarity and natural intonation of our audio synthesis engine.'
-	];
+	let randomPrompts = $derived(tArray('audio.randomPrompts'));
 
 	function insertSampleText() {
-		const random = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
-		promptText = random;
+		const list = randomPrompts;
+		if (list && list.length > 0) {
+			promptText = list[Math.floor(Math.random() * list.length)];
+		}
 	}
 
 	async function blobToDataUrl(blob: Blob): Promise<string> {

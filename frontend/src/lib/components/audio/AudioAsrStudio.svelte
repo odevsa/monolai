@@ -258,7 +258,7 @@
 		<!-- Language Selection -->
 		<div class="flex flex-col gap-1.5">
 			<label for="asr-lang-select" class="text-xs font-semibold text-[var(--text-secondary)]">
-				{t('audio.language')}
+				{t('common.language')}
 			</label>
 			<Select
 				id="asr-lang-select"

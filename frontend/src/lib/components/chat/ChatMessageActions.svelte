@@ -44,8 +44,8 @@
 			variant="ghost"
 			size="icon-sm"
 			class="text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]"
-			title={t('chat.retryTooltip')}
-			ariaLabel={t('chat.retryTooltip')}
+			title={t('common.retry')}
+			ariaLabel={t('common.retry')}
 			onclick={onRetry}
 		>
 			<RotateCw size={14} />
