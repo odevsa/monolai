@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { portal } from '$lib/utils/portal';
 	import { X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 
@@ -58,6 +59,7 @@
 
 {#if open}
 	<div
+		use:portal
 		class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[200] p-4 animate-in fade-in duration-150"
 		onclick={handleBackdropClick}
 		role="presentation"

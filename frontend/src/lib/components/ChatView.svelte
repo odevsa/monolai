@@ -203,6 +203,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (inputSectionHeight && autoScrollChat && messages.length > 0) {
+			scrollToBottom(false);
+		}
+	});
+
 	function loadPromptHistory() {
 		if (typeof localStorage !== 'undefined') {
 			try {
@@ -1036,6 +1042,71 @@
 
 		await executeAssistantGeneration(activeId);
 	}
+
+	let lastUserMessageId = $derived([...messages].reverse().find((m) => m.role === 'user')?.id);
+
+	async function handleSaveEdit(
+		userMsgId: string,
+		newContent: string,
+		newAttachments: ChatAttachment[]
+	) {
+		if (isGenerating) return;
+		const idx = messages.findIndex((m) => m.id === userMsgId);
+		if (idx === -1) return;
+
+		const activeId = sessionChatId || chatId;
+		if (!activeId) return;
+
+		if (!selectedModel) {
+			if (registeredChatModels.length === 0) {
+				await loadChatModels();
+			}
+			if (registeredChatModels.length > 0 && !selectedModel) {
+				selectedModel = registeredChatModels[0].id;
+			}
+		}
+
+		if (!selectedModel) {
+			await showAlert(t('chat.selectModelPrompt'), t('navigation.models'), 'warning');
+			return;
+		}
+
+		// 1. Update the user message in local state
+		messages[idx] = {
+			...messages[idx],
+			content: newContent,
+			attachments: newAttachments.length > 0 ? newAttachments : undefined
+		};
+		messages = [...messages];
+
+		// 2. Persist updated user message to DB
+		try {
+			await chatsApi.updateMessage(activeId, userMsgId, {
+				content: newContent,
+				attachments: newAttachments.length > 0 ? JSON.stringify(newAttachments) : undefined
+			});
+		} catch (err) {
+			console.error('Error updating user message in DB on edit:', err);
+		}
+
+		// 3. Remove subsequent assistant message (and any messages after it)
+		const msgsToDelete = messages.slice(idx + 1);
+		if (msgsToDelete.length > 0) {
+			const idsToDelete = new Set(msgsToDelete.map((m) => m.id));
+			messages = messages.filter((m) => !idsToDelete.has(m.id));
+
+			for (const msg of msgsToDelete) {
+				try {
+					await chatsApi.deleteMessage(activeId, msg.id);
+				} catch (e) {
+					console.error('Error deleting superseded message on edit:', e);
+				}
+			}
+		}
+
+		// 4. Stream fresh assistant response for the updated message
+		await executeAssistantGeneration(activeId);
+	}
 </script>
 
 <svelte:head>
@@ -1049,9 +1120,8 @@
 	<!-- Messages Container with Smooth Scroll & Upward History -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="page flex-1 overflow-y-auto flex flex-col overscroll-y-contain pt-[4.5rem] px-6 pb-36 max-sm:pt-[4.25rem] max-sm:px-4 max-sm:pb-[7.5rem] {isKeyboardOpen
-			? '!pb-[max(8rem,calc(var(--keyboard-input-height,100px)+1.25rem))] transition-[padding-bottom] duration-200 ease-out'
-			: ''}"
+		class="page flex-1 overflow-y-auto flex flex-col overscroll-y-contain pt-[4.5rem] px-6 max-sm:pt-[4.25rem] max-sm:px-4 transition-[padding-bottom] duration-200 ease-out"
+		style:padding-bottom="calc(var(--keyboard-input-height, 110px) + 3rem)"
 		bind:this={messagesContainer}
 		onscroll={handleScroll}
 		onwheel={markUserChatInteraction}
@@ -1076,6 +1146,8 @@
 						onCopy={copyMessageContent}
 						onDelete={deleteMessage}
 						onRetry={retryAssistantMessage}
+						canEdit={msg.id === lastUserMessageId}
+						onSaveEdit={handleSaveEdit}
 					/>
 				{/each}
 			</div>

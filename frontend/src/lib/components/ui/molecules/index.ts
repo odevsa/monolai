@@ -1,5 +1,6 @@
 export { default as Alert } from './Alert.svelte';
 export { default as AreaChart } from './AreaChart.svelte';
+export { default as AttachmentChip } from './AttachmentChip.svelte';
 export { default as AudioPlayer } from './AudioPlayer.svelte';
 export { default as Card } from './Card.svelte';
 export { default as CodeBlock } from './CodeBlock.svelte';

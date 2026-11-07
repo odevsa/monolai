@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { Button, ContextIndicator, ModelSelect } from '$lib/components/ui';
+	import { AttachmentChip, Button, ContextIndicator, ModelSelect } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import type { ChatAttachment } from '$lib/types/chat';
 	import type { ModelSupportedModalities } from '$lib/utils/attachments';
 	import type { PreparedContext, ReasoningPreset } from '$lib/utils/context';
 	import { ArrowUp, ChevronDown, Square } from '@lucide/svelte';
 	import { tick } from 'svelte';
-	import ChatAttachmentChip from './ChatAttachmentChip.svelte';
 	import ChatToolsMenu from './ChatToolsMenu.svelte';
 
 	interface RegisteredModel {
@@ -174,6 +173,12 @@
 	}
 
 	$effect(() => {
+		if (inputMessage !== undefined && textareaRef) {
+			adjustTextareaHeight();
+		}
+	});
+
+	$effect(() => {
 		if (!inputSectionRef) return;
 		const ro = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -191,7 +196,6 @@
 
 <div
 	class="absolute bottom-6 left-0 right-0 flex flex-col items-center px-6 pointer-events-none z-40 transition-[right] duration-200 ease-out max-sm:bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] max-sm:px-4 max-sm:max-w-[calc(840px+2rem)] max-h-[480px]:landscape:bottom-[0.4rem]"
-	bind:this={inputSectionRef}
 	style:right="{scrollbarWidth}px"
 >
 	{#if showScrollButton}
@@ -208,6 +212,7 @@
 	{/if}
 
 	<div
+		bind:this={inputSectionRef}
 		class="w-full max-w-[840px] rounded-3xl py-3.5 pr-4 pb-3 pl-4.5 flex flex-col gap-2 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--border-hover)] focus-within:shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl bg-[var(--bg-surface)]/65 border border-[var(--border-color)]/60 {isDraggingOver
 			? '!border-[var(--primary)] ring-2 ring-[var(--primary)]/30'
 			: ''}"
@@ -220,7 +225,12 @@
 		{#if attachments && attachments.length > 0}
 			<div class="flex flex-wrap items-center gap-2 mb-1.5 max-h-[160px] overflow-y-auto pr-1">
 				{#each attachments as att (att.id)}
-					<ChatAttachmentChip attachment={att} onRemove={(id) => onRemoveAttachment?.(id)} />
+					<AttachmentChip
+						attachment={att}
+						variant="prompt"
+						disabled={isGenerating}
+						onRemove={(id) => onRemoveAttachment?.(id)}
+					/>
 				{/each}
 			</div>
 		{/if}

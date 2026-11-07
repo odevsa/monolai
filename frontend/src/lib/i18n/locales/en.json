@@ -5,6 +5,9 @@
 	"common": {
 		"saved": "Saved",
 		"cancel": "Cancel",
+		"send": "Send",
+		"remove": "Remove",
+		"warning": "Warning",
 		"delete": "Delete",
 		"confirm": "Confirm",
 		"close": "Close",
