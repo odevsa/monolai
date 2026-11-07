@@ -40,13 +40,18 @@
 
 - **Offline & Private**: Run local models (GGUF / diffusion checkpoints) on your own hardware with zero telemetry.
 - **Hardware Acceleration**: Automatic GPU detection and support for **CUDA**, **ROCm**, and **Vulkan**, with multi-threaded CPU fallback.
-- **Automated Runtime Management**: Automatic download, version tracking, and installation of upstream engine binaries (`llama.cpp`, `stable-diffusion.cpp`).
-- **Image Generation**: Local text-to-image generation powered by `stable-diffusion.cpp` with support for custom resolutions, negative prompts, CFG scale, sampling steps, and seeds.
+- **Automated Runtime Management**: Automatic download, version tracking, and installation of upstream engine binaries (`llama.cpp`, `stable-diffusion.cpp`, and `audio.cpp`) with fuzzy release resolution.
+- **Multimodal Chat & Attachments**: Rich chat experience with streaming responses, Markdown syntax highlighting, multimodal attachments (images/files) for vision models, message editing, and retry.
 - **Reasoning & Thinking Process**: Real-time streaming support for reasoning models (e.g., DeepSeek-R1) with dedicated expandable `<think>` UI blocks in the chat view.
+- **Image Generation**: Local text-to-image generation powered by `stable-diffusion.cpp` with support for custom resolutions, negative prompts, CFG scale, sampling steps, seeds, and persistent gallery history.
+- **Audio AI Studio (TTS & ASR)**: High-performance Text-to-Speech (TTS) and Automatic Speech Recognition (ASR / STT) powered by `audio.cpp`, featuring multi-voice selection, phonemization via eSpeak-ng, drag-and-drop transcription, interactive waveforms player, and persistent audio history.
+- **Model Hub & Discovery**: Search, inspect model cards, and download models directly from Hugging Face Hub (and configurable remote repositories) with token authentication support for gated models.
+- **Download Manager**: Background download queue with pause, resume, cancel, real-time SSE progress streaming, and automatic model registration.
 - **Memory & Process Lifecycle**: Automatic model unloading from VRAM/RAM after inactivity (`idle_timeout_seconds`) and orphan process cleanup.
-- **OpenAI-Compatible API**: Drop-in `/v1/chat/completions`, `/v1/images/generations`, `/v1/embeddings`, and `/v1/models` endpoints compatible with standard SDKs and tools (OpenAI SDK, LangChain, Cursor, Continue).
-- **Web UI**: Modern SvelteKit 5 dashboard with real-time hardware telemetry (CPU, RAM, GPU/VRAM, disk storage) via SSE, persistent chat history, and image gallery.
+- **OpenAI-Compatible API**: Drop-in `/v1/chat/completions`, `/v1/images/generations`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/embeddings`, and `/v1/models` endpoints compatible with standard SDKs and tools (OpenAI SDK, LangChain, Cursor, Continue).
+- **Web UI**: Modern SvelteKit 5 dashboard (Runes) with real-time hardware telemetry (CPU, RAM, GPU/VRAM, disk storage) via SSE, persistent chat history, image gallery, audio studio, and model hub.
 - **Log Management**: Built-in backend service logging and live frontend log viewer with service filtering, streaming, export, and diagnostics.
+- **Maintenance & Storage Controls**: Built-in UI and CLI utilities to clean database entries, purge cached runtimes/models, or perform a complete factory reset.
 - **Internationalization (i18n)**: Out-of-the-box multi-language support for **9 languages**: English, Spanish (`es`), Portuguese (`pt-BR`), German (`de`), French (`fr`), Italian (`it`), Japanese (`ja`), Russian (`ru`), and Simplified Chinese (`zh-CN`).
 - **Native Desktop GUI**: Cross-platform desktop app (`monolai-gui`) built with egui 0.30, single-instance enforcement, system tray, and background daemon supervisor.
 - **OpenAPI Documentation**: Interactive Swagger UI at `/api/swagger`.
@@ -114,17 +119,22 @@ Monolai uses modular inference engines that can be installed directly from the w
 
 1. Navigate to the **Runtimes** page (http://localhost:8080/runtimes).
 2. Install the runtimes matching your use cases:
-   - **`llama.cpp`**: Required for text generation, chat completion, and reasoning LLMs (`.gguf`).
+   - **`llama.cpp`**: Required for text generation, chat completion, reasoning LLMs, and embeddings (`.gguf`).
    - **`stable-diffusion.cpp`**: Required for local text-to-image diffusion generation (`.safetensors`, `.bin`, etc).
-3. Select your preferred acceleration backend (e.g. CUDA, Vulkan, or CPU) and click **Install**. Download and installation progress is streamed in real time.
+   - **`audio.cpp`**: Required for Text-to-Speech (TTS) and Automatic Speech Recognition (ASR / STT) models.
+3. Select your preferred acceleration backend (e.g. CUDA, Vulkan, Metal, or CPU) and click **Install**. Download and installation progress is streamed in real time.
+4. Monolai automatically validates system dependencies (such as `eSpeak-ng` for TTS phonemization) and provides platform-specific install commands if missing.
 
 ### 3. Download Models
 
-Download your favorite models (`.gguf`, `.safetensors`, `.bin`, etc) and place them directly into your configured models folder from [1. Launch Monolai & Complete Setup](#1-launch-monolai--complete-setup).
+You can find and download models through two methods:
+
+- **Built-in Model Hub (Recommended)**: Use the **Discover** tab on the **Models** page (http://localhost:8080/models) to search trending models on Hugging Face Hub, inspect model cards and READMEs, and download `.gguf` weights directly with background progress tracking.
+- **Manual Download**: Place your downloaded model files (`.gguf`, `.safetensors`, `.bin`, etc.) directly into your configured models folder from [1. Launch Monolai & Complete Setup](#1-launch-monolai--complete-setup).
 
 #### Some Places to Find and Download Models:
 
-- **[Hugging Face](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending)**: Popular place for downloading models
+- **[Hugging Face](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending)**: The primary open-source model repository.
 
 > [!TIP]
 > **Quantization**: For the best trade-off between memory and speed, look for **`Q4_K_M`** quantizations or test other quantizations to find what works best for your hardware.
@@ -138,18 +148,20 @@ Download your favorite models (`.gguf`, `.safetensors`, `.bin`, etc) and place t
 ### 4. Register & Manage Models
 
 1. Go to the **Models** page (http://localhost:8080/models).
-2. Click **Register Model** to create a model for inference.
-3. Set model parameters such as:
-   - **Model ID** (e.g., `qwen2.5-7b` or `deepseek-r1-7b`)
-   - **Runtime Engine** (e.g., `Llama C++ Server`, `Stable Diffusion C++ Server`...)
-   - **Flags** (e.g., `--model`, `--ctx-size`, `--gpu-layers`...)
+2. Click **Register Model** or select a downloaded file from the local scan list.
+3. Monolai automatically detects the format and modality (`text-generation`, `text-to-image`, `text-to-speech`, or `automatic-speech-recognition`), pre-populating recommended runtime flags:
+   - **Model ID** (e.g., `qwen2.5-7b`, `flux-schnell`, or `kokoro-v1`)
+   - **Runtime Engine** (`Llama C++ Server`, `Stable Diffusion C++ Server`, or `Audio C++ Server`)
+   - **Flags** (e.g., `--model`, `--ctx-size`, `--gpu-layers`, `--voice`...)
+4. Create and toggle between custom parameter presets for quick configuration changes.
 
 ### 5. Start Using Monolai
 
-- **Chat**: Chat with your local models, featuring full markdown rendering and live streaming.
-- **Image**: Create images locally with prompt tuning, negative prompts, aspect ratio presets, seeds, and generation history.
+- **Chat**: Chat with local models featuring full markdown rendering, live streaming, expandable reasoning blocks (`<think>`), and multimodal attachment uploads for vision models.
+- **Image**: Create images locally with prompt tuning, negative prompts, aspect ratio presets, seeds, and persistent gallery history.
+- **Audio**: Synthesize voice audio using Text-to-Speech (TTS) models or transcribe recorded audio files with drag-and-drop Automatic Speech Recognition (ASR).
 - **OpenAI Compatibility**: Use Monolai as a local replacement for OpenAI in **Zed**, **OpenCode**, **Continue**, **Open WebUI**, or any standard OpenAI Compatible client by setting the base URL to `http://localhost:8080/v1`.
-- **Monitoring**: Check real-time GPU/VRAM, CPU, and RAM consumption under **System Info** and monitor live activity in **Logs**.
+- **Monitoring & Diagnostics**: Check real-time GPU/VRAM, CPU, and RAM consumption under **System Info** and monitor live service streams in **Logs**.
 
 ## CLI
 
@@ -168,8 +180,9 @@ Options:
   -p, --port <PORT>                 Port to bind
       --db <DB>                     Path to SQLite database
       --runtimes <RUNTIMES_FOLDER>  Path to extra runtime manifests folder
-      --clean-storage               Clean storage: delete SQLite database and active process cache
-      --factory-reset               Factory reset: delete database, process cache, and configuration
+      --clean-database              Clean database: delete SQLite database and active process cache
+      --clean-storage               Clean storage: delete all downloaded models and installed runtimes
+      --factory-reset               Factory reset: delete database, process cache, models, runtimes, and configuration
   -h, --help                        Print help
   -V, --version                     Print version
 ```
@@ -365,6 +378,64 @@ response = client.images.generate(
 print(response.data[0].url)
 ```
 
+### 4. Text-to-Speech (`POST /v1/audio/speech`)
+
+#### cURL
+
+```bash
+curl http://localhost:8080/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "your-tts-model",
+    "input": "Hello from Monolai local audio synthesis!",
+    "voice": "af_heart"
+  }' \
+  --output speech.wav
+```
+
+#### Python (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed")
+
+response = client.audio.speech.create(
+    model="your-tts-model",
+    voice="af_heart",
+    input="Hello from Monolai local audio synthesis!"
+)
+
+response.stream_to_file("speech.wav")
+```
+
+### 5. Audio Transcription (`POST /v1/audio/transcriptions`)
+
+#### cURL
+
+```bash
+curl http://localhost:8080/v1/audio/transcriptions \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@audio.wav" \
+  -F "model=your-asr-model"
+```
+
+#### Python (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed")
+
+with open("audio.wav", "rb") as audio_file:
+    transcription = client.audio.transcriptions.create(
+        model="your-asr-model",
+        file=audio_file
+    )
+
+print(transcription.text)
+```
+
 Interactive Swagger documentation is available at **http://localhost:8080/api/swagger**.
 
 ## Development
@@ -392,7 +463,7 @@ Tasks are managed using [`just`](https://github.com/casey/just) (a modern task r
 | `just build-windows`   | Cross-compile Windows release binaries into `dist/windows/`    |
 | `just build-macos`     | Build macOS release binaries and `.app` bundle                 |
 | `just build-all`       | Build all supported multi-platform release binaries            |
-| `just docker-build`    | Build local Docker image (`monolai:latest`)                    |
+| `just build-docker`    | Build local Docker image (`monolai:latest`)                    |
 | `just icons`           | Generate all multi-resolution icons (PNG, ICO, ICNS)           |
 | `just clean`           | Remove build artifacts and temporary files                     |
 | `just version [x.y.z]` | Synchronize project version across manifests                   |
