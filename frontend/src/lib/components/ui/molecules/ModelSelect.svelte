@@ -3,6 +3,7 @@
 	import { ModelBadge } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { featuresState } from '$lib/state/features.svelte';
+	import { portal } from '$lib/utils/portal';
 	import { Box, ChevronDown } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 
@@ -17,6 +18,7 @@
 		placement = 'bottom',
 		align = 'left',
 		variant = 'default',
+		centerOnScreen = false,
 		showChevron = undefined,
 		id = undefined,
 		name = undefined,
@@ -34,6 +36,7 @@
 		placement?: 'bottom' | 'top';
 		align?: 'left' | 'right';
 		variant?: 'default' | 'pill';
+		centerOnScreen?: boolean;
 		showChevron?: boolean;
 		id?: string;
 		name?: string;
@@ -46,6 +49,8 @@
 
 	let open = $state(false);
 	let containerRef = $state<HTMLDivElement | null>(null);
+	let dropdownRef = $state<HTMLDivElement | null>(null);
+	let popoverStyle = $state('');
 	let internalModels = $state<FeatureModelItem[]>([]);
 
 	async function loadModels() {
@@ -71,17 +76,119 @@
 	let resolvedLabel = $derived(label || t('common.selectActiveModel'));
 	let resolvedEmptyText = $derived(emptyText || t('common.noModelsRegistered'));
 
+	function updateCoords() {
+		if (!centerOnScreen || !containerRef) return;
+		const rect = containerRef.getBoundingClientRect();
+		const isMobile = window.innerWidth <= 640;
+
+		const useBottom = placement === 'top';
+		const bottom = Math.max(8, window.innerHeight - rect.top + 8);
+		const top = Math.max(8, rect.bottom + 8);
+
+		if (isMobile) {
+			const maxHeight = useBottom
+				? Math.min(280, Math.max(120, rect.top - 16))
+				: Math.min(280, Math.max(120, window.innerHeight - rect.bottom - 16));
+
+			popoverStyle = [
+				'position: fixed',
+				'left: 1rem',
+				'right: 1rem',
+				'margin-left: auto',
+				'margin-right: auto',
+				'width: auto',
+				'max-width: 440px',
+				'min-width: 0',
+				useBottom ? `bottom: ${bottom}px` : `top: ${top}px`,
+				useBottom ? 'top: auto' : 'bottom: auto',
+				`max-height: ${maxHeight}px`,
+				'z-index: 9999'
+			].join('; ');
+		} else {
+			const maxHeight = useBottom
+				? Math.min(280, Math.max(120, rect.top - 16))
+				: Math.min(280, Math.max(120, window.innerHeight - rect.bottom - 16));
+
+			const isPill = variant === 'pill';
+			let horizontalStyles: string[];
+
+			if (isPill) {
+				if (align === 'right') {
+					const right = Math.max(8, window.innerWidth - rect.right);
+					horizontalStyles = [
+						'left: auto',
+						`right: ${right}px`,
+						'width: max-content',
+						'min-width: 440px',
+						'max-width: min(640px, calc(100vw - 4rem))'
+					];
+				} else {
+					const left = Math.max(8, rect.left);
+					horizontalStyles = [
+						`left: ${left}px`,
+						'right: auto',
+						'width: max-content',
+						'min-width: 280px',
+						'max-width: min(380px, calc(100vw - 2rem))'
+					];
+				}
+			} else {
+				const left = Math.max(8, rect.left);
+				const width = Math.max(rect.width, 280);
+				horizontalStyles = [
+					`left: ${left}px`,
+					'right: auto',
+					`width: ${width}px`,
+					'max-width: min(640px, calc(100vw - 4rem))'
+				];
+			}
+
+			popoverStyle = [
+				'position: fixed',
+				...horizontalStyles,
+				useBottom ? `bottom: ${bottom}px` : `top: ${top}px`,
+				useBottom ? 'top: auto' : 'bottom: auto',
+				`max-height: ${maxHeight}px`,
+				'z-index: 9999'
+			].join('; ');
+		}
+	}
+
 	function toggleOpen(e?: MouseEvent) {
 		if (e) e.stopPropagation();
 		if (disabled) return;
 		open = !open;
 		if (open) {
+			if (centerOnScreen) {
+				updateCoords();
+			}
 			if (onopen) onopen();
 			if (features && models === undefined) {
 				loadModels();
 			}
 		}
 	}
+
+	$effect(() => {
+		if (open && centerOnScreen) {
+			updateCoords();
+			const handleScroll = (e: Event) => {
+				if (dropdownRef && dropdownRef.contains(e.target as Node)) {
+					return;
+				}
+				updateCoords();
+			};
+			const handleResize = () => {
+				updateCoords();
+			};
+			window.addEventListener('scroll', handleScroll, true);
+			window.addEventListener('resize', handleResize);
+			return () => {
+				window.removeEventListener('scroll', handleScroll, true);
+				window.removeEventListener('resize', handleResize);
+			};
+		}
+	});
 
 	function selectOption(modelId: string) {
 		value = modelId;
@@ -92,7 +199,12 @@
 	}
 
 	function handleClickOutside(event: MouseEvent) {
-		if (containerRef && !containerRef.contains(event.target as Node)) {
+		const target = event.target as Node;
+		if (
+			containerRef &&
+			!containerRef.contains(target) &&
+			(!dropdownRef || !dropdownRef.contains(target))
+		) {
 			open = false;
 		}
 	}
@@ -147,36 +259,54 @@
 		{/if}
 	</button>
 
+	{#snippet menuContent()}
+		<div class="menu-label">{resolvedLabel}</div>
+		{#if displayModels.length === 0}
+			<div class="empty-menu-text">{resolvedEmptyText}</div>
+		{:else}
+			{#each displayModels as model (model.id)}
+				<button
+					type="button"
+					role="option"
+					aria-selected={value === model.id}
+					class="popover-item {value === model.id ? 'selected' : ''}"
+					onclick={() => selectOption(model.id)}
+				>
+					<div class="item-left">
+						<ModelBadge
+							model={model.modelId || model.id}
+							preset={model.presetName}
+							variant="inline"
+						/>
+					</div>
+					<span class="mini-tag">{model.runtime}</span>
+				</button>
+			{/each}
+		{/if}
+	{/snippet}
+
 	{#if open}
-		<div
-			class="popover-menu placement-{placement} align-{align} variant-{variant}"
-			role="listbox"
-			tabindex="-1"
-		>
-			<div class="menu-label">{resolvedLabel}</div>
-			{#if displayModels.length === 0}
-				<div class="empty-menu-text">{resolvedEmptyText}</div>
-			{:else}
-				{#each displayModels as model (model.id)}
-					<button
-						type="button"
-						role="option"
-						aria-selected={value === model.id}
-						class="popover-item {value === model.id ? 'selected' : ''}"
-						onclick={() => selectOption(model.id)}
-					>
-						<div class="item-left">
-							<ModelBadge
-								model={model.modelId || model.id}
-								preset={model.presetName}
-								variant="inline"
-							/>
-						</div>
-						<span class="mini-tag">{model.runtime}</span>
-					</button>
-				{/each}
-			{/if}
-		</div>
+		{#if centerOnScreen}
+			<div
+				use:portal
+				bind:this={dropdownRef}
+				class="popover-menu popover-portaled placement-{placement} align-{align} variant-{variant}"
+				style={popoverStyle}
+				role="listbox"
+				tabindex="-1"
+			>
+				{@render menuContent()}
+			</div>
+		{:else}
+			<div
+				bind:this={dropdownRef}
+				class="popover-menu placement-{placement} align-{align} variant-{variant}"
+				role="listbox"
+				tabindex="-1"
+			>
+				{@render menuContent()}
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -320,6 +450,11 @@
 		gap: 0.125rem;
 		animation: popoverFadeIn 0.15s ease-out;
 		box-sizing: border-box;
+	}
+
+	.popover-menu.popover-portaled {
+		position: fixed;
+		z-index: 9999;
 	}
 
 	.popover-menu.placement-bottom {

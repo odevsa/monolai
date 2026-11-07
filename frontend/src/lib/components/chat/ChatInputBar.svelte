@@ -274,6 +274,7 @@
 					placement="top"
 					align="right"
 					variant="pill"
+					centerOnScreen={true}
 					class="shrink min-w-0 max-w-[130px] sm:max-w-[260px] md:max-w-[360px]"
 					onchange={onSelectModel}
 					placeholder={t('common.selectModel')}
