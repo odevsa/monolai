@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS images (
     seed INTEGER,
     src TEXT NOT NULL,
     generation_time_secs REAL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);

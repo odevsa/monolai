@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS models (
     source_repo TEXT,
     is_auxiliary INTEGER NOT NULL DEFAULT 0,
     auxiliary_type TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_models_format ON models(format);
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS model_presets (
     runtime_id TEXT NOT NULL,
     flags TEXT NOT NULL DEFAULT '{}',
     is_default INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
 );
 
@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS downloads (
     downloaded_bytes INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'queued',
     error_message TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);

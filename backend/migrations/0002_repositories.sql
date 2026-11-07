@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS repositories (
     enabled INTEGER NOT NULL DEFAULT 0,
     is_builtin INTEGER NOT NULL DEFAULT 0,
     config_json TEXT NOT NULL DEFAULT '{}',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_repositories_created_at ON repositories(created_at DESC);

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS audios (
     filename TEXT,
     language TEXT,
     word_count INTEGER,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_audios_created_at ON audios(created_at DESC);
