@@ -92,9 +92,20 @@
 	let currentModelRecord = $derived(registeredChatModels.find((m) => m.id === selectedModel));
 	let contextLimit = $derived(getModelContextLimit(currentModelRecord?.flags));
 	let liveUsage = $state<Partial<TokenUsageDetails>>({});
+	let effectiveMessagesForContext = $derived.by(() => {
+		if (pendingAttachments.length > 0 && !isGenerating) {
+			const pendingUserMsg = {
+				role: 'user' as const,
+				content: inputMessage || '',
+				attachments: pendingAttachments
+			};
+			return [...messages, pendingUserMsg];
+		}
+		return messages;
+	});
 	let contextInfo = $derived(
 		prepareSlidingWindowContext(
-			messages,
+			effectiveMessagesForContext,
 			systemPrompt,
 			contextLimit,
 			currentReasoningPreset.maxTokens || 1024,

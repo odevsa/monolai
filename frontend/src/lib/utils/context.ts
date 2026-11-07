@@ -113,6 +113,27 @@ export function prepareSlidingWindowContext(
 	const systemTokens = estimateTokens(systemPrompt);
 	const safeInputBudget = Math.max(512, maxContextLimit - reserveOutputTokens);
 
+	// Identify which message (if any) is the active user prompt that should include attachments.
+	// Only the active user prompt includes full file contents, images, and audio attachments.
+	// Earlier dialogue turns in history only retain their textual prompt without past attachments.
+	let activeUserMsgIndex = -1;
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const m = messages[i];
+		if (m.role === 'user') {
+			if (i === messages.length - 1) {
+				activeUserMsgIndex = i;
+			} else if (
+				i === messages.length - 2 &&
+				messages[messages.length - 1].role === 'assistant' &&
+				(messages[messages.length - 1].status === 'RUNNING' ||
+					messages[messages.length - 1].status === 'PENDING')
+			) {
+				activeUserMsgIndex = i;
+			}
+			break;
+		}
+	}
+
 	// Filter valid dialogue messages
 	const cleanMessages: {
 		role: 'user' | 'assistant';
@@ -121,7 +142,8 @@ export function prepareSlidingWindowContext(
 		speed?: string;
 		duration?: string;
 	}[] = [];
-	for (const m of messages) {
+	for (let i = 0; i < messages.length; i++) {
+		const m = messages[i];
 		if (m.role !== 'user' && m.role !== 'assistant') continue;
 		const rawContent = m.content?.trim();
 		const hasAttachments = m.attachments && m.attachments.length > 0;
@@ -129,9 +151,12 @@ export function prepareSlidingWindowContext(
 		if (m.status === 'ERROR' || rawContent?.startsWith('⚠️')) continue;
 		if (rawContent === '(Cancelled by user)') continue;
 
-		// Estimate extra tokens from attachments
+		// Only include attachments if this message is the active user prompt being evaluated
+		const shouldIncludeAttachments = hasAttachments && i === activeUserMsgIndex;
+
+		// Estimate extra tokens from attachments (only for the active prompt)
 		let attachmentTokens = 0;
-		if (m.attachments) {
+		if (shouldIncludeAttachments && m.attachments) {
 			for (const att of m.attachments) {
 				if (att.type === 'image') {
 					attachmentTokens += 800;
@@ -143,12 +168,9 @@ export function prepareSlidingWindowContext(
 			}
 		}
 
-		const baseTokens = m.tokens && m.tokens > 0 ? m.tokens : estimateTokens(rawContent) + 4;
-		const totalTokens = baseTokens + attachmentTokens;
-
 		// Format content with attachments
 		let formattedContent: string | any[] = rawContent || '';
-		if (hasAttachments && m.attachments) {
+		if (shouldIncludeAttachments && m.attachments) {
 			let textWithDocs = rawContent || '';
 			const textFiles = m.attachments.filter((a) => a.type === 'text' && a.textContent);
 			if (textFiles.length > 0) {
@@ -190,7 +212,23 @@ export function prepareSlidingWindowContext(
 			} else {
 				formattedContent = textWithDocs;
 			}
+		} else if (!rawContent && hasAttachments && m.attachments) {
+			// For previous turns in history that only had attachments and no prompt text,
+			// provide a concise placeholder so the dialogue flow is preserved without heavy data
+			const names = m.attachments
+				.map((a) => a.name)
+				.filter(Boolean)
+				.join(', ');
+			formattedContent = names ? `[Attachment: ${names}]` : '[Attachment]';
 		}
+
+		const baseTokens =
+			typeof formattedContent === 'string'
+				? estimateTokens(formattedContent) + 4
+				: m.tokens && m.tokens > 0
+					? m.tokens
+					: estimateTokens(rawContent) + 4;
+		const totalTokens = baseTokens + attachmentTokens;
 
 		cleanMessages.push({
 			role: m.role,
