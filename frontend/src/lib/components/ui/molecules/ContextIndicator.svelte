@@ -14,10 +14,28 @@
 	let showDetails = $state(false);
 	let wrapperRef: HTMLDivElement | null = $state(null);
 	let popoverRef: HTMLDivElement | null = $state(null);
+	let mobileBottom = $state<number | null>(null);
+	let mobileMaxHeight = $state<number | null>(null);
+
+	function updatePosition() {
+		if (!wrapperRef) return;
+		const isMobile = window.innerWidth <= 640;
+		if (isMobile) {
+			const rect = wrapperRef.getBoundingClientRect();
+			mobileBottom = Math.max(8, window.innerHeight - rect.top + 8);
+			mobileMaxHeight = Math.min(window.innerHeight * 0.7, Math.max(160, rect.top - 16));
+		} else {
+			mobileBottom = null;
+			mobileMaxHeight = null;
+		}
+	}
 
 	function togglePopover(e: MouseEvent) {
 		e.stopPropagation();
 		isOpen = !isOpen;
+		if (isOpen) {
+			updatePosition();
+		}
 	}
 
 	function toggleDetails(e: MouseEvent) {
@@ -25,7 +43,7 @@
 		showDetails = !showDetails;
 	}
 
-	function handleClickOutside(e: MouseEvent) {
+	function handleClickOutside(e: MouseEvent | TouchEvent) {
 		if (isOpen && wrapperRef && !wrapperRef.contains(e.target as Node)) {
 			isOpen = false;
 		}
@@ -34,12 +52,24 @@
 	$effect(() => {
 		if (typeof window !== 'undefined') {
 			if (isOpen) {
+				updatePosition();
 				document.addEventListener('click', handleClickOutside);
+				document.addEventListener('touchstart', handleClickOutside, { passive: true });
+				window.addEventListener('resize', updatePosition);
+				window.addEventListener('scroll', updatePosition, true);
 			} else {
+				mobileBottom = null;
+				mobileMaxHeight = null;
 				document.removeEventListener('click', handleClickOutside);
+				document.removeEventListener('touchstart', handleClickOutside);
+				window.removeEventListener('resize', updatePosition);
+				window.removeEventListener('scroll', updatePosition, true);
 			}
 			return () => {
 				document.removeEventListener('click', handleClickOutside);
+				document.removeEventListener('touchstart', handleClickOutside);
+				window.removeEventListener('resize', updatePosition);
+				window.removeEventListener('scroll', updatePosition, true);
 			};
 		}
 	});
@@ -86,18 +116,13 @@
 		</svg>
 	</button>
 
-	<!-- Mobile dismiss backdrop -->
 	{#if isOpen}
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div
-			class="fixed inset-0 bg-black/50 backdrop-blur-xs z-55 sm:hidden"
-			onclick={() => (isOpen = false)}
-			role="presentation"
-		></div>
-
 		<!-- Context Popover matching screenshot with exact typography and KV metrics -->
 		<div
-			class="absolute bottom-[calc(100%+0.65rem)] left-1/2 -translate-x-1/2 right-auto bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3.5 w-[280px] max-h-[80vh] overflow-y-auto shadow-2xl z-60 flex flex-col gap-2 text-[var(--text-primary)] box-border max-sm:fixed max-sm:bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)] max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-w-[calc(100vw-2rem)] max-sm:translate-x-0 max-sm:rounded-2xl max-sm:max-h-[65vh]"
+			class="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 right-auto bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3.5 w-[280px] max-h-[80vh] overflow-y-auto shadow-2xl z-60 flex flex-col gap-2 text-[var(--text-primary)] box-border max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:mx-auto max-sm:w-auto max-sm:max-w-[440px] max-sm:translate-x-0"
+			style={mobileBottom !== null
+				? `bottom: ${mobileBottom}px; ${mobileMaxHeight !== null ? `max-height: ${mobileMaxHeight}px;` : ''}`
+				: undefined}
 			role="dialog"
 			bind:this={popoverRef}
 		>
