@@ -217,7 +217,6 @@
 				id: `tts-${Date.now()}`,
 				type: 'tts',
 				model: selectedModel,
-				timestamp: Date.now(),
 				prompt: promptText.trim(),
 				audioUrl,
 				voice: selectedVoice,

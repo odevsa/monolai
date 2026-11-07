@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { AlertTriangle, ShieldAlert, Trash2 } from '@lucide/svelte';
+	import { AlertTriangle, ShieldAlert, Trash, Trash2, TriangleAlert } from '@lucide/svelte';
 	import Button from '../atoms/Button.svelte';
 	import Input from '../atoms/Input.svelte';
 	import Modal from './Modal.svelte';
@@ -63,43 +63,35 @@
 
 <Modal bind:open maxWidth="sm" {title} onclose={handleClose}>
 	{#snippet children()}
-		<div class="p-6 flex flex-col gap-4">
+		<div class="flex flex-col gap-4">
 			{#if step === 1}
-				<div
-					class="flex items-start gap-3 p-3.5 rounded-xl bg-[var(--danger-light)] border border-[var(--danger-border)]"
-				>
-					<div class="p-2 rounded-lg bg-[var(--danger-focus)] text-[var(--danger-text)] shrink-0">
-						<AlertTriangle size={20} />
+				<div class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed">
+					<div class="rounded-lg text-[var(--danger-text)] shrink-0">
+						<TriangleAlert size={48} />
 					</div>
-					<div class="flex flex-col gap-1 text-xs text-[var(--danger-text)] leading-relaxed">
-						<span class="font-bold text-sm text-[var(--danger-text)]"
-							>{t('settings.maintenanceIrreversibleTitle')}</span
-						>
-						<span>{warningMessage}</span>
-					</div>
+					<span class="font-bold text-sm text-center text-[var(--danger-text)]"
+						>{t('settings.maintenanceIrreversibleTitle')}</span
+					>
+					<span class="text-center">{warningMessage}</span>
 				</div>
 
-				<p class="text-xs text-[var(--text-secondary)] leading-relaxed m-0">
+				<p class="text-xs text-[var(--text-secondary)] text-center leading-relaxed m-0">
 					{t('settings.maintenanceWarningDesc')}
 				</p>
 			{:else}
-				<div
-					class="flex items-start gap-3 p-3.5 rounded-xl bg-[var(--danger-light)] border border-[var(--danger-border)]"
-				>
-					<div class="p-2 rounded-lg bg-[var(--danger-focus)] text-[var(--danger-text)] shrink-0">
-						<ShieldAlert size={20} />
+				<div class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed">
+					<div class="rounded-lg text-[var(--danger-text)] shrink-0">
+						<ShieldAlert size={48} />
 					</div>
-					<div class="flex flex-col gap-1 text-xs text-[var(--danger-text)] leading-relaxed">
-						<span class="font-bold text-sm text-[var(--danger-text)]"
-							>{t('settings.maintenanceTypePromptTitle')}</span
-						>
-						<span>{t('settings.maintenanceTypePrompt')}</span>
-					</div>
+					<span class="font-bold text-sm text-center text-[var(--danger-text)]"
+						>{t('settings.maintenanceTypePromptTitle')}</span
+					>
+					<span class="text-center">{t('settings.maintenanceTypePrompt')}</span>
 				</div>
 
 				<div class="flex flex-col gap-2">
 					<div
-						class="px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg font-mono text-xs font-bold text-center text-[var(--text-primary)] select-all tracking-wider"
+						class="px-3 py-2 bg-[var(--bg-surface-hover)] border border-[var(--border-color)] rounded-lg font-mono text-xs font-bold text-center text-[var(--text-primary)] select-all tracking-wider"
 					>
 						{confirmPhrase}
 					</div>
@@ -116,9 +108,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="flex items-center justify-between w-full px-5 py-3.5 border-t border-[var(--border-color)] bg-[var(--bg-surface)]"
-		>
+		<div class="flex items-center justify-between w-full">
 			<Button variant="secondary" size="md" disabled={loading} onclick={handleClose}>
 				{t('common.cancel')}
 			</Button>
@@ -135,7 +125,7 @@
 					{loading}
 					onclick={handleExecute}
 				>
-					<Trash2 size={14} />
+					<Trash size={14} />
 					<span>{confirmButtonText}</span>
 				</Button>
 			{/if}

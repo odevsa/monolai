@@ -39,6 +39,25 @@ monolai/
    - Whenever you encounter complex, monolithic, or repetitive code that can be refactored into smaller, cohesive, reusable subcomponents or extended without altering the design, you **MUST** do so.
    - Prefer extending an existing component (e.g., adding a `writable` prop to `<Select>`) rather than introducing redundant, competing components.
    - Deconstruct complex forms and views into dedicated subcomponents (e.g., flag row editors, specialized item cards) to keep individual files lean, readable, and maintainable.
+6. **Canonical Naming Conventions (Database, Code & REST APIs)**:
+   - **Database Schemas (SQLite / SQLx)**:
+     - **Table Names**: ALWAYS use lowercase plural nouns in `snake_case` directly matching the canonical resource name (e.g., `models`, `chats`, `chat_messages`, `images`, `audios`, `downloads`, `settings`, `repositories`). NEVER use asymmetrical, ad-hoc, or action-based names (e.g., avoid `generated_images`, `audio_generations`, `model_item`).
+     - **Column Names**: Lowercase `snake_case` (e.g., `id`, `prompt`, `created_at`, `audio_type`, `model_id`, `cfg_scale`).
+     - **Foreign Keys**: Named `<singular_parent>_id` with explicit constraints (e.g., `chat_id REFERENCES chats(id) ON DELETE CASCADE`).
+     - **Index Names**: Prefixed with `idx_<table_name>_<column_names>` (e.g., `idx_images_created_at`, `idx_audios_type`).
+   - **REST API Endpoints**:
+     - Endpoints must use pluralized lowercase nouns in kebab-case (e.g., `/api/models`, `/api/chats`, `/api/images`, `/api/audio`, `/api/downloads`, `/api/runtime-manifests`).
+     - Actions on collections or single resources must use standard HTTP verbs (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
+   - **Backend (Rust)**:
+     - **Structs / Enums / Traits**: `PascalCase` (e.g., `GeneratedImageRecord`, `AudioRepository`, `AppError`).
+     - **Functions / Methods / Modules**: `snake_case` (e.g., `get_all_chats`, `image_service`, `clean_database`).
+     - **DTO JSON Serialization**: When serializing Rust DTOs intended for the frontend, prefer `#[serde(rename_all = "camelCase")]` so that frontend TypeScript consumes idiomatic camelCase without ad-hoc mapping.
+     - **Constants**: `SCREAMING_SNAKE_CASE` (e.g., `DEFAULT_PORT`, `MAX_CONNECTIONS`).
+   - **Frontend (TypeScript & Svelte 5)**:
+     - **Types / Interfaces**: `PascalCase` (e.g., `GeneratedImageItem`, `AudioGenerationItem`).
+     - **Variables / Functions / Runes**: `camelCase` (e.g., `selectedModel`, `loadHistory`, `imageGalleryState`).
+     - **Components**: `PascalCase.svelte` (e.g., `ModelSelect.svelte`, `ChatInputBar.svelte`, `ContextIndicator.svelte`).
+     - **Stores & State Singletons**: `camelCase.svelte.ts` (e.g., `imageGallery.svelte.ts`, `audio.svelte.ts`, `chats.svelte.ts`).
 
 ---
 

@@ -174,7 +174,6 @@
 
 				return {
 					id: `img-${Date.now()}-${idx}`,
-					timestamp: Date.now(),
 					prompt: rawPrompt,
 					negativePrompt: negativePrompt.trim() || undefined,
 					model: selectedModel,
@@ -281,7 +280,7 @@
 		const unsubFeatures = onFeaturesChange(() => {
 			loadImageModels();
 		});
-		imageGalleryState.loadFromStorage();
+		imageGalleryState.loadHistory();
 		const onUnload = (e: Event) => {
 			const customEvent = e as CustomEvent<{ modelId?: string }>;
 			handleModelUnloadInterruption(customEvent.detail?.modelId);

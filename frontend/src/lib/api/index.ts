@@ -3,6 +3,8 @@ export * from './openai';
 export * from './models';
 export * from './runtimes';
 export * from './chats';
+export * from './images';
+export * from './audio';
 export * from './host';
 export * from './config';
 export * from './settings';

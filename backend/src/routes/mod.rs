@@ -15,6 +15,10 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     docs::ApiDoc,
     handlers::{
+        audio::{
+            clear_audio_handler, create_audio_handler, delete_audio_handler,
+            get_audio_by_id_handler, get_audio_handler,
+        },
         chats::{
             clear_chat_messages_handler, create_chat_handler, create_chat_message_handler,
             delete_chat_handler, delete_chat_message_handler, get_chat_messages_handler,
@@ -32,6 +36,10 @@ use crate::{
             create_repository_handler, delete_repository_handler, get_hub_model_details_handler,
             get_hub_model_readme_handler, get_repositories_handler, search_hub_models_handler,
             update_repository_handler,
+        },
+        images::{
+            clear_images_handler, create_image_handler, delete_image_handler,
+            get_image_handler, get_images_handler,
         },
         logs::{
             clear_logs_handler, download_logs_handler, get_log_services_handler, get_logs_handler,
@@ -250,6 +258,28 @@ fn api_router() -> Router<AppState> {
         .route(
             "/chats/:id/messages/:msg_id",
             put(update_chat_message_handler).delete(delete_chat_message_handler),
+        )
+        // Images
+        .route(
+            "/images",
+            get(get_images_handler)
+                .post(create_image_handler)
+                .delete(clear_images_handler),
+        )
+        .route(
+            "/images/:id",
+            get(get_image_handler).delete(delete_image_handler),
+        )
+        // Audio
+        .route(
+            "/audio",
+            get(get_audio_handler)
+                .post(create_audio_handler)
+                .delete(clear_audio_handler),
+        )
+        .route(
+            "/audio/:id",
+            get(get_audio_by_id_handler).delete(delete_audio_handler),
         )
         // Logs
         .route("/logs", get(get_logs_handler).delete(clear_logs_handler))

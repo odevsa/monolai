@@ -13,8 +13,8 @@ use core::config::{
     GuiPreferences, PathResolver,
 };
 use infrastructure::db::{
-    init_db, ChatRepository, DownloadRepository, ModelRepository, RepositoryRepository,
-    SettingRepository,
+    init_db, AudioRepository, ChatRepository, DownloadRepository, ImageRepository, ModelRepository,
+    RepositoryRepository, SettingRepository,
 };
 use infrastructure::downloader::RuntimeInstallerManager;
 use infrastructure::hardware::GpuTracker;
@@ -22,8 +22,8 @@ use infrastructure::process::manager::{
     adopt_or_clean_orphans, start_idle_auto_unload_loop, ProcessManager,
 };
 use services::{
-    ChatService, DownloadService, HostService, HubService, LogService, MaintenanceService,
-    ModelService, ProxyService, RuntimeService,
+    AudioService, ChatService, DownloadService, HostService, HubService, ImageService, LogService,
+    MaintenanceService, ModelService, ProxyService, RuntimeService,
 };
 use state::AppState;
 use std::{
@@ -408,6 +408,8 @@ async fn main() {
     let repo_repo = RepositoryRepository::new(db_pool.clone());
     let download_repo = DownloadRepository::new(db_pool.clone());
     let chat_repo = ChatRepository::new(db_pool.clone());
+    let image_repo = ImageRepository::new(db_pool.clone());
+    let audio_repo = AudioRepository::new(db_pool.clone());
     let setting_repo = SettingRepository::new(db_pool.clone()).await;
 
     // 5. Initialize Logging Service
@@ -453,6 +455,8 @@ async fn main() {
     ));
 
     let chat_service = Arc::new(ChatService::new(chat_repo.clone()));
+    let image_service = Arc::new(ImageService::new(image_repo));
+    let audio_service = Arc::new(AudioService::new(audio_repo));
 
     let extra_manifests_path = cli.runtimes_folder.as_ref().map(PathBuf::from);
     let runtime_service = Arc::new(RuntimeService::new(
@@ -502,6 +506,8 @@ async fn main() {
         cli_config_path: cli.config.clone(),
         model_service,
         chat_service,
+        image_service,
+        audio_service,
         runtime_service,
         host_service,
         proxy_service,

@@ -183,7 +183,6 @@
 				id: `asr-${Date.now()}`,
 				type: 'asr',
 				model: selectedModel,
-				timestamp: Date.now(),
 				transcript: textResult,
 				filename: file.name,
 				language: selectedLanguage !== 'auto' ? selectedLanguage : undefined,

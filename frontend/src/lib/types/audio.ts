@@ -4,15 +4,29 @@ export interface AudioGenerationItem {
 	id: string;
 	type: 'tts' | 'asr';
 	model: string;
-	timestamp: number;
-	// TTS fields
 	prompt?: string;
 	audioUrl?: string;
 	voice?: string;
 	speed?: number;
 	format?: string;
 	durationSecs?: number;
-	// ASR fields
+	transcript?: string;
+	filename?: string;
+	language?: string;
+	wordCount?: number;
+	createdAt?: string;
+}
+
+export interface CreateAudioGenerationPayload {
+	id?: string;
+	type: 'tts' | 'asr';
+	model: string;
+	prompt?: string;
+	audioUrl?: string;
+	voice?: string;
+	speed?: number;
+	format?: string;
+	durationSecs?: number;
 	transcript?: string;
 	filename?: string;
 	language?: string;

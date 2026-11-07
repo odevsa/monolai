@@ -1,9 +1,11 @@
+pub mod audio;
 pub mod chats;
 pub mod config;
 pub mod downloads;
 pub mod health;
 pub mod host;
 pub mod hub;
+pub mod images;
 pub mod logs;
 pub mod maintenance;
 pub mod models;

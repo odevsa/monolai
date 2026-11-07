@@ -34,16 +34,4 @@ export interface ChatMessage {
 	created_at?: string;
 }
 
-export interface GeneratedImageItem {
-	id: string;
-	timestamp: number;
-	prompt: string;
-	negativePrompt?: string;
-	model: string;
-	size: string;
-	steps: number;
-	cfgScale: number;
-	seed?: number;
-	src: string;
-	generationTimeSecs?: number;
-}
+export type { GeneratedImageItem } from './images';

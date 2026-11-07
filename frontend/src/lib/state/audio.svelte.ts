@@ -1,81 +1,79 @@
-import type { AudioGenerationItem } from '$lib/types/audio';
-
-const STORAGE_KEY = 'monolai:audio_history';
-const MAX_AUDIO_HISTORY = 30;
+import { audioApi } from '$lib/api/audio';
+import type { AudioGenerationItem, CreateAudioGenerationPayload } from '$lib/types/audio';
 
 class AudioStateManager {
 	history = $state<AudioGenerationItem[]>([]);
 	selectedItem = $state<AudioGenerationItem | null>(null);
 	selectionVersion = $state<number>(0);
+	isLoading = $state(false);
+	isInitialized = $state(false);
 
 	constructor() {
 		if (typeof window !== 'undefined') {
-			this.loadFromStorage();
+			this.loadHistory();
 		}
 	}
 
-	loadFromStorage() {
-		if (typeof window === 'undefined') return;
+	async loadHistory(type?: 'tts' | 'asr') {
+		if (this.isLoading) return;
+		this.isLoading = true;
 		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) {
-				const items: AudioGenerationItem[] = JSON.parse(saved);
-				this.history = items;
-				if (items.length > 0 && !this.selectedItem) {
-					this.selectedItem = items[0];
-				}
+			const items = await audioApi.list(type, 200);
+			this.history = items;
+			if (items.length > 0 && !this.selectedItem) {
+				this.selectedItem = items[0];
 			}
+			this.isInitialized = true;
 		} catch (err) {
-			console.error('Failed to load audio history from storage:', err);
+			console.error('Failed to load audio history from SQLite database:', err);
+		} finally {
+			this.isLoading = false;
 		}
 	}
 
-	setHistory(newHistory: AudioGenerationItem[]) {
-		this.history = newHistory;
-		if (typeof window !== 'undefined') {
-			try {
-				const serializable = newHistory.slice(0, MAX_AUDIO_HISTORY).map((item, idx) => ({
-					...item,
-					// Persist data URLs in localStorage for the 10 most recent items
-					audioUrl: idx < 10 && item.audioUrl?.startsWith('data:') ? item.audioUrl : undefined
-				}));
-				localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-			} catch (err) {
-				console.warn('Failed to save audio history with data URLs, saving metadata only:', err);
-				try {
-					const metadataOnly = newHistory.slice(0, MAX_AUDIO_HISTORY).map((item) => ({
-						...item,
-						audioUrl: undefined
-					}));
-					localStorage.setItem(STORAGE_KEY, JSON.stringify(metadataOnly));
-				} catch (innerErr) {
-					console.error('Failed to save audio metadata to storage:', innerErr);
-				}
-			}
+	async addItem(item: CreateAudioGenerationPayload) {
+		try {
+			const created = await audioApi.create(item);
+			this.history = [created, ...this.history];
+			this.selectItem(created);
+		} catch (err) {
+			console.error('Failed to persist audio generation to database:', err);
+			// Optimistic fallback in case of immediate network failure
+			const fallback: AudioGenerationItem = {
+				id: item.id || `audio-${Date.now()}`,
+				...item,
+				createdAt: new Date().toISOString()
+			};
+			this.history = [fallback, ...this.history];
+			this.selectItem(fallback);
 		}
 	}
 
-	addItem(item: AudioGenerationItem) {
-		this.setHistory([item, ...this.history]);
-		this.selectItem(item);
-	}
+	async deleteItem(id: string) {
+		try {
+			await audioApi.delete(id);
+		} catch (err) {
+			console.error('Failed to delete audio item from database:', err);
+		}
 
-	deleteItem(id: string) {
 		const filtered = this.history.filter((i) => i.id !== id);
-		this.setHistory(filtered);
+		this.history = filtered;
 		if (this.selectedItem?.id === id) {
 			this.selectedItem = filtered.length > 0 ? filtered[0] : null;
 			this.selectionVersion++;
 		}
 	}
 
-	clearHistory() {
+	async clearHistory() {
+		try {
+			await audioApi.clear();
+		} catch (err) {
+			console.error('Failed to clear audio history from database:', err);
+		}
+
 		this.history = [];
 		this.selectedItem = null;
 		this.selectionVersion++;
-		if (typeof window !== 'undefined') {
-			localStorage.removeItem(STORAGE_KEY);
-		}
 	}
 
 	selectItem(item: AudioGenerationItem | null) {

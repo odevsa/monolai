@@ -1,18 +1,22 @@
+pub mod audio_service;
 pub mod chat_service;
 pub mod download_service;
 pub mod host_service;
 pub mod hub;
 pub mod hub_service;
+pub mod image_service;
 pub mod log_service;
 pub mod maintenance_service;
 pub mod model_service;
 pub mod proxy_service;
 pub mod runtime_service;
 
+pub use audio_service::AudioService;
 pub use chat_service::ChatService;
 pub use download_service::DownloadService;
 pub use host_service::HostService;
 pub use hub_service::HubService;
+pub use image_service::ImageService;
 pub use log_service::LogService;
 pub use maintenance_service::MaintenanceService;
 pub use model_service::ModelService;

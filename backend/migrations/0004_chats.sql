@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS chats (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_chats_created_at ON chats(created_at DESC);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id TEXT PRIMARY KEY,
     chat_id TEXT NOT NULL,
@@ -19,3 +21,5 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC);

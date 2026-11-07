@@ -1,15 +1,19 @@
+pub mod audio;
 pub mod chats;
 pub mod classifier;
 pub mod hardware;
+pub mod images;
 pub mod logs;
 pub mod maintenance;
 pub mod models;
 pub mod openai;
 pub mod runtimes;
 
+pub use audio::*;
 pub use chats::*;
 pub use classifier::*;
 pub use hardware::*;
+pub use images::*;
 pub use logs::*;
 pub use maintenance::*;
 pub use models::*;

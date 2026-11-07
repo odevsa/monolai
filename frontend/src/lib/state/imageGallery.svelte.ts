@@ -1,66 +1,80 @@
-import type { GeneratedImageItem } from '$lib/types/chat';
-
-const STORAGE_KEY = 'monolai:image_history';
-const MAX_HISTORY_ITEMS = 30;
+import { imagesApi } from '$lib/api/images';
+import type { CreateGeneratedImagePayload, GeneratedImageItem } from '$lib/types/images';
 
 class ImageGalleryStateManager {
 	history = $state<GeneratedImageItem[]>([]);
 	selectedImage = $state<GeneratedImageItem | null>(null);
 	selectionVersion = $state<number>(0);
+	isLoading = $state(false);
+	isInitialized = $state(false);
 
 	constructor() {
 		if (typeof window !== 'undefined') {
-			this.loadFromStorage();
+			this.loadHistory();
 		}
 	}
 
-	loadFromStorage() {
-		if (typeof window === 'undefined') return;
+	async loadHistory() {
+		if (this.isLoading) return;
+		this.isLoading = true;
 		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) {
-				this.history = JSON.parse(saved);
+			const items = await imagesApi.list(200);
+			this.history = items;
+			if (items.length > 0 && !this.selectedImage) {
+				this.selectedImage = items[0];
 			}
+			this.isInitialized = true;
 		} catch (err) {
-			console.error('Failed to load image history from storage:', err);
+			console.error('Failed to load image history from SQLite database:', err);
+		} finally {
+			this.isLoading = false;
 		}
 	}
 
-	setHistory(newHistory: GeneratedImageItem[]) {
-		this.history = newHistory;
-		if (typeof window !== 'undefined') {
+	async addImage(item: CreateGeneratedImagePayload | CreateGeneratedImagePayload[]) {
+		const items = Array.isArray(item) ? item : [item];
+		const createdList: GeneratedImageItem[] = [];
+
+		for (const it of items) {
 			try {
-				localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory.slice(0, MAX_HISTORY_ITEMS)));
+				const created = await imagesApi.create(it);
+				createdList.push(created);
 			} catch (err) {
-				console.error('Failed to save image history to storage:', err);
+				console.error('Failed to persist generated image to database:', err);
 			}
 		}
-	}
 
-	addImage(item: GeneratedImageItem | GeneratedImageItem[]) {
-		const items = Array.isArray(item) ? item : [item];
-		this.setHistory([...items, ...this.history]);
-		if (items.length > 0) {
-			this.selectImage(items[0]);
+		if (createdList.length > 0) {
+			this.history = [...createdList, ...this.history];
+			this.selectImage(createdList[0]);
 		}
 	}
 
-	deleteImage(id: string) {
+	async deleteImage(id: string) {
+		try {
+			await imagesApi.delete(id);
+		} catch (err) {
+			console.error('Failed to delete generated image from database:', err);
+		}
+
 		const filtered = this.history.filter((img) => img.id !== id);
-		this.setHistory(filtered);
+		this.history = filtered;
 		if (this.selectedImage?.id === id) {
 			this.selectedImage = filtered.length > 0 ? filtered[0] : null;
 			this.selectionVersion++;
 		}
 	}
 
-	clearHistory() {
+	async clearHistory() {
+		try {
+			await imagesApi.clear();
+		} catch (err) {
+			console.error('Failed to clear image history from database:', err);
+		}
+
 		this.history = [];
 		this.selectedImage = null;
 		this.selectionVersion++;
-		if (typeof window !== 'undefined') {
-			localStorage.removeItem(STORAGE_KEY);
-		}
 	}
 
 	selectImage(item: GeneratedImageItem | null) {

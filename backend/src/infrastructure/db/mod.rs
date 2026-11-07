@@ -1,5 +1,7 @@
+pub mod audio_repo;
 pub mod chat_repo;
 pub mod download_repo;
+pub mod image_repo;
 pub mod model_repo;
 pub mod repository_repo;
 pub mod setting_repo;
@@ -9,8 +11,10 @@ use sqlx::SqlitePool;
 use std::path::Path;
 use std::str::FromStr;
 
+pub use audio_repo::AudioRepository;
 pub use chat_repo::ChatRepository;
 pub use download_repo::DownloadRepository;
+pub use image_repo::ImageRepository;
 pub use model_repo::{normalize_flags, ModelRepository};
 pub use repository_repo::RepositoryRepository;
 pub use setting_repo::SettingRepository;
