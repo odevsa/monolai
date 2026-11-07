@@ -9,3 +9,4 @@ export * from './settings';
 export * from './logs';
 export * from './hub';
 export * from './downloads';
+export * from './maintenance';

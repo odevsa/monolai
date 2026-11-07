@@ -37,6 +37,7 @@ use crate::{
             clear_logs_handler, download_logs_handler, get_log_services_handler, get_logs_handler,
             logs_stream_handler,
         },
+        maintenance::{clean_database_handler, clean_storage_handler, factory_reset_handler},
         models::{
             available_models_handler, create_model_preset_handler, delete_model_handler,
             delete_model_preset_handler, get_compatible_runtimes_handler, get_model_by_id_handler,
@@ -255,6 +256,10 @@ fn api_router() -> Router<AppState> {
         .route("/logs/services", get(get_log_services_handler))
         .route("/logs/stream", get(logs_stream_handler))
         .route("/logs/download", get(download_logs_handler))
+        // Maintenance
+        .route("/maintenance/clean-database", post(clean_database_handler))
+        .route("/maintenance/clean-storage", post(clean_storage_handler))
+        .route("/maintenance/factory-reset", post(factory_reset_handler))
 }
 
 /// OpenAI Compatibility proxy routes (/v1/*)

@@ -49,7 +49,12 @@
 		"hide": "Ocultar",
 		"page": "Página",
 		"previous": "Anterior",
-		"next": "Próximo"
+		"next": "Próximo",
+		"send": "Enviar",
+		"remove": "Remover",
+		"warning": "Aviso",
+		"random": "Aleatório",
+		"required": "Obrigatório"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -67,7 +72,8 @@
 		"systemStatus": "Status do Sistema",
 		"recentConversations": "Conversas Recentes",
 		"searchConversations": "Pesquisar conversas...",
-		"noConversationsFound": "Nenhuma conversa encontrada"
+		"noConversationsFound": "Nenhuma conversa encontrada",
+		"audio": "Áudio"
 	},
 	"chat": {
 		"deleteChatConfirmTitle": "Excluir Conversa",
@@ -130,6 +136,10 @@
 				"label": "Máximo",
 				"desc": "Ilimitado"
 			}
+		},
+		"attachments": {
+			"addFiles": "Adicionar arquivos",
+			"unsupportedFileType": "O modelo selecionado não suporta este tipo de arquivo."
 		}
 	},
 	"image": {
@@ -151,7 +161,6 @@
 		"modelLabel": "Modelo",
 		"promptStudio": "Estúdio de Prompt",
 		"ctrlEnterHint": "(Ctrl+Enter)",
-		"randomPromptBtn": "Aleatório",
 		"randomPromptTitle": "Gerar prompt aleatório a partir da lista",
 		"dimensions": "Dimensões",
 		"selectDimensions": "Selecionar tamanho...",
@@ -355,8 +364,8 @@
 			"textToText": "Texto (LLM)",
 			"textToImage": "Imagem (Difusão)",
 			"textToSpeech": "Áudio TTS",
-			"speechToText": "Áudio ASR",
-			"embeddings": "Embeddings"
+			"embeddings": "Embeddings",
+			"automaticSpeechRecognition": "Áudio ASR"
 		}
 	},
 	"runtimes": {
@@ -493,7 +502,28 @@
 		"apiDocumentation": "Documentação da API",
 		"githubRepo": "Repositório GitHub",
 		"modelsDir": "Diretório de modelos",
-		"runtimesDir": "Diretório de runtimes"
+		"runtimesDir": "Diretório de runtimes",
+		"groupMaintenance": "Limpeza de Dados e Manutenção",
+		"cleanDatabase": "Limpar Base de Dados",
+		"cleanDatabaseDesc": "Exclui todos os chats, mensagens e metadados de modelos do SQLite. Reconstrói migrações limpas.",
+		"cleanDatabaseAction": "Apagar Base de Dados",
+		"cleanDatabasePhrase": "DELETE DATABASE",
+		"cleanDatabaseWarning": "Esta ação apaga permanentemente todos os chats, históricos de mensagens e metadados. Sua base de dados será resetada.",
+		"cleanStorage": "Limpar Armazenamento",
+		"cleanStorageDesc": "Exclui todos os modelos de IA e runtimes instalados no disco. Preserva históricos de conversas e configurações.",
+		"cleanStorageAction": "Apagar Armazenamento",
+		"cleanStoragePhrase": "PURGE STORAGE",
+		"cleanStorageWarning": "Esta ação apaga permanentemente todos os modelos baixados e runtimes instalados no disco.",
+		"factoryReset": "Restauração de Fábrica",
+		"factoryResetDesc": "Executa uma restauração completa. Exclui a base de dados, limpa modelos e runtimes, e restaura configurações padrão.",
+		"factoryResetAction": "Restauração de Fábrica",
+		"factoryResetPhrase": "FACTORY RESET",
+		"factoryResetWarning": "Esta ação apaga permanentemente tudo: base de dados, conversas, modelos, runtimes e redefine todas as configurações.",
+		"maintenanceIrreversibleTitle": "Aviso de Ação Destrutiva",
+		"maintenanceWarningDesc": "Depois de confirmada, esta operação não pode ser desfeita nem recuperada. Certifique-se de ter backup dos dados críticos.",
+		"maintenanceTypePromptTitle": "Verificação Necessária",
+		"maintenanceTypePrompt": "Digite a frase de confirmação exatamente como exibida abaixo para liberar o botão:",
+		"maintenanceProceed": "Entendi, continuar"
 	},
 	"setup": {
 		"interactiveSetup": "Configuração Interativa",
@@ -564,5 +594,68 @@
 		"levelLabel": "Nível",
 		"terminalTitle": "LOGS",
 		"paused": "Pausado"
+	},
+	"audio": {
+		"pageTitle": "Estúdio de Áudio",
+		"pageSubtitle": "Sintetize voz e transcreva gravações usando modelos locais de IA",
+		"ttsTab": "Texto para Fala (TTS)",
+		"asrTab": "Reconhecimento de Fala (ASR)",
+		"selectTtsModel": "Modelo de Texto para Fala",
+		"selectAsrModel": "Modelo de Reconhecimento de Fala (ASR)",
+		"selectModelPlaceholder": "Selecione o modelo de áudio...",
+		"voice": "Voz",
+		"selectVoice": "Selecione a voz...",
+		"format": "Formato de Áudio",
+		"selectFormat": "Selecione o formato...",
+		"speed": "Velocidade de Reprodução",
+		"textToSpeak": "Texto para Falar",
+		"ttsPromptPlaceholder": "Digite ou cole o texto para sintetizar em áudio falado...",
+		"characters": "caracteres",
+		"words": "palavras",
+		"generateSpeech": "Gerar Fala",
+		"generatingAudio": "Sintetizando fala...",
+		"generationError": "Erro de Geração",
+		"interrupted": "O processamento de áudio foi interrompido",
+		"ttsError": "Falha na síntese de fala",
+		"asrError": "Falha no reconhecimento de fala",
+		"audioOutput": "Saída de Áudio",
+		"playbackProgress": "Progresso de reprodução",
+		"play": "Reproduzir",
+		"pause": "Pausar",
+		"restart": "Reiniciar",
+		"mute": "Silenciar",
+		"unmute": "Ativar som",
+		"volume": "Volume",
+		"noAudioGeneratedYet": "Nenhum Áudio Gerado Ainda",
+		"ttsEmptyGuide": "Selecione um modelo, digite o texto e clique em Gerar Fala para sintetizar o áudio.",
+		"language": "Idioma",
+		"selectLanguage": "Selecione o idioma...",
+		"audioSource": "Fonte de Áudio",
+		"uploadFile": "Enviar Arquivo",
+		"recordMicrophone": "Microfone",
+		"uploadAudioFile": "Enviar arquivo de áudio",
+		"dragDropAudio": "Arraste e solte um arquivo de áudio aqui, ou clique para navegar",
+		"supportedFormats": "Suporta WAV, MP3, M4A, OGG, WEBM, FLAC",
+		"transcribeAudio": "Transcrever Áudio",
+		"transcribingAudio": "Transcrevendo áudio...",
+		"transcriptionError": "Erro de Transcrição",
+		"transcriptionResult": "Resultado da Transcrição",
+		"recordedClip": "Gravação Realizada",
+		"noTranscriptionYet": "Nenhuma Transcrição Ainda",
+		"asrEmptyGuide": "Envie um arquivo de áudio ou grave pelo microfone e clique em Transcrever Áudio.",
+		"recordFromMic": "Gravar do Microfone",
+		"clickToStartRecording": "Clique em gravar para capturar áudio do seu microfone",
+		"recordingInProgress": "Gravando áudio...",
+		"record": "Gravar",
+		"startRecording": "Iniciar Gravação",
+		"stopRecording": "Parar Gravação",
+		"micNotSupported": "Gravação por microfone não é suportada neste navegador.",
+		"micAccessDenied": "O acesso ao microfone foi negado ou não pôde ser inicializado.",
+		"sessionHistory": "Histórico da Sessão",
+		"searchHistory": "Buscar no histórico de áudio...",
+		"noHistoryFound": "Nenhum Histórico de Áudio Encontrado",
+		"noHistoryFoundDesc": "Áudios sintetizados e transcrições aparecerão aqui durante esta sessão.",
+		"clearHistoryConfirmTitle": "Limpar Histórico de Áudio",
+		"clearHistoryConfirmMsg": "Tem certeza de que deseja limpar seu histórico de áudio?"
 	}
 }

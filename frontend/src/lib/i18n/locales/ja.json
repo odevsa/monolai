@@ -49,7 +49,12 @@
 		"hide": "非表示",
 		"page": "ページ",
 		"previous": "前へ",
-		"next": "次へ"
+		"next": "次へ",
+		"send": "送信",
+		"remove": "削除",
+		"warning": "警告",
+		"random": "ランダム",
+		"required": "必須"
 	},
 	"navigation": {
 		"chat": "チャット",
@@ -67,7 +72,8 @@
 		"systemStatus": "システムステータス",
 		"recentConversations": "最近の会話",
 		"searchConversations": "会話を検索...",
-		"noConversationsFound": "会話が見つかりません"
+		"noConversationsFound": "会話が見つかりません",
+		"audio": "オーディオ"
 	},
 	"chat": {
 		"deleteChatConfirmTitle": "会話の削除",
@@ -130,6 +136,10 @@
 				"label": "最大",
 				"desc": "無制限"
 			}
+		},
+		"attachments": {
+			"addFiles": "ファイルを追加",
+			"unsupportedFileType": "選択されたモデルはこのファイル形式をサポートしていません。"
 		}
 	},
 	"image": {
@@ -151,7 +161,6 @@
 		"modelLabel": "モデル",
 		"promptStudio": "プロンプトスタジオ",
 		"ctrlEnterHint": "(Ctrl+Enter)",
-		"randomPromptBtn": "ランダム",
 		"randomPromptTitle": "リストからランダムにプロンプトを生成",
 		"dimensions": "解像度",
 		"selectDimensions": "サイズを選択...",
@@ -355,8 +364,8 @@
 			"textToText": "テキスト (LLM)",
 			"textToImage": "画像 (Diffusion)",
 			"textToSpeech": "音声 TTS",
-			"speechToText": "音声 ASR",
-			"embeddings": "埋め込み (Embeddings)"
+			"embeddings": "埋め込み (Embeddings)",
+			"automaticSpeechRecognition": "オーディオ ASR"
 		}
 	},
 	"runtimes": {
@@ -493,7 +502,28 @@
 		"apiDocumentation": "APIドキュメント",
 		"githubRepo": "GitHubリポジトリ",
 		"modelsDir": "モデルディレクトリ",
-		"runtimesDir": "ランタイムディレクトリ"
+		"runtimesDir": "ランタイムディレクトリ",
+		"groupMaintenance": "データクリーンアップと保守",
+		"cleanDatabase": "データベースを初期化",
+		"cleanDatabaseDesc": "SQLiteからすべてのチャット、メッセージ履歴、モデルキャッシュメタデータを削除し、マイグレーションを再構築します。",
+		"cleanDatabaseAction": "データベースを初期化",
+		"cleanDatabasePhrase": "DELETE DATABASE",
+		"cleanDatabaseWarning": "この操作を行うと、すべてのチャット、メッセージ履歴、メタデータが完全に削除されます。データベースは初期化されます。",
+		"cleanStorage": "ストレージを削除",
+		"cleanStorageDesc": "ダウンロードしたすべてのAIモデルファイルおよびインストール済みランタイムをディスクから削除します。チャット履歴と設定は保持されます。",
+		"cleanStorageAction": "ストレージを削除",
+		"cleanStoragePhrase": "PURGE STORAGE",
+		"cleanStorageWarning": "この操作を行うと、ダウンロードされたすべてのモデルファイルとランタイムがディスクから完全に削除されます。",
+		"factoryReset": "出荷時リセット",
+		"factoryResetDesc": "完全な初期化を実行します。データベースの削除、モデルとランタイムのパージ、設定の初期化を行います。",
+		"factoryResetAction": "出荷時リセット",
+		"factoryResetPhrase": "FACTORY RESET",
+		"factoryResetWarning": "この操作を行うと、データベース、チャット履歴、モデル、ランタイムなどすべてが完全に削除され、初期状態に戻ります。",
+		"maintenanceIrreversibleTitle": "破壊的操作の警告",
+		"maintenanceWarningDesc": "一度確認すると、この操作を取り消すこともデータを復元することもできません。重要なデータは事前にバックアップしてください。",
+		"maintenanceTypePromptTitle": "確認の入力が必要です",
+		"maintenanceTypePrompt": "ボタンを有効にするには、以下に表示されている確認フレーズを正確に入力してください：",
+		"maintenanceProceed": "了解して続行"
 	},
 	"setup": {
 		"interactiveSetup": "インタラクティブセットアップ",
@@ -564,5 +594,68 @@
 		"levelLabel": "レベル",
 		"terminalTitle": "ログ出力",
 		"paused": "一時停止中"
+	},
+	"audio": {
+		"pageTitle": "オーディオスタジオ",
+		"pageSubtitle": "ローカルAIオーディオモデルを使用して音声を合成し、録音を文字起こしします",
+		"ttsTab": "テキスト読み上げ (TTS)",
+		"asrTab": "自動音声認識 (ASR)",
+		"selectTtsModel": "テキスト読み上げモデル",
+		"selectAsrModel": "音声認識モデル (ASR)",
+		"selectModelPlaceholder": "オーディオモデルを選択...",
+		"voice": "音声",
+		"selectVoice": "音声を選択...",
+		"format": "音声フォーマット",
+		"selectFormat": "フォーマットを選択...",
+		"speed": "再生速度",
+		"textToSpeak": "読み上げるテキスト",
+		"ttsPromptPlaceholder": "音声合成するテキストを入力または貼り付け...",
+		"characters": "文字",
+		"words": "単語",
+		"generateSpeech": "音声を生成",
+		"generatingAudio": "音声を合成中...",
+		"generationError": "生成エラー",
+		"interrupted": "音声処理が中断されました",
+		"ttsError": "音声合成に失敗しました",
+		"asrError": "音声認識に失敗しました",
+		"audioOutput": "オーディオ出力",
+		"playbackProgress": "再生進捗",
+		"play": "再生",
+		"pause": "一時停止",
+		"restart": "最初から再生",
+		"mute": "ミュート",
+		"unmute": "ミュート解除",
+		"volume": "音量",
+		"noAudioGeneratedYet": "まだ音声が生成されていません",
+		"ttsEmptyGuide": "モデルを選択してテキストを入力し、「音声を生成」をクリックして音声を合成します。",
+		"language": "言語",
+		"selectLanguage": "言語を選択...",
+		"audioSource": "オーディオ入力ソース",
+		"uploadFile": "ファイルをアップロード",
+		"recordMicrophone": "マイク",
+		"uploadAudioFile": "音声ファイルをアップロード",
+		"dragDropAudio": "音声ファイルをここにドラッグ＆ドロップ、またはクリックして参照",
+		"supportedFormats": "WAV、MP3、M4A、OGG、WEBM、FLACに対応",
+		"transcribeAudio": "音声を文字起こし",
+		"transcribingAudio": "音声を文字起こし中...",
+		"transcriptionError": "文字起こしエラー",
+		"transcriptionResult": "文字起こし結果",
+		"recordedClip": "録音クリップ",
+		"noTranscriptionYet": "まだ文字起こしがありません",
+		"asrEmptyGuide": "音声ファイルをアップロードするかマイクで録音し、「音声を文字起こし」をクリックしてください。",
+		"recordFromMic": "マイクから録音",
+		"clickToStartRecording": "録音ボタンをクリックしてマイクから音声をキャプチャします",
+		"recordingInProgress": "録音中...",
+		"record": "録音",
+		"startRecording": "録音開始",
+		"stopRecording": "録音停止",
+		"micNotSupported": "このブラウザはマイク録音をサポートしていません。",
+		"micAccessDenied": "マイクへのアクセスが拒否されたか、初期化できませんでした。",
+		"sessionHistory": "セッション履歴",
+		"searchHistory": "オーディオ履歴を検索...",
+		"noHistoryFound": "オーディオ履歴が見つかりません",
+		"noHistoryFoundDesc": "このセッション中に生成された音声や文字起こしがここに表示されます。",
+		"clearHistoryConfirmTitle": "オーディオ履歴を消去",
+		"clearHistoryConfirmMsg": "オーディオ履歴を消去してもよろしいですか？"
 	}
 }

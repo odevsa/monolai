@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { configApi } from '$lib/api/config';
+	import { maintenanceApi } from '$lib/api/maintenance';
 	import { settingsApi } from '$lib/api/settings';
-	import { Alert, Button, Input, Select, Toggle } from '$lib/components/ui';
+	import { Alert, Button, DoubleConfirmModal, Input, Select, Toggle } from '$lib/components/ui';
 	import { AVAILABLE_LOCALES, i18n, isLocaleSupported, t } from '$lib/i18n';
 	import { headerState } from '$lib/state/header.svelte';
 	import { THEMES, type ThemeId } from '$lib/themes';
@@ -10,6 +11,7 @@
 		Check,
 		Clock,
 		Cpu,
+		Database,
 		FileText,
 		Globe,
 		HardDrive,
@@ -49,6 +51,80 @@
 	let isSaving = $state(false);
 	let saveSuccess = $state(false);
 	let errorMessage = $state<string | null>(null);
+
+	// Maintenance dialog state
+	let isMaintenanceOpen = $state(false);
+	let maintenanceType = $state<'database' | 'storage' | 'factory'>('database');
+	let isMaintenanceRunning = $state(false);
+
+	let maintenanceModalTitle = $derived.by(() => {
+		switch (maintenanceType) {
+			case 'database':
+				return t('settings.cleanDatabase');
+			case 'storage':
+				return t('settings.cleanStorage');
+			case 'factory':
+				return t('settings.factoryReset');
+		}
+	});
+
+	let maintenanceWarningMessage = $derived.by(() => {
+		switch (maintenanceType) {
+			case 'database':
+				return t('settings.cleanDatabaseWarning');
+			case 'storage':
+				return t('settings.cleanStorageWarning');
+			case 'factory':
+				return t('settings.factoryResetWarning');
+		}
+	});
+
+	let maintenanceConfirmPhrase = $derived.by(() => {
+		switch (maintenanceType) {
+			case 'database':
+				return t('settings.cleanDatabasePhrase');
+			case 'storage':
+				return t('settings.cleanStoragePhrase');
+			case 'factory':
+				return t('settings.factoryResetPhrase');
+		}
+	});
+
+	let maintenanceButtonText = $derived.by(() => {
+		switch (maintenanceType) {
+			case 'database':
+				return t('settings.cleanDatabaseAction');
+			case 'storage':
+				return t('settings.cleanStorageAction');
+			case 'factory':
+				return t('settings.factoryResetAction');
+		}
+	});
+
+	async function executeMaintenance() {
+		isMaintenanceRunning = true;
+		errorMessage = null;
+		try {
+			if (maintenanceType === 'database') {
+				await maintenanceApi.cleanDatabase();
+			} else if (maintenanceType === 'storage') {
+				await maintenanceApi.cleanStorage();
+			} else if (maintenanceType === 'factory') {
+				await maintenanceApi.factoryReset();
+			}
+			isMaintenanceOpen = false;
+			// Reload page to refresh all stores and application state cleanly
+			setTimeout(() => {
+				if (typeof window !== 'undefined') {
+					window.location.reload();
+				}
+			}, 600);
+		} catch (err: unknown) {
+			errorMessage = err instanceof Error ? err.message : 'Maintenance failed';
+		} finally {
+			isMaintenanceRunning = false;
+		}
+	}
 
 	let themeOptions = $derived(
 		THEMES.map((th) => ({
@@ -299,6 +375,62 @@
 				</SettingRow>
 			</SettingGroup>
 		</div>
+
+		<!-- Group 5: Data Cleanup & Maintenance -->
+		<div class="relative z-0">
+			<SettingGroup title={t('settings.groupMaintenance')}>
+				<SettingRow
+					icon={Database}
+					title={t('settings.cleanDatabase')}
+					subtitle={t('settings.cleanDatabaseDesc')}
+				>
+					<Button
+						variant="danger"
+						size="sm"
+						onclick={() => {
+							maintenanceType = 'database';
+							isMaintenanceOpen = true;
+						}}
+					>
+						{t('settings.cleanDatabaseAction')}
+					</Button>
+				</SettingRow>
+
+				<SettingRow
+					icon={HardDrive}
+					title={t('settings.cleanStorage')}
+					subtitle={t('settings.cleanStorageDesc')}
+				>
+					<Button
+						variant="danger"
+						size="sm"
+						onclick={() => {
+							maintenanceType = 'storage';
+							isMaintenanceOpen = true;
+						}}
+					>
+						{t('settings.cleanStorageAction')}
+					</Button>
+				</SettingRow>
+
+				<SettingRow
+					icon={RotateCcw}
+					title={t('settings.factoryReset')}
+					subtitle={t('settings.factoryResetDesc')}
+				>
+					<Button
+						variant="danger"
+						size="sm"
+						onclick={() => {
+							maintenanceType = 'factory';
+							isMaintenanceOpen = true;
+						}}
+					>
+						{t('settings.factoryResetAction')}
+					</Button>
+				</SettingRow>
+			</SettingGroup>
+		</div>
 	</div>
 
 	<!-- Dedicated Solid Dialog Footer (Completely separate from scroll area) -->
@@ -330,4 +462,14 @@
 			{/if}
 		</Button>
 	</div>
+
+	<DoubleConfirmModal
+		bind:open={isMaintenanceOpen}
+		title={maintenanceModalTitle}
+		warningMessage={maintenanceWarningMessage}
+		confirmPhrase={maintenanceConfirmPhrase}
+		confirmButtonText={maintenanceButtonText}
+		loading={isMaintenanceRunning}
+		onconfirm={executeMaintenance}
+	/>
 </div>

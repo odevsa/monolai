@@ -5,6 +5,7 @@ pub mod health;
 pub mod host;
 pub mod hub;
 pub mod logs;
+pub mod maintenance;
 pub mod models;
 pub mod openai_proxy;
 pub mod runtime_manifests;

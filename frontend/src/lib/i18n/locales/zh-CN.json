@@ -49,7 +49,12 @@
 		"hide": "隐藏",
 		"page": "页",
 		"previous": "上一页",
-		"next": "下一页"
+		"next": "下一页",
+		"send": "发送",
+		"remove": "删除",
+		"warning": "警告",
+		"random": "随机",
+		"required": "必填"
 	},
 	"navigation": {
 		"chat": "对话",
@@ -67,7 +72,8 @@
 		"systemStatus": "系统状态",
 		"recentConversations": "最近对话",
 		"searchConversations": "搜索对话...",
-		"noConversationsFound": "未找到对话"
+		"noConversationsFound": "未找到对话",
+		"audio": "音频"
 	},
 	"chat": {
 		"deleteChatConfirmTitle": "删除对话",
@@ -130,6 +136,10 @@
 				"label": "最高",
 				"desc": "无限制"
 			}
+		},
+		"attachments": {
+			"addFiles": "添加文件",
+			"unsupportedFileType": "所选模型不支持此文件类型。"
 		}
 	},
 	"image": {
@@ -151,7 +161,6 @@
 		"modelLabel": "模型",
 		"promptStudio": "提示词工作室",
 		"ctrlEnterHint": "(Ctrl+Enter)",
-		"randomPromptBtn": "随机",
 		"randomPromptTitle": "从预设列表随机生成提示词",
 		"dimensions": "尺寸比例",
 		"selectDimensions": "选择尺寸...",
@@ -355,8 +364,8 @@
 			"textToText": "文本 (LLM)",
 			"textToImage": "图像 (扩散模型)",
 			"textToSpeech": "语音合成 (TTS)",
-			"speechToText": "语音识别 (ASR)",
-			"embeddings": "嵌入向量 (Embeddings)"
+			"embeddings": "嵌入向量 (Embeddings)",
+			"automaticSpeechRecognition": "音频 ASR"
 		}
 	},
 	"runtimes": {
@@ -493,7 +502,28 @@
 		"apiDocumentation": "API 接口文档",
 		"githubRepo": "GitHub 源码仓库",
 		"modelsDir": "模型存储目录",
-		"runtimesDir": "引擎存储目录"
+		"runtimesDir": "引擎存储目录",
+		"groupMaintenance": "数据清理与系统维护",
+		"cleanDatabase": "清空数据库",
+		"cleanDatabaseDesc": "从 SQLite 中删除所有聊天、消息记录和模型缓存元数据，重新构建数据库迁移。",
+		"cleanDatabaseAction": "清空数据库",
+		"cleanDatabasePhrase": "DELETE DATABASE",
+		"cleanDatabaseWarning": "此操作将永久删除所有聊天、消息历史记录和元数据。数据库将被重置。",
+		"cleanStorage": "清理存储空间",
+		"cleanStorageDesc": "从磁盘中删除所有已下载的 AI 模型权重和已安装的运行环境。保留聊天历史和配置。",
+		"cleanStorageAction": "清理存储",
+		"cleanStoragePhrase": "PURGE STORAGE",
+		"cleanStorageWarning": "此操作将永久从磁盘中删除所有已下载的模型文件和运行环境。",
+		"factoryReset": "恢复出厂设置",
+		"factoryResetDesc": "执行彻底的出厂重置。删除数据库，清理模型与运行环境，并将配置重置为默认值。",
+		"factoryResetAction": "恢复出厂设置",
+		"factoryResetPhrase": "FACTORY RESET",
+		"factoryResetWarning": "此操作将永久删除所有内容：数据库、聊天记录、模型、运行环境，并重置所有设置。",
+		"maintenanceIrreversibleTitle": "破坏性操作警告",
+		"maintenanceWarningDesc": "确认后，此操作将不可逆转且无法恢复。请确保已备份重要数据。",
+		"maintenanceTypePromptTitle": "需要安全验证",
+		"maintenanceTypePrompt": "请在下方准确输入以下确认短语以解锁按钮：",
+		"maintenanceProceed": "我已知晓，继续"
 	},
 	"setup": {
 		"interactiveSetup": "交互式向导",
@@ -564,5 +594,68 @@
 		"levelLabel": "日志级别",
 		"terminalTitle": "终端日志输出",
 		"paused": "已暂停"
+	},
+	"audio": {
+		"pageTitle": "音频工作台",
+		"pageSubtitle": "使用本地AI音频模型合成语音并转录录音",
+		"ttsTab": "文本转语音 (TTS)",
+		"asrTab": "自动语音识别 (ASR)",
+		"selectTtsModel": "文本转语音模型",
+		"selectAsrModel": "语音识别模型 (ASR)",
+		"selectModelPlaceholder": "选择音频模型...",
+		"voice": "声音",
+		"selectVoice": "选择声音...",
+		"format": "音频格式",
+		"selectFormat": "选择格式...",
+		"speed": "播放速度",
+		"textToSpeak": "要朗读的文本",
+		"ttsPromptPlaceholder": "输入或粘贴要合成为语音的文本...",
+		"characters": "个字符",
+		"words": "个单词",
+		"generateSpeech": "生成语音",
+		"generatingAudio": "正在合成语音...",
+		"generationError": "生成错误",
+		"interrupted": "音频处理已中断",
+		"ttsError": "语音合成失败",
+		"asrError": "语音识别失败",
+		"audioOutput": "音频输出",
+		"playbackProgress": "播放进度",
+		"play": "播放",
+		"pause": "暂停",
+		"restart": "重新开始",
+		"mute": "静音",
+		"unmute": "取消静音",
+		"volume": "音量",
+		"noAudioGeneratedYet": "尚未生成音频",
+		"ttsEmptyGuide": "选择模型，输入文本，然后点击“生成语音”以合成音频。",
+		"language": "语言",
+		"selectLanguage": "选择语言...",
+		"audioSource": "音频输入来源",
+		"uploadFile": "上传文件",
+		"recordMicrophone": "麦克风",
+		"uploadAudioFile": "上传音频文件",
+		"dragDropAudio": "将音频文件拖放到此处，或点击浏览",
+		"supportedFormats": "支持 WAV、MP3、M4A、OGG、WEBM、FLAC",
+		"transcribeAudio": "转录音频",
+		"transcribingAudio": "正在转录音频...",
+		"transcriptionError": "转录错误",
+		"transcriptionResult": "转录结果",
+		"recordedClip": "录制片段",
+		"noTranscriptionYet": "暂无转录结果",
+		"asrEmptyGuide": "上传音频文件或使用麦克风录音，然后点击“转录音频”。",
+		"recordFromMic": "麦克风录音",
+		"clickToStartRecording": "点击录制以捕获麦克风音频",
+		"recordingInProgress": "正在录制音频...",
+		"record": "录音",
+		"startRecording": "开始录音",
+		"stopRecording": "停止录音",
+		"micNotSupported": "此浏览器不支持麦克风录音。",
+		"micAccessDenied": "麦克风访问被拒绝或无法初始化。",
+		"sessionHistory": "会话历史",
+		"searchHistory": "搜索音频历史...",
+		"noHistoryFound": "未找到音频历史",
+		"noHistoryFoundDesc": "在此会话期间合成的语音和转录文本将显示在此处。",
+		"clearHistoryConfirmTitle": "清空音频历史",
+		"clearHistoryConfirmMsg": "确定要清空音频历史记录吗？"
 	}
 }

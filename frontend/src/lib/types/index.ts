@@ -4,3 +4,4 @@ export * from './chat';
 export * from './host';
 export * from './config';
 export * from './logs';
+export * from './maintenance';

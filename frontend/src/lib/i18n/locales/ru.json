@@ -49,7 +49,12 @@
 		"hide": "Скрыть",
 		"page": "Страница",
 		"previous": "Назад",
-		"next": "Вперед"
+		"next": "Вперед",
+		"send": "Отправить",
+		"remove": "Удалить",
+		"warning": "Предупреждение",
+		"random": "Случайный",
+		"required": "Обязательно"
 	},
 	"navigation": {
 		"chat": "Чат",
@@ -67,7 +72,8 @@
 		"systemStatus": "Состояние системы",
 		"recentConversations": "Недавние чаты",
 		"searchConversations": "Поиск диалогов...",
-		"noConversationsFound": "Диалоги не найдены"
+		"noConversationsFound": "Диалоги не найдены",
+		"audio": "Аудио"
 	},
 	"chat": {
 		"deleteChatConfirmTitle": "Удалить диалог",
@@ -130,6 +136,10 @@
 				"label": "Максимум",
 				"desc": "Без ограничений"
 			}
+		},
+		"attachments": {
+			"addFiles": "Добавить файлы",
+			"unsupportedFileType": "Выбранная модель не поддерживает этот тип файла."
 		}
 	},
 	"image": {
@@ -151,7 +161,6 @@
 		"modelLabel": "Модель",
 		"promptStudio": "Студия промптов",
 		"ctrlEnterHint": "(Ctrl+Enter)",
-		"randomPromptBtn": "Случайный",
 		"randomPromptTitle": "Выбрать случайный промпт из списка",
 		"dimensions": "Размеры",
 		"selectDimensions": "Выберите размер...",
@@ -355,8 +364,8 @@
 			"textToText": "Текст (LLM)",
 			"textToImage": "Изображение (Диффузия)",
 			"textToSpeech": "Аудио TTS",
-			"speechToText": "Аудио ASR",
-			"embeddings": "Эмбеддинги"
+			"embeddings": "Эмбеддинги",
+			"automaticSpeechRecognition": "Аудио ASR"
 		}
 	},
 	"runtimes": {
@@ -493,7 +502,28 @@
 		"apiDocumentation": "Документация API",
 		"githubRepo": "Репозиторий GitHub",
 		"modelsDir": "Каталог моделей",
-		"runtimesDir": "Каталог сред выполнения"
+		"runtimesDir": "Каталог сред выполнения",
+		"groupMaintenance": "Очистка данных и обслуживание",
+		"cleanDatabase": "Очистить базу данных",
+		"cleanDatabaseDesc": "Удаляет все чаты, сообщения и метаданные кэша моделей из SQLite. Выполняет миграции заново.",
+		"cleanDatabaseAction": "Стереть базу данных",
+		"cleanDatabasePhrase": "DELETE DATABASE",
+		"cleanDatabaseWarning": "Это действие безвозвратно удалит все чаты, сообщения и метаданные. База данных будет полностью сброшена.",
+		"cleanStorage": "Очистить хранилище",
+		"cleanStorageDesc": "Удаляет все загруженные модели ИИ и установленные среды исполнения с диска. Сохраняет чаты и настройки.",
+		"cleanStorageAction": "Очистить хранилище",
+		"cleanStoragePhrase": "PURGE STORAGE",
+		"cleanStorageWarning": "Это действие безвозвратно удалит все загруженные файлы моделей и установленные среды с диска.",
+		"factoryReset": "Сброс до заводских настроек",
+		"factoryResetDesc": "Полный сброс системы. Удаляет базу данных, очищает хранилище и возвращает настройки по умолчанию.",
+		"factoryResetAction": "Сброс настроек",
+		"factoryResetPhrase": "FACTORY RESET",
+		"factoryResetWarning": "Это действие безвозвратно удалит всё: базу данных, чаты, модели, среды исполнения и сбросит все настройки.",
+		"maintenanceIrreversibleTitle": "Предупреждение о необратимом действии",
+		"maintenanceWarningDesc": "После подтверждения эту операцию невозможно отменить или восстановить. Убедитесь, что вы сохранили важные данные.",
+		"maintenanceTypePromptTitle": "Требуется подтверждение",
+		"maintenanceTypePrompt": "Пожалуйста, введите проверочную фразу в точности, как показано ниже, чтобы разблокировать кнопку:",
+		"maintenanceProceed": "Я понимаю, продолжить"
 	},
 	"setup": {
 		"interactiveSetup": "Интерактивная настройка",
@@ -564,5 +594,68 @@
 		"levelLabel": "Уровень",
 		"terminalTitle": "ТЕРМИНАЛ ЛОГОВ",
 		"paused": "Приостановлено"
+	},
+	"audio": {
+		"pageTitle": "Аудиостудия",
+		"pageSubtitle": "Синтез речи и транскрипция голосовых записей с помощью локальных моделей ИИ",
+		"ttsTab": "Текст в речь (TTS)",
+		"asrTab": "Распознавание речи (ASR)",
+		"selectTtsModel": "Модель текста в речь",
+		"selectAsrModel": "Модель распознавания речи (ASR)",
+		"selectModelPlaceholder": "Выберите аудиомодель...",
+		"voice": "Голос",
+		"selectVoice": "Выберите голос...",
+		"format": "Аудиоформат",
+		"selectFormat": "Выберите формат...",
+		"speed": "Скорость воспроизведения",
+		"textToSpeak": "Текст для озвучивания",
+		"ttsPromptPlaceholder": "Введите или вставьте текст для синтеза речи...",
+		"characters": "символов",
+		"words": "слов",
+		"generateSpeech": "Сгенерировать речь",
+		"generatingAudio": "Синтез речи...",
+		"generationError": "Ошибка генерации",
+		"interrupted": "Обработка аудио была прервана",
+		"ttsError": "Ошибка синтеза речи",
+		"asrError": "Ошибка распознавания речи",
+		"audioOutput": "Аудиовыход",
+		"playbackProgress": "Прогресс воспроизведения",
+		"play": "Воспроизвести",
+		"pause": "Пауза",
+		"restart": "Перезапустить",
+		"mute": "Заглушить",
+		"unmute": "Включить звук",
+		"volume": "Громкость",
+		"noAudioGeneratedYet": "Аудио пока не сгенерировано",
+		"ttsEmptyGuide": "Выберите модель, введите текст и нажмите «Сгенерировать речь», чтобы синтезировать аудио.",
+		"language": "Язык",
+		"selectLanguage": "Выберите язык...",
+		"audioSource": "Источник аудио",
+		"uploadFile": "Загрузить файл",
+		"recordMicrophone": "Микрофон",
+		"uploadAudioFile": "Загрузить аудиофайл",
+		"dragDropAudio": "Перетащите аудиофайл сюда или нажмите для выбора",
+		"supportedFormats": "Поддерживаются WAV, MP3, M4A, OGG, WEBM, FLAC",
+		"transcribeAudio": "Транскрибировать аудио",
+		"transcribingAudio": "Идет транскрипция...",
+		"transcriptionError": "Ошибка транскрипции",
+		"transcriptionResult": "Результат транскрипции",
+		"recordedClip": "Записанный фрагмент",
+		"noTranscriptionYet": "Пока нет транскрипции",
+		"asrEmptyGuide": "Загрузите аудиофайл или сделайте запись с микрофона, затем нажмите «Транскрибировать аудио».",
+		"recordFromMic": "Запись с микрофона",
+		"clickToStartRecording": "Нажмите кнопку записи, чтобы захватить звук с микрофона",
+		"recordingInProgress": "Идет запись аудио...",
+		"record": "Запись",
+		"startRecording": "Начать запись",
+		"stopRecording": "Остановить запись",
+		"micNotSupported": "Запись с микрофона не поддерживается в этом браузере.",
+		"micAccessDenied": "Доступ к микрофону отклонен или не удалось инициализировать устройство.",
+		"sessionHistory": "История сессии",
+		"searchHistory": "Поиск по истории аудио...",
+		"noHistoryFound": "История аудио не найдена",
+		"noHistoryFoundDesc": "Синтезированная речь и транскрипции будут появляться здесь во время текущей сессии.",
+		"clearHistoryConfirmTitle": "Очистить историю аудио",
+		"clearHistoryConfirmMsg": "Вы уверены, что хотите очистить историю аудио?"
 	}
 }

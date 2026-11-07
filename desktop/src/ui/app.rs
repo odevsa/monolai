@@ -50,15 +50,22 @@ impl FeedbackState {
 
 #[derive(Default)]
 pub struct MaintenanceUiState {
-    pub confirm_clean: Option<Instant>,
+    pub confirm_clean_db: Option<Instant>,
+    pub confirm_clean_storage: Option<Instant>,
     pub confirm_reset: Option<Instant>,
     pub in_progress: bool,
     pub status_message: Option<(String, bool, Instant)>,
 }
 
 impl MaintenanceUiState {
-    pub fn is_clean_confirming(&self) -> bool {
-        self.confirm_clean
+    pub fn is_clean_db_confirming(&self) -> bool {
+        self.confirm_clean_db
+            .map(|t| t.elapsed() < Duration::from_secs(5))
+            .unwrap_or(false)
+    }
+
+    pub fn is_clean_storage_confirming(&self) -> bool {
+        self.confirm_clean_storage
             .map(|t| t.elapsed() < Duration::from_secs(5))
             .unwrap_or(false)
     }

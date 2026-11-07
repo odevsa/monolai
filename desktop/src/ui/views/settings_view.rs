@@ -233,43 +233,44 @@ pub fn show_settings_screen(
                     );
                     ui.add_space(14.0);
 
-                    // Row 1: Clean Storage
-                    ui.label(RichText::new("Clean Storage").strong().size(12.0).color(theme.text_primary));
+                    // Row 1: Clean Database
+                    ui.label(RichText::new("Clean Database").strong().size(12.0).color(theme.text_primary));
                     ui.add_space(3.0);
                     ui.label(
-                        RichText::new("Deletes the SQLite database (chat histories, messages, and model cache) and active process cache. Preserves your settings and downloaded models.")
+                        RichText::new("Deletes the SQLite database (chat histories, messages, and model cache) and active process cache. Preserves downloaded models and installed runtimes.")
                             .size(11.0)
                             .color(theme.text_secondary),
                     );
                     ui.add_space(8.0);
 
                     let in_progress = maintenance.in_progress;
-                    let clean_confirming = maintenance.is_clean_confirming();
+                    let clean_db_confirming = maintenance.is_clean_db_confirming();
 
-                    let (clean_btn_text, clean_btn_fill, clean_btn_color) = if in_progress {
+                    let (clean_db_btn_text, clean_db_btn_fill, clean_db_btn_color) = if in_progress {
                         ("Maintenance in progress...", theme.bg_primary, theme.text_muted)
-                    } else if clean_confirming {
-                        ("Click to Confirm: Wipe Storage Database", Color32::from_rgb(220, 38, 38), Color32::WHITE)
+                    } else if clean_db_confirming {
+                        ("Click to Confirm: Wipe Database", Color32::from_rgb(220, 38, 38), Color32::WHITE)
                     } else {
-                        ("Clean Storage", theme.bg_primary, theme.text_primary)
+                        ("Clean Database", theme.bg_primary, theme.text_primary)
                     };
 
-                    let clean_btn = ui.add_enabled(
+                    let clean_db_btn = ui.add_enabled(
                         !in_progress,
-                        egui::Button::new(RichText::new(clean_btn_text).strong().size(12.0).color(clean_btn_color))
-                            .fill(clean_btn_fill)
-                            .stroke(Stroke::new(1.0_f32, if clean_confirming { Color32::from_rgb(220, 38, 38) } else { theme.border }))
+                        egui::Button::new(RichText::new(clean_db_btn_text).strong().size(12.0).color(clean_db_btn_color))
+                            .fill(clean_db_btn_fill)
+                            .stroke(Stroke::new(1.0_f32, if clean_db_confirming { Color32::from_rgb(220, 38, 38) } else { theme.border }))
                             .rounding(Rounding::same(6.0))
                             .min_size(egui::Vec2::new(inner_w, CONTROL_H)),
                     );
 
-                    if clean_btn.clicked() {
-                        if clean_confirming {
-                            maintenance.confirm_clean = None;
+                    if clean_db_btn.clicked() {
+                        if clean_db_confirming {
+                            maintenance.confirm_clean_db = None;
                             maintenance.in_progress = true;
-                            supervisor.run_maintenance("--clean-storage", Some(config.clone()));
+                            supervisor.run_maintenance("--clean-database", Some(config.clone()));
                         } else {
-                            maintenance.confirm_clean = Some(Instant::now());
+                            maintenance.confirm_clean_db = Some(Instant::now());
+                            maintenance.confirm_clean_storage = None;
                             maintenance.confirm_reset = None;
                         }
                     }
@@ -278,11 +279,56 @@ pub fn show_settings_screen(
                     ui.separator();
                     ui.add_space(14.0);
 
-                    // Row 2: Factory Reset
+                    // Row 2: Purge Storage
+                    ui.label(RichText::new("Purge Storage").strong().size(12.0).color(theme.text_primary));
+                    ui.add_space(3.0);
+                    ui.label(
+                        RichText::new("Deletes all downloaded AI models and installed runtimes from disk. Preserves chat histories and configuration.")
+                            .size(11.0)
+                            .color(theme.text_secondary),
+                    );
+                    ui.add_space(8.0);
+
+                    let clean_storage_confirming = maintenance.is_clean_storage_confirming();
+
+                    let (storage_btn_text, storage_btn_fill, storage_btn_color) = if in_progress {
+                        ("Maintenance in progress...", theme.bg_primary, theme.text_muted)
+                    } else if clean_storage_confirming {
+                        ("Click to Confirm: Purge Models & Runtimes", Color32::from_rgb(220, 38, 38), Color32::WHITE)
+                    } else {
+                        ("Purge Storage", theme.bg_primary, theme.text_primary)
+                    };
+
+                    let storage_btn = ui.add_enabled(
+                        !in_progress,
+                        egui::Button::new(RichText::new(storage_btn_text).strong().size(12.0).color(storage_btn_color))
+                            .fill(storage_btn_fill)
+                            .stroke(Stroke::new(1.0_f32, if clean_storage_confirming { Color32::from_rgb(220, 38, 38) } else { theme.border }))
+                            .rounding(Rounding::same(6.0))
+                            .min_size(egui::Vec2::new(inner_w, CONTROL_H)),
+                    );
+
+                    if storage_btn.clicked() {
+                        if clean_storage_confirming {
+                            maintenance.confirm_clean_storage = None;
+                            maintenance.in_progress = true;
+                            supervisor.run_maintenance("--clean-storage", Some(config.clone()));
+                        } else {
+                            maintenance.confirm_clean_storage = Some(Instant::now());
+                            maintenance.confirm_clean_db = None;
+                            maintenance.confirm_reset = None;
+                        }
+                    }
+
+                    ui.add_space(14.0);
+                    ui.separator();
+                    ui.add_space(14.0);
+
+                    // Row 3: Factory Reset
                     ui.label(RichText::new("Factory Reset").strong().size(12.0).color(theme.text_primary));
                     ui.add_space(3.0);
                     ui.label(
-                        RichText::new("Performs a complete factory reset. Deletes the database, process cache, and resets your configuration file (config.yaml) to defaults.")
+                        RichText::new("Performs a complete factory reset. Deletes the database, process cache, downloaded models, installed runtimes, and resets configuration (config.yaml) to defaults.")
                             .size(11.0)
                             .color(theme.text_secondary),
                     );
@@ -314,7 +360,8 @@ pub fn show_settings_screen(
                             supervisor.run_maintenance("--factory-reset", Some(config.clone()));
                         } else {
                             maintenance.confirm_reset = Some(Instant::now());
-                            maintenance.confirm_clean = None;
+                            maintenance.confirm_clean_db = None;
+                            maintenance.confirm_clean_storage = None;
                         }
                     }
 

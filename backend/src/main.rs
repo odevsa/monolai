@@ -22,8 +22,8 @@ use infrastructure::process::manager::{
     adopt_or_clean_orphans, start_idle_auto_unload_loop, ProcessManager,
 };
 use services::{
-    ChatService, DownloadService, HostService, HubService, LogService, ModelService, ProxyService,
-    RuntimeService,
+    ChatService, DownloadService, HostService, HubService, LogService, MaintenanceService,
+    ModelService, ProxyService, RuntimeService,
 };
 use state::AppState;
 use std::{
@@ -70,11 +70,15 @@ struct Cli {
     #[arg(long = "runtimes")]
     runtimes_folder: Option<String>,
 
-    /// Clean storage: delete SQLite database and active process cache
-    #[arg(long = "clean-storage")]
+    /// Clean database: delete SQLite database and active process cache
+    #[arg(long = "clean-database", alias = "clean-db")]
+    clean_database: bool,
+
+    /// Clean storage: delete all downloaded models and installed runtimes
+    #[arg(long = "clean-storage", alias = "purge-storage")]
     clean_storage: bool,
 
-    /// Factory reset: delete database, process cache, and configuration
+    /// Factory reset: delete database, process cache, models, runtimes, and configuration
     #[arg(long = "factory-reset")]
     factory_reset: bool,
 }
@@ -288,10 +292,22 @@ async fn main() {
     }
 
     if cli.factory_reset {
-        handle_factory_reset(cli.db.as_deref(), cli.config.as_deref());
+        handle_factory_reset(
+            cli.db.as_deref(),
+            cli.config.as_deref(),
+            cli.models_folder.as_deref(),
+            cli.runtimes_folder.as_deref(),
+        );
+        std::process::exit(0);
+    } else if cli.clean_database {
+        handle_clean_database(cli.db.as_deref());
         std::process::exit(0);
     } else if cli.clean_storage {
-        handle_clean_storage(cli.db.as_deref());
+        handle_clean_storage(
+            cli.models_folder.as_deref(),
+            cli.runtimes_folder.as_deref(),
+            cli.config.as_deref(),
+        );
         std::process::exit(0);
     }
 
@@ -471,11 +487,18 @@ async fn main() {
     });
 
     // 9. Build AppState
+    let path_resolver_arc = Arc::new(path_resolver);
+    let maintenance_service = Arc::new(MaintenanceService::new(
+        db_pool.clone(),
+        model_service.clone(),
+        path_resolver_arc.clone(),
+    ));
+
     let state = AppState {
         db: db_pool,
         config: config_lock,
         config_status: config_status_lock,
-        path_resolver: Arc::new(path_resolver),
+        path_resolver: path_resolver_arc,
         cli_config_path: cli.config.clone(),
         model_service,
         chat_service,
@@ -485,6 +508,7 @@ async fn main() {
         log_service,
         hub_service,
         download_service,
+        maintenance_service,
         setting_repo,
     };
 
@@ -534,7 +558,7 @@ fn get_local_network_ip() -> Option<std::net::IpAddr> {
     socket.local_addr().ok().map(|addr| addr.ip())
 }
 
-fn handle_clean_storage(db_arg: Option<&str>) {
+fn handle_clean_database(db_arg: Option<&str>) {
     let db_path_str = if let Some(d) = db_arg {
         expand_tilde(d).to_string_lossy().to_string()
     } else {
@@ -574,13 +598,57 @@ fn handle_clean_storage(db_arg: Option<&str>) {
     }
 
     println!(
-        "Clean Storage completed successfully ({} file(s) removed).",
+        "Clean Database completed successfully ({} file(s) removed).",
         removed_count
     );
 }
 
-fn handle_factory_reset(db_arg: Option<&str>, config_arg: Option<&str>) {
-    handle_clean_storage(db_arg);
+fn handle_clean_storage(
+    models_arg: Option<&str>,
+    runtimes_arg: Option<&str>,
+    config_arg: Option<&str>,
+) {
+    let (app_config, _) = load_config(config_arg);
+    let resolver = PathResolver::new(
+        &app_config,
+        config_arg,
+        models_arg,
+        runtimes_arg,
+        None,
+    );
+
+    let mut removed_count = 0;
+
+    match services::maintenance_service::empty_directory(&resolver.models_dir) {
+        Ok(count) => {
+            println!("Emptied models folder ({} items removed): {}", count, resolver.models_dir.display());
+            removed_count += count;
+        }
+        Err(e) => eprintln!("Failed to empty models folder {}: {}", resolver.models_dir.display(), e),
+    }
+
+    match services::maintenance_service::empty_directory(&resolver.runtimes_dir) {
+        Ok(count) => {
+            println!("Emptied runtimes folder ({} items removed): {}", count, resolver.runtimes_dir.display());
+            removed_count += count;
+        }
+        Err(e) => eprintln!("Failed to empty runtimes folder {}: {}", resolver.runtimes_dir.display(), e),
+    }
+
+    println!(
+        "Clean Storage completed successfully ({} item(s) purged).",
+        removed_count
+    );
+}
+
+fn handle_factory_reset(
+    db_arg: Option<&str>,
+    config_arg: Option<&str>,
+    models_arg: Option<&str>,
+    runtimes_arg: Option<&str>,
+) {
+    handle_clean_database(db_arg);
+    handle_clean_storage(models_arg, runtimes_arg, config_arg);
 
     let mut removed_config_count = 0;
     let mut config_paths = Vec::new();

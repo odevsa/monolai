@@ -49,7 +49,12 @@
 		"hide": "Masquer",
 		"page": "Page",
 		"previous": "Précédent",
-		"next": "Suivant"
+		"next": "Suivant",
+		"send": "Envoyer",
+		"remove": "Supprimer",
+		"warning": "Avertissement",
+		"random": "Aléatoire",
+		"required": "Requis"
 	},
 	"navigation": {
 		"chat": "Chat",
@@ -67,7 +72,8 @@
 		"systemStatus": "État du système",
 		"recentConversations": "Conversations récentes",
 		"searchConversations": "Rechercher des conversations...",
-		"noConversationsFound": "Aucune conversation trouvée"
+		"noConversationsFound": "Aucune conversation trouvée",
+		"audio": "Audio"
 	},
 	"chat": {
 		"deleteChatConfirmTitle": "Supprimer la conversation",
@@ -130,6 +136,10 @@
 				"label": "Maximum",
 				"desc": "Illimité"
 			}
+		},
+		"attachments": {
+			"addFiles": "Ajouter des fichiers",
+			"unsupportedFileType": "Le modèle sélectionné ne prend pas en charge ce type de fichier."
 		}
 	},
 	"image": {
@@ -151,7 +161,6 @@
 		"modelLabel": "Modèle",
 		"promptStudio": "Atelier d'invites",
 		"ctrlEnterHint": "(Ctrl+Entrée)",
-		"randomPromptBtn": "Aléatoire",
 		"randomPromptTitle": "Générer une invite aléatoire depuis la liste",
 		"dimensions": "Dimensions",
 		"selectDimensions": "Sélectionner la taille...",
@@ -355,8 +364,8 @@
 			"textToText": "Texte (LLM)",
 			"textToImage": "Image (Diffusion)",
 			"textToSpeech": "Audio TTS",
-			"speechToText": "Audio ASR",
-			"embeddings": "Plongements (Embeddings)"
+			"embeddings": "Plongements (Embeddings)",
+			"automaticSpeechRecognition": "Audio ASR"
 		}
 	},
 	"runtimes": {
@@ -493,7 +502,28 @@
 		"apiDocumentation": "Documentation de l'API",
 		"githubRepo": "Dépôt GitHub",
 		"modelsDir": "Répertoire des modèles",
-		"runtimesDir": "Répertoire des moteurs (runtimes)"
+		"runtimesDir": "Répertoire des moteurs (runtimes)",
+		"groupMaintenance": "Nettoyage des Données et Maintenance",
+		"cleanDatabase": "Nettoyer la Base de Données",
+		"cleanDatabaseDesc": "Supprime tous les chats, messages et métadonnées de modèles de SQLite. Reconstruit des migrations propres.",
+		"cleanDatabaseAction": "Effacer la Base de Données",
+		"cleanDatabasePhrase": "DELETE DATABASE",
+		"cleanDatabaseWarning": "Cette action supprime définitivement tous les chats, historiques de messages et métadonnées. Votre base sera réinitialisée.",
+		"cleanStorage": "Purger le Stockage",
+		"cleanStorageDesc": "Supprime tous les modèles IA et runtimes installés sur le disque. Conserve les historiques et configurations.",
+		"cleanStorageAction": "Purger le Stockage",
+		"cleanStoragePhrase": "PURGE STORAGE",
+		"cleanStorageWarning": "Cette action supprime définitivement tous les fichiers de modèles téléchargés et runtimes installés sur le disque.",
+		"factoryReset": "Réinitialisation d’Usine",
+		"factoryResetDesc": "Effectue une réinitialisation complète. Supprime la base de données, purge modèles et runtimes, et restaure les paramètres d’origine.",
+		"factoryResetAction": "Réinitialisation d’Usine",
+		"factoryResetPhrase": "FACTORY RESET",
+		"factoryResetWarning": "Cette action supprime définitivement tout : base de données, conversations, modèles, runtimes et réinitialise toutes les configurations.",
+		"maintenanceIrreversibleTitle": "Avertissement d’Action Destructive",
+		"maintenanceWarningDesc": "Une fois confirmée, cette opération est irréversible et ne peut pas être récupérée. Assurez-vous d’avoir sauvegardé vos données essentielles.",
+		"maintenanceTypePromptTitle": "Vérification Requise",
+		"maintenanceTypePrompt": "Veuillez saisir la phrase de confirmation exactement comme affichée ci-dessous pour déverrouiller le bouton :",
+		"maintenanceProceed": "Je comprends, continuer"
 	},
 	"setup": {
 		"interactiveSetup": "Configuration interactive",
@@ -564,5 +594,68 @@
 		"levelLabel": "Niveau",
 		"terminalTitle": "JOURNAUX",
 		"paused": "En pause"
+	},
+	"audio": {
+		"pageTitle": "Studio Audio",
+		"pageSubtitle": "Synthétisez la parole et transcrivez des enregistrements vocaux à l’aide de modèles IA locaux",
+		"ttsTab": "Synthèse Vocale (TTS)",
+		"asrTab": "Reconnaissance Vocale (ASR)",
+		"selectTtsModel": "Modèle de Synthèse Vocale",
+		"selectAsrModel": "Modèle de Reconnaissance Vocale (ASR)",
+		"selectModelPlaceholder": "Sélectionner un modèle audio...",
+		"voice": "Voix",
+		"selectVoice": "Sélectionner une voix...",
+		"format": "Format Audio",
+		"selectFormat": "Sélectionner un format...",
+		"speed": "Vitesse de Lecture",
+		"textToSpeak": "Texte à Vocaliser",
+		"ttsPromptPlaceholder": "Tapez ou collez du texte à synthétiser en parole...",
+		"characters": "caractères",
+		"words": "mots",
+		"generateSpeech": "Générer la Parole",
+		"generatingAudio": "Synthèse vocale en cours...",
+		"generationError": "Erreur de Génération",
+		"interrupted": "Le traitement audio a été interrompu",
+		"ttsError": "Échec de la synthèse vocale",
+		"asrError": "Échec de la reconnaissance vocale",
+		"audioOutput": "Sortie Audio",
+		"playbackProgress": "Progression de la lecture",
+		"play": "Lire",
+		"pause": "Pause",
+		"restart": "Recommencer",
+		"mute": "Couper le son",
+		"unmute": "Réactiver le son",
+		"volume": "Volume",
+		"noAudioGeneratedYet": "Aucun audio généré pour le moment",
+		"ttsEmptyGuide": "Sélectionnez un modèle, saisissez du texte et cliquez sur Générer la Parole pour synthétiser un fichier audio.",
+		"language": "Langue",
+		"selectLanguage": "Sélectionner une langue...",
+		"audioSource": "Source Audio",
+		"uploadFile": "Téléverser un Fichier",
+		"recordMicrophone": "Microphone",
+		"uploadAudioFile": "Téléverser un fichier audio",
+		"dragDropAudio": "Glissez-déposez un fichier audio ici ou cliquez pour parcourir",
+		"supportedFormats": "Prend en charge WAV, MP3, M4A, OGG, WEBM, FLAC",
+		"transcribeAudio": "Transcrire l’Audio",
+		"transcribingAudio": "Transcription en cours...",
+		"transcriptionError": "Erreur de Transcription",
+		"transcriptionResult": "Résultat de la Transcription",
+		"recordedClip": "Extrait Enregistré",
+		"noTranscriptionYet": "Aucune transcription pour le moment",
+		"asrEmptyGuide": "Téléversez un fichier audio ou enregistrez au micro, puis cliquez sur Transcrire l’Audio.",
+		"recordFromMic": "Enregistrer au Microphone",
+		"clickToStartRecording": "Cliquez pour enregistrer l’audio depuis votre microphone",
+		"recordingInProgress": "Enregistrement en cours...",
+		"record": "Enregistrer",
+		"startRecording": "Commencer l’Enregistrement",
+		"stopRecording": "Arrêter l’Enregistrement",
+		"micNotSupported": "L’enregistrement au microphone n’est pas pris en charge par ce navigateur.",
+		"micAccessDenied": "L’accès au microphone a été refusé ou n’a pas pu être initialisé.",
+		"sessionHistory": "Historique de Session",
+		"searchHistory": "Rechercher dans l’historique audio...",
+		"noHistoryFound": "Aucun historique audio trouvé",
+		"noHistoryFoundDesc": "Les paroles synthétisées et transcriptions apparaîtront ici pendant cette session.",
+		"clearHistoryConfirmTitle": "Effacer l’Historique Audio",
+		"clearHistoryConfirmMsg": "Êtes-vous sûr de vouloir effacer votre historique audio ?"
 	}
 }

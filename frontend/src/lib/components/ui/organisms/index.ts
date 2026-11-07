@@ -1,3 +1,4 @@
 export { default as ConfirmDialog } from './ConfirmDialog.svelte';
+export { default as DoubleConfirmModal } from './DoubleConfirmModal.svelte';
 export { default as Modal } from './Modal.svelte';
 export { default as PageHeader } from './PageHeader.svelte';
