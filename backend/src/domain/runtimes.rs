@@ -96,11 +96,21 @@ pub enum UpstreamConfig {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+pub struct ReleaseAsset {
+    pub name: String,
+    pub download_url: String,
+    #[serde(default)]
+    pub size: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UpstreamRuntimeEntry {
     pub version: String,
     #[serde(default)]
     pub variables: HashMap<String, String>,
+    #[serde(default)]
+    pub assets: Vec<ReleaseAsset>,
     #[serde(default)]
     pub etag: Option<String>,
     #[serde(default)]
@@ -160,6 +170,30 @@ pub struct RuntimeManifest {
     pub flags: Vec<ManifestFlag>,
     #[serde(default)]
     pub system_dependencies: Vec<SystemDependency>,
+    #[serde(default)]
+    pub release_assets: Vec<ReleaseAsset>,
+}
+
+static VERSION_PATTERN_REGEX: std::sync::LazyLock<regex::Regex> =
+    std::sync::LazyLock::new(|| regex::Regex::new(r"\d+(\.\d+)+").unwrap());
+
+pub fn matches_wildcard(pattern: &str, text: &str) -> bool {
+    let parts: Vec<&str> = pattern.split('*').collect();
+    if parts.len() == 1 {
+        return pattern == text;
+    }
+    if !text.starts_with(parts[0]) {
+        return false;
+    }
+    let mut remainder = &text[parts[0].len()..];
+    for &part in &parts[1..parts.len() - 1] {
+        if let Some(pos) = remainder.find(part) {
+            remainder = &remainder[pos + part.len()..];
+        } else {
+            return false;
+        }
+    }
+    remainder.ends_with(parts[parts.len() - 1])
 }
 
 impl RuntimeManifest {
@@ -176,6 +210,9 @@ impl RuntimeManifest {
         for (key, val) in &entry.variables {
             self.variables.insert(key.clone(), val.clone());
         }
+        if !entry.assets.is_empty() {
+            self.release_assets = entry.assets.clone();
+        }
     }
 
     pub fn interpolate_string(&self, template: &str) -> String {
@@ -184,6 +221,60 @@ impl RuntimeManifest {
             result = result.replace(&format!("{{{}}}", key), val);
         }
         result
+    }
+
+    pub fn resolve_download_url(&self, template: &str) -> String {
+        let interpolated = self.interpolate_string(template);
+        if self.release_assets.is_empty() {
+            return interpolated;
+        }
+
+        let pattern_filename = match interpolated.split('/').last() {
+            Some(f) if !f.is_empty() => f,
+            _ => return interpolated,
+        };
+
+        // 1. Direct exact filename match
+        if let Some(asset) = self.release_assets.iter().find(|a| a.name == pattern_filename) {
+            return asset.download_url.clone();
+        }
+
+        // 2. Wildcard pattern match (if pattern contains '*')
+        if pattern_filename.contains('*') {
+            let mut matches: Vec<&ReleaseAsset> = self
+                .release_assets
+                .iter()
+                .filter(|a| matches_wildcard(pattern_filename, &a.name))
+                .collect();
+            // Sort descending so newer/higher versions (e.g. 26.04 over 24.04, 26.7.2 over 26.6.2) are prioritized
+            matches.sort_by(|a, b| b.name.cmp(&a.name));
+            if let Some(matched_asset) = matches.first() {
+                return matched_asset.download_url.clone();
+            }
+        }
+
+        // 3. Smart fallback: if literal URL didn't match directly, relax OS and toolchain versions
+        if let Some(fuzzy_asset) = self.fuzzy_match_asset(pattern_filename) {
+            return fuzzy_asset.download_url.clone();
+        }
+
+        interpolated
+    }
+
+    fn fuzzy_match_asset(&self, filename: &str) -> Option<&ReleaseAsset> {
+        // Universally relax any semantic / dot-version strings (e.g. 24.04, 26.6.2, 7.14.0) into '*'
+        let pattern = VERSION_PATTERN_REGEX.replace_all(filename, "*");
+
+        if pattern.contains('*') {
+            let mut matches: Vec<&ReleaseAsset> = self
+                .release_assets
+                .iter()
+                .filter(|a| matches_wildcard(&pattern, &a.name))
+                .collect();
+            matches.sort_by(|a, b| b.name.cmp(&a.name));
+            return matches.first().copied();
+        }
+        None
     }
 
     pub fn get_download_target(
@@ -200,13 +291,13 @@ impl RuntimeManifest {
 
         let interpolate = |dt: &DownloadTarget| -> DownloadTarget {
             DownloadTarget {
-                url: self.interpolate_string(&dt.url),
+                url: self.resolve_download_url(&dt.url),
                 archive_type: dt.archive_type.clone(),
                 extra_archives: dt
                     .extra_archives
                     .iter()
                     .map(|ea| ExtraArchive {
-                        url: self.interpolate_string(&ea.url),
+                        url: self.resolve_download_url(&ea.url),
                         archive_type: ea.archive_type.clone(),
                     })
                     .collect(),
@@ -322,4 +413,98 @@ pub struct RuntimeItem {
     pub release_notes_url: Option<String>,
     #[serde(default)]
     pub system_dependencies: Vec<SystemDependencyStatus>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_matches_wildcard() {
+        assert!(matches_wildcard(
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-*-x86_64-vulkan.zip",
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64-vulkan.zip"
+        ));
+        assert!(matches_wildcard(
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-*-x86_64-vulkan.zip",
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
+        ));
+        assert!(!matches_wildcard(
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-*-x86_64-vulkan.zip",
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64.zip"
+        ));
+        assert!(matches_wildcard(
+            "sd-master-*-bin-Linux-Ubuntu-*-x86_64-rocm-*.zip",
+            "sd-master-5a1ba5d-bin-Linux-Ubuntu-24.04-x86_64-rocm-10.1.0.zip"
+        ));
+        assert!(matches_wildcard(
+            "sd-master-*-bin-Darwin-macOS-*-arm64.zip",
+            "sd-master-5a1ba5d-bin-Darwin-macOS-26.7.2-arm64.zip"
+        ));
+    }
+
+    #[test]
+    fn test_resolve_download_url_with_wildcards() {
+        let manifest = RuntimeManifest {
+            id: "sd-cpp".to_string(),
+            name: "Stable Diffusion".to_string(),
+            version: "master-1053-5a1ba5d".to_string(),
+            variables: HashMap::from([
+                ("version".to_string(), "master-1053-5a1ba5d".to_string()),
+                ("commit".to_string(), "5a1ba5d".to_string()),
+            ]),
+            upstream: None,
+            icon: None,
+            website: None,
+            description: "".to_string(),
+            features: vec![],
+            supported_modalities: vec![],
+            supported_formats: vec![],
+            binary_name: "sd-server".to_string(),
+            downloads: HashMap::new(),
+            flags: vec![],
+            system_dependencies: vec![],
+            release_assets: vec![
+                ReleaseAsset {
+                    name: "sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64-vulkan.zip".to_string(),
+                    download_url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64-vulkan.zip".to_string(),
+                    size: Some(1234),
+                },
+                ReleaseAsset {
+                    name: "sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64.zip".to_string(),
+                    download_url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64.zip".to_string(),
+                    size: Some(1234),
+                },
+                ReleaseAsset {
+                    name: "sd-master-5a1ba5d-bin-Darwin-macOS-26.7.2-arm64.zip".to_string(),
+                    download_url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Darwin-macOS-26.7.2-arm64.zip".to_string(),
+                    size: Some(1234),
+                },
+            ],
+        };
+
+        // 1. Explicit wildcard in template
+        let template_vulkan = "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-*-x86_64-vulkan.zip";
+        let resolved_vulkan = manifest.resolve_download_url(template_vulkan);
+        assert_eq!(
+            resolved_vulkan,
+            "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64-vulkan.zip"
+        );
+
+        // 2. Legacy literal URL template with Ubuntu 24.04 (auto-relaxed via fuzzy matching)
+        let legacy_template = "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip";
+        let resolved_legacy = manifest.resolve_download_url(legacy_template);
+        assert_eq!(
+            resolved_legacy,
+            "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Linux-Ubuntu-26.04-x86_64-vulkan.zip"
+        );
+
+        // 3. macOS version fluctuation (Darwin-macOS-26.6.2 in template vs 26.7.2 published)
+        let macos_template = "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-26.6.2-arm64.zip";
+        let resolved_macos = manifest.resolve_download_url(macos_template);
+        assert_eq!(
+            resolved_macos,
+            "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1053-5a1ba5d/sd-master-5a1ba5d-bin-Darwin-macOS-26.7.2-arm64.zip"
+        );
+    }
 }

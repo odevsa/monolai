@@ -1,5 +1,5 @@
 use crate::core::error::{AppError, AppResult};
-use crate::domain::runtimes::{UpstreamConfig, UpstreamRuntimeEntry};
+use crate::domain::runtimes::{ReleaseAsset, UpstreamConfig, UpstreamRuntimeEntry};
 use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -149,7 +149,7 @@ async fn fetch_github_release(
         AppError::internal(format!("Failed to parse GitHub JSON response: {}", e))
     })?;
 
-    let (tag_name, html_url) = if is_list_endpoint {
+    let (tag_name, html_url, matched_assets) = if is_list_endpoint {
         let releases = body.as_array().ok_or_else(|| {
             AppError::internal(format!(
                 "Expected array of releases from GitHub API for {}",
@@ -157,7 +157,7 @@ async fn fetch_github_release(
             ))
         })?;
 
-        let mut matched: Option<(&str, Option<&str>)> = None;
+        let mut matched_rel: Option<&Value> = None;
 
         for rel in releases {
             let is_draft = rel.get("draft").and_then(Value::as_bool).unwrap_or(false);
@@ -175,27 +175,29 @@ async fn fetch_github_release(
                 None => continue,
             };
 
-            let hurl = rel.get("html_url").and_then(Value::as_str);
-
             if let Some(re) = &tag_regex {
                 if re.is_match(tag) {
-                    matched = Some((tag, hurl));
+                    matched_rel = Some(rel);
                     break;
                 }
             } else {
-                matched = Some((tag, hurl));
+                matched_rel = Some(rel);
                 break;
             }
         }
 
-        let (tag, hurl) = matched.ok_or_else(|| {
+        let rel = matched_rel.ok_or_else(|| {
             AppError::not_found(format!(
                 "No matching release found on GitHub for {} (regex: {:?})",
                 repository, tag_regex_str
             ))
         })?;
 
-        (tag.to_string(), hurl.map(|s| s.to_string()))
+        let tag = rel.get("tag_name").and_then(Value::as_str).unwrap_or_default();
+        let hurl = rel.get("html_url").and_then(Value::as_str);
+        let assets = rel.get("assets").and_then(Value::as_array);
+
+        (tag.to_string(), hurl.map(|s| s.to_string()), assets.cloned())
     } else {
         let tag = body
             .get("tag_name")
@@ -210,9 +212,26 @@ async fn fetch_github_release(
             .get("html_url")
             .and_then(Value::as_str)
             .map(|s| s.to_string());
+        let assets = body.get("assets").and_then(Value::as_array);
 
-        (tag.to_string(), hurl)
+        (tag.to_string(), hurl, assets.cloned())
     };
+
+    let mut release_assets = Vec::new();
+    if let Some(arr) = matched_assets {
+        for asset_val in arr {
+            if let (Some(name), Some(download_url)) = (
+                asset_val.get("name").and_then(Value::as_str),
+                asset_val.get("browser_download_url").and_then(Value::as_str),
+            ) {
+                release_assets.push(ReleaseAsset {
+                    name: name.to_string(),
+                    download_url: download_url.to_string(),
+                    size: asset_val.get("size").and_then(Value::as_u64),
+                });
+            }
+        }
+    }
 
     let mut variables = HashMap::new();
     variables.insert("version".to_string(), tag_name.clone());
@@ -235,6 +254,7 @@ async fn fetch_github_release(
     Ok(Some(UpstreamRuntimeEntry {
         version: canonical_version,
         variables,
+        assets: release_assets,
         etag,
         last_checked_at: current_timestamp(),
         release_notes_url: html_url,
@@ -348,6 +368,7 @@ async fn fetch_gitlab_release(
     Ok(Some(UpstreamRuntimeEntry {
         version: canonical_version,
         variables,
+        assets: Vec::new(),
         etag,
         last_checked_at: current_timestamp(),
         release_notes_url: release_notes_url.map(|s| s.to_string()),
@@ -422,6 +443,7 @@ async fn fetch_http_json(
     Ok(Some(UpstreamRuntimeEntry {
         version: canonical_version,
         variables,
+        assets: Vec::new(),
         etag,
         last_checked_at: current_timestamp(),
         release_notes_url: None,
@@ -504,6 +526,7 @@ async fn fetch_plain_text(
     Ok(Some(UpstreamRuntimeEntry {
         version: canonical_version,
         variables,
+        assets: Vec::new(),
         etag,
         last_checked_at: current_timestamp(),
         release_notes_url: None,
@@ -529,6 +552,7 @@ mod tests {
             UpstreamRuntimeEntry {
                 version: "master-1031-c6dfa9d".to_string(),
                 variables: vars,
+                assets: Vec::new(),
                 etag: Some("W/\"12345\"".to_string()),
                 last_checked_at: 1000,
                 release_notes_url: Some("https://github.com/leejet/stable-diffusion.cpp".to_string()),
@@ -596,7 +620,16 @@ mod tests {
         let entry_sd = res_sd.unwrap().unwrap();
         assert!(entry_sd.version.starts_with("master-"));
         assert!(entry_sd.variables.contains_key("commit"));
+        assert!(!entry_sd.assets.is_empty(), "SD release must contain parsed assets");
         println!("SD commit captured: {:?}", entry_sd.variables.get("commit"));
+        println!("SD assets count: {}", entry_sd.assets.len());
+
+        let mut manifest = crate::infrastructure::process::manifests::get_manifest_for_runtime(None, "sd-cpp").unwrap();
+        manifest.apply_upstream(&entry_sd);
+        let target = manifest.get_download_target("linux", "x86_64", "vulkan").unwrap();
+        println!("Resolved vulkan URL: {}", target.url);
+        assert!(!target.url.contains('*'), "Resolved target URL must not contain wildcards: {}", target.url);
+        assert!(target.url.ends_with(".zip"), "Resolved target must end with .zip");
     }
 }
 

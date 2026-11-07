@@ -22,13 +22,13 @@ downloads:
   linux:
     x86_64:
       cpu:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-*-x86_64.zip"
         archive_type: "zip"
       vulkan:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-*-x86_64-vulkan.zip"
         archive_type: "zip"
       rocm:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-24.04-x86_64-rocm-7.14.0.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Linux-Ubuntu-*-x86_64-rocm-*.zip"
         archive_type: "zip"
   windows:
     x86_64:
@@ -51,15 +51,15 @@ downloads:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-vulkan-x64.zip"
         archive_type: "zip"
       rocm:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-rocm-7.14.0-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-rocm-*-x64.zip"
         archive_type: "zip"
   macos:
     arm64:
       metal:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-26.6.2-arm64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-*-arm64.zip"
         archive_type: "zip"
       cpu:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-26.6.2-arm64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-Darwin-macOS-*-arm64.zip"
         archive_type: "zip"
 
 flags:

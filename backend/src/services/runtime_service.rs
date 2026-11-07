@@ -303,25 +303,38 @@ impl RuntimeService {
 
         // Enrich manifest with resolved upstream variables from root .metadata.json
         let mut root_upstreams = load_root_upstream_metadata(&runtimes_dir);
-        if let Some(entry) = root_upstreams.get(runtime_id) {
-            manifest.apply_upstream(entry);
-        } else if let Some(upstream_config) = &manifest.upstream {
-            // Fetch dynamically on-demand if missing from root cache
-            match fetch_upstream(&self.client, upstream_config, None).await {
-                Ok(Some(fresh)) => {
-                    manifest.apply_upstream(&fresh);
-                    root_upstreams.insert(runtime_id.to_string(), fresh);
-                    let _ = save_root_upstream_metadata(&runtimes_dir, &root_upstreams);
-                }
-                Ok(None) => {}
-                Err(err) => {
-                    tracing::warn!(
-                        "Could not fetch upstream before installing runtime '{}': {}",
-                        runtime_id,
-                        err
-                    );
+        let needs_fetch = match root_upstreams.get(runtime_id) {
+            Some(entry) => entry.assets.is_empty() && manifest.upstream.is_some(),
+            None => manifest.upstream.is_some(),
+        };
+
+        if needs_fetch {
+            if let Some(upstream_config) = &manifest.upstream {
+                match fetch_upstream(&self.client, upstream_config, None).await {
+                    Ok(Some(fresh)) => {
+                        manifest.apply_upstream(&fresh);
+                        root_upstreams.insert(runtime_id.to_string(), fresh);
+                        let _ = save_root_upstream_metadata(&runtimes_dir, &root_upstreams);
+                    }
+                    Ok(None) => {
+                        if let Some(entry) = root_upstreams.get(runtime_id) {
+                            manifest.apply_upstream(entry);
+                        }
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            "Could not fetch upstream before installing runtime '{}': {}",
+                            runtime_id,
+                            err
+                        );
+                        if let Some(entry) = root_upstreams.get(runtime_id) {
+                            manifest.apply_upstream(entry);
+                        }
+                    }
                 }
             }
+        } else if let Some(entry) = root_upstreams.get(runtime_id) {
+            manifest.apply_upstream(entry);
         }
 
         let hw = hardware_override;

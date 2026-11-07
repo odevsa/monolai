@@ -205,6 +205,7 @@ mod tests {
         sd.apply_upstream(&UpstreamRuntimeEntry {
             version: "master-1031-c6dfa9d".to_string(),
             variables: vars,
+            assets: Vec::new(),
             etag: None,
             last_checked_at: 0,
             release_notes_url: None,
