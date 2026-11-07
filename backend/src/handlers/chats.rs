@@ -88,6 +88,21 @@ pub async fn delete_chat_handler(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Delete all chat conversations
+#[utoipa::path(
+    delete,
+    path = "/api/chats",
+    tag = "Chats",
+    responses(
+        (status = 204, description = "All chats deleted successfully"),
+        (status = 500, description = "Database error", body = String)
+    )
+)]
+pub async fn clear_all_chats_handler(State(state): State<AppState>) -> AppResult<StatusCode> {
+    state.chat_service.clear_all_chats().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// List all messages in a chat conversation
 #[utoipa::path(
     get,

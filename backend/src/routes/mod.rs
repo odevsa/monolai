@@ -20,9 +20,10 @@ use crate::{
             get_audio_by_id_handler, get_audio_handler,
         },
         chats::{
-            clear_chat_messages_handler, create_chat_handler, create_chat_message_handler,
-            delete_chat_handler, delete_chat_message_handler, get_chat_messages_handler,
-            get_chats_handler, update_chat_handler, update_chat_message_handler,
+            clear_all_chats_handler, clear_chat_messages_handler, create_chat_handler,
+            create_chat_message_handler, delete_chat_handler, delete_chat_message_handler,
+            get_chat_messages_handler, get_chats_handler, update_chat_handler,
+            update_chat_message_handler,
         },
         config::{config_status_handler, hardware_detect_handler, save_setup_config_handler},
         downloads::{
@@ -244,7 +245,12 @@ fn api_router() -> Router<AppState> {
             get(get_setting_handler).delete(delete_setting_handler),
         )
         // Chats
-        .route("/chats", get(get_chats_handler).post(create_chat_handler))
+        .route(
+            "/chats",
+            get(get_chats_handler)
+                .post(create_chat_handler)
+                .delete(clear_all_chats_handler),
+        )
         .route(
             "/chats/:id",
             put(update_chat_handler).delete(delete_chat_handler),

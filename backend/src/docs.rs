@@ -52,6 +52,7 @@ use utoipa::OpenApi;
         crate::handlers::chats::create_chat_handler,
         crate::handlers::chats::update_chat_handler,
         crate::handlers::chats::delete_chat_handler,
+        crate::handlers::chats::clear_all_chats_handler,
         crate::handlers::chats::get_chat_messages_handler,
         crate::handlers::chats::create_chat_message_handler,
         crate::handlers::chats::update_chat_message_handler,

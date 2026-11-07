@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { formatTokenCount, type PreparedContext } from '$lib/utils/context';
+	import { portal } from '$lib/utils/portal';
 	import { ChevronDown, ChevronUp } from '@lucide/svelte';
 	import Divider from '../atoms/Divider.svelte';
 
@@ -14,19 +15,47 @@
 	let showDetails = $state(false);
 	let wrapperRef: HTMLDivElement | null = $state(null);
 	let popoverRef: HTMLDivElement | null = $state(null);
-	let mobileBottom = $state<number | null>(null);
-	let mobileMaxHeight = $state<number | null>(null);
+	let popoverStyle = $state('');
 
 	function updatePosition() {
 		if (!wrapperRef) return;
+		const rect = wrapperRef.getBoundingClientRect();
 		const isMobile = window.innerWidth <= 640;
+		const bottom = Math.max(8, window.innerHeight - rect.top + 8);
+
 		if (isMobile) {
-			const rect = wrapperRef.getBoundingClientRect();
-			mobileBottom = Math.max(8, window.innerHeight - rect.top + 8);
-			mobileMaxHeight = Math.min(window.innerHeight * 0.7, Math.max(160, rect.top - 16));
+			const maxHeight = Math.min(window.innerHeight * 0.7, Math.max(160, rect.top - 16));
+			popoverStyle = [
+				'position: fixed',
+				'left: 1rem',
+				'right: 1rem',
+				'margin-left: auto',
+				'margin-right: auto',
+				'width: auto',
+				'max-width: 440px',
+				'min-width: 0',
+				`bottom: ${bottom}px`,
+				'top: auto',
+				`max-height: ${maxHeight}px`,
+				'z-index: 9999'
+			].join('; ');
 		} else {
-			mobileBottom = null;
-			mobileMaxHeight = null;
+			const maxHeight = Math.min(window.innerHeight * 0.8, Math.max(160, rect.top - 16));
+			const popoverWidth = 280;
+			const triggerCenter = rect.left + rect.width / 2;
+			const idealLeft = triggerCenter - popoverWidth / 2;
+			const left = Math.max(16, Math.min(idealLeft, window.innerWidth - popoverWidth - 16));
+
+			popoverStyle = [
+				'position: fixed',
+				`left: ${left}px`,
+				'right: auto',
+				`width: ${popoverWidth}px`,
+				`bottom: ${bottom}px`,
+				'top: auto',
+				`max-height: ${maxHeight}px`,
+				'z-index: 9999'
+			].join('; ');
 		}
 	}
 
@@ -44,7 +73,13 @@
 	}
 
 	function handleClickOutside(e: MouseEvent | TouchEvent) {
-		if (isOpen && wrapperRef && !wrapperRef.contains(e.target as Node)) {
+		const target = e.target as Node;
+		if (
+			isOpen &&
+			wrapperRef &&
+			!wrapperRef.contains(target) &&
+			(!popoverRef || !popoverRef.contains(target))
+		) {
 			isOpen = false;
 		}
 	}
@@ -58,8 +93,7 @@
 				window.addEventListener('resize', updatePosition);
 				window.addEventListener('scroll', updatePosition, true);
 			} else {
-				mobileBottom = null;
-				mobileMaxHeight = null;
+				popoverStyle = '';
 				document.removeEventListener('click', handleClickOutside);
 				document.removeEventListener('touchstart', handleClickOutside);
 				window.removeEventListener('resize', updatePosition);
@@ -119,10 +153,9 @@
 	{#if isOpen}
 		<!-- Context Popover matching screenshot with exact typography and KV metrics -->
 		<div
-			class="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 right-auto bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3.5 w-[280px] max-h-[80vh] overflow-y-auto shadow-2xl z-60 flex flex-col gap-2 text-[var(--text-primary)] box-border max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:mx-auto max-sm:w-auto max-sm:max-w-[440px] max-sm:translate-x-0"
-			style={mobileBottom !== null
-				? `bottom: ${mobileBottom}px; ${mobileMaxHeight !== null ? `max-height: ${mobileMaxHeight}px;` : ''}`
-				: undefined}
+			use:portal
+			class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3.5 shadow-2xl flex flex-col gap-2 text-[var(--text-primary)] box-border overflow-y-auto animate-fade-in"
+			style={popoverStyle}
 			role="dialog"
 			bind:this={popoverRef}
 		>

@@ -35,6 +35,10 @@ impl ChatService {
         self.repo.delete_chat(id).await
     }
 
+    pub async fn clear_all_chats(&self) -> AppResult<u64> {
+        self.repo.delete_all_chats().await
+    }
+
     pub async fn get_chat_messages(&self, chat_id: &str) -> AppResult<Vec<ChatMessageRecord>> {
         self.repo.get_chat_messages(chat_id).await
     }

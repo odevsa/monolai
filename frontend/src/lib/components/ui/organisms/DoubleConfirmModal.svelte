@@ -65,7 +65,9 @@
 	{#snippet children()}
 		<div class="flex flex-col gap-4">
 			{#if step === 1}
-				<div class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed">
+				<div
+					class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed"
+				>
 					<div class="rounded-lg text-[var(--danger-text)] shrink-0">
 						<TriangleAlert size={48} />
 					</div>
@@ -79,7 +81,9 @@
 					{t('settings.maintenanceWarningDesc')}
 				</p>
 			{:else}
-				<div class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed">
+				<div
+					class="flex flex-col items-center gap-2 text-xs text-[var(--danger-text)] leading-relaxed"
+				>
 					<div class="rounded-lg text-[var(--danger-text)] shrink-0">
 						<ShieldAlert size={48} />
 					</div>

@@ -15,6 +15,8 @@ export const chatsApi = {
 
 	delete: (id: string) => api.delete<void>(`/api/chats/${encodeURIComponent(id)}`),
 
+	clear: () => api.delete<void>('/api/chats'),
+
 	getMessages: (chatId: string) =>
 		api.get<ChatMessage[]>(`/api/chats/${encodeURIComponent(chatId)}/messages`),
 

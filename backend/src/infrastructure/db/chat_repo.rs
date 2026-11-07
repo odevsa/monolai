@@ -79,6 +79,18 @@ impl ChatRepository {
         Ok(())
     }
 
+    pub async fn delete_all_chats(&self) -> AppResult<u64> {
+        sqlx::query("DELETE FROM chat_messages")
+            .execute(&self.pool)
+            .await?;
+
+        let res = sqlx::query("DELETE FROM chats")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(res.rows_affected())
+    }
+
     pub async fn get_chat_messages(&self, chat_id: &str) -> AppResult<Vec<ChatMessageRecord>> {
         let rows = sqlx::query_as::<_, ChatMessageRecord>(
             "SELECT id, chat_id, role, content, tokens, duration, speed, model_tags, status, attachments, created_at FROM chat_messages WHERE chat_id = ? ORDER BY created_at ASC",
@@ -170,5 +182,59 @@ impl ChatRepository {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn create_test_pool() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_chat_delete_all() {
+        let pool = create_test_pool().await;
+        let repo = ChatRepository::new(pool);
+
+        let chat1 = repo.insert_chat("chat-1", "Chat 1").await.unwrap();
+        let chat2 = repo.insert_chat("chat-2", "Chat 2").await.unwrap();
+
+        let msg_payload = CreateChatMessagePayload {
+            id: None,
+            role: "user".to_string(),
+            content: "Hello".to_string(),
+            tokens: None,
+            duration: None,
+            speed: None,
+            model_tags: None,
+            status: None,
+            attachments: None,
+        };
+        repo.insert_chat_message(&chat1.id, &msg_payload)
+            .await
+            .unwrap();
+        repo.insert_chat_message(&chat2.id, &msg_payload)
+            .await
+            .unwrap();
+
+        let chats = repo.get_all_chats().await.unwrap();
+        assert_eq!(chats.len(), 2);
+
+        let deleted_count = repo.delete_all_chats().await.unwrap();
+        assert_eq!(deleted_count, 2);
+
+        let chats_after = repo.get_all_chats().await.unwrap();
+        assert!(chats_after.is_empty());
+        let msgs1 = repo.get_chat_messages(&chat1.id).await.unwrap();
+        assert!(msgs1.is_empty());
     }
 }

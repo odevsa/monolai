@@ -58,6 +58,13 @@ class ChatsStateManager {
 		headerState.chatTabs = headerState.chatTabs.filter((t) => t.id !== id);
 		this.notifyUpdated();
 	}
+
+	async clearAllChats(): Promise<void> {
+		await chatsApi.clear();
+		this.conversations = [];
+		headerState.chatTabs = [];
+		this.notifyUpdated();
+	}
 }
 
 export const chatsState = new ChatsStateManager();

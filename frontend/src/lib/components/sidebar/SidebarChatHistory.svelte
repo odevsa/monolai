@@ -63,6 +63,26 @@
 			console.error('Error deleting chat:', err);
 		}
 	}
+
+	async function clearChatHistory() {
+		const confirmed = await askConfirm(
+			t('chat.clearHistoryConfirmMsg'),
+			t('chat.clearHistoryConfirmTitle'),
+			'danger',
+			t('common.delete'),
+			t('common.cancel')
+		);
+		if (!confirmed) return;
+
+		try {
+			await chatsState.clearAllChats();
+			if (currentPath.startsWith('/chat/')) {
+				goto('/chat');
+			}
+		} catch (err) {
+			console.error('Error clearing chat history:', err);
+		}
+	}
 </script>
 
 {#snippet searchPrefix()}
@@ -73,18 +93,32 @@
 	<div class="flex flex-col gap-3">
 		<div class="flex items-center justify-between px-1">
 			<span class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-				{t('navigation.recentConversations')}
+				{t('chat.sessionHistory')}
 			</span>
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-				onclick={createNewChat}
-				title={t('common.new')}
-				ariaLabel={t('common.new')}
-			>
-				<Plus size={15} />
-			</Button>
+			<div class="flex items-center gap-1">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+					onclick={createNewChat}
+					title={t('common.new')}
+					ariaLabel={t('common.new')}
+				>
+					<Plus size={15} />
+				</Button>
+				{#if chatsState.conversations.length > 0}
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
+						onclick={clearChatHistory}
+						title={t('common.clear')}
+						ariaLabel={t('common.clear')}
+					>
+						<Trash size={13} />
+					</Button>
+				{/if}
+			</div>
 		</div>
 
 		<Input

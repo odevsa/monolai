@@ -71,11 +71,13 @@
 		"modelsLoaded": "{{count}} model(s) loaded",
 		"noRunningModels": "No models loaded in memory",
 		"systemStatus": "System Status",
-		"recentConversations": "Recent Conversations",
 		"searchConversations": "Search conversations...",
 		"noConversationsFound": "No conversations found"
 	},
 	"chat": {
+		"sessionHistory": "Session History",
+		"clearHistoryConfirmTitle": "Clear Chat History",
+		"clearHistoryConfirmMsg": "Are you sure you want to delete all chat conversations? This action cannot be undone.",
 		"attachments": {
 			"addFiles": "Add files",
 			"unsupportedFileType": "The selected model does not support this file type."

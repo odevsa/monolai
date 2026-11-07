@@ -114,32 +114,37 @@
 
 			if (isPill) {
 				if (align === 'right') {
-					const right = Math.max(8, window.innerWidth - rect.right);
-					horizontalStyles = [
-						'left: auto',
-						`right: ${right}px`,
-						'width: max-content',
-						'min-width: 440px',
-						'max-width: min(640px, calc(100vw - 4rem))'
-					];
-				} else {
-					const left = Math.max(8, rect.left);
+					const popoverWidth = Math.min(440, window.innerWidth - 32);
+					const idealLeft = rect.right - popoverWidth;
+					const left = Math.max(16, Math.min(idealLeft, window.innerWidth - popoverWidth - 16));
 					horizontalStyles = [
 						`left: ${left}px`,
 						'right: auto',
-						'width: max-content',
-						'min-width: 280px',
-						'max-width: min(380px, calc(100vw - 2rem))'
+						`width: ${popoverWidth}px`,
+						'min-width: 0',
+						'max-width: calc(100vw - 2rem)'
+					];
+				} else {
+					const popoverWidth = Math.min(380, window.innerWidth - 32);
+					const idealLeft = rect.left;
+					const left = Math.max(16, Math.min(idealLeft, window.innerWidth - popoverWidth - 16));
+					horizontalStyles = [
+						`left: ${left}px`,
+						'right: auto',
+						`width: ${popoverWidth}px`,
+						'min-width: 0',
+						'max-width: calc(100vw - 2rem)'
 					];
 				}
 			} else {
-				const left = Math.max(8, rect.left);
-				const width = Math.max(rect.width, 280);
+				const width = Math.min(Math.max(rect.width, 280), window.innerWidth - 32);
+				const left = Math.max(16, Math.min(rect.left, window.innerWidth - width - 16));
 				horizontalStyles = [
 					`left: ${left}px`,
 					'right: auto',
 					`width: ${width}px`,
-					'max-width: min(640px, calc(100vw - 4rem))'
+					'min-width: 0',
+					'max-width: calc(100vw - 2rem)'
 				];
 			}
 
