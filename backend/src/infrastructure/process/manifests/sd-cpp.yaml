@@ -36,16 +36,16 @@ downloads:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cpu-x64.zip"
         archive_type: "zip"
       cuda:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12*-x64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
+          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12*-x64.zip"
             archive_type: "zip"
       cuda-12:
-        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12-x64.zip"
+        url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-cuda12*-x64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12-x64.zip"
+          - url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/cudart-sd-bin-win-cu12*-x64.zip"
             archive_type: "zip"
       vulkan:
         url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/{version}/sd-master-{commit}-bin-win-vulkan-x64.zip"

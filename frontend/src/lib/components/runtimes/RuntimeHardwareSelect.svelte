@@ -22,7 +22,7 @@
 </script>
 
 <div
-	class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)]"
+	class="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--bg-hover)]/50 border border-[var(--border-color)]"
 >
 	<div class="flex items-center justify-between gap-2">
 		<span class="text-xs font-semibold text-[var(--text-primary)] whitespace-nowrap shrink-0">

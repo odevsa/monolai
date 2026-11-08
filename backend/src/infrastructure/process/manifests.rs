@@ -235,4 +235,75 @@ mod tests {
             target.url
         );
     }
+
+    #[test]
+    fn test_audio_cpp_manifest_resolution_and_extra_archives() {
+        let mut audio = get_manifest_for_runtime(None, "audio-cpp").expect("audio-cpp manifest should exist");
+        assert_eq!(audio.version, ""); // No static version in manifest!
+        audio.version = "v0.9.4".to_string();
+
+        // Check instructions
+        let dep = audio.system_dependencies.iter().find(|d| d.id == "espeak-ng").expect("espeak-ng dep");
+        assert_eq!(dep.instructions.get("windows").map(|s| s.as_str()), Some("winget install eSpeak-ng.eSpeak-ng"));
+
+        // Linux x86_64: only cuda-12 exists upstream for audio.cpp server binary
+        let linux_accels = audio.get_available_accelerations("linux", "x86_64");
+        assert_eq!(linux_accels[0], "cuda-12");
+        assert!(!linux_accels.contains(&"cuda".to_string())); // generic cuda hidden when specific exists
+
+        // Linux CUDA 12 target resolution and extra_archives
+        let linux_cuda12 = audio.get_download_target("linux", "x86_64", "cuda-12").expect("linux cuda-12 target");
+        assert!(linux_cuda12.url.contains("bin-ubuntu-x64-cuda12.*.tar.gz"));
+        assert_eq!(linux_cuda12.extra_archives.len(), 1);
+        assert!(linux_cuda12.extra_archives[0].url.contains("cudart-ubuntu-x64-cuda12.*.tar.gz"));
+
+        // Linux generic cuda target also points to cuda12
+        let linux_cuda_generic = audio.get_download_target("linux", "x86_64", "cuda").expect("linux generic cuda target");
+        assert!(linux_cuda_generic.url.contains("bin-ubuntu-x64-cuda12.*.tar.gz"));
+        assert_eq!(linux_cuda_generic.extra_archives.len(), 1);
+        assert!(linux_cuda_generic.extra_archives[0].url.contains("cudart-ubuntu-x64-cuda12.*.tar.gz"));
+
+        // Windows x86_64: cuda-13 is first, cuda-12 is second
+        let win_accels = audio.get_available_accelerations("windows", "x86_64");
+        assert_eq!(win_accels[0], "cuda-13");
+        assert_eq!(win_accels[1], "cuda-12");
+        assert!(!win_accels.contains(&"cuda".to_string()));
+
+        // Windows cuda-13 target and extra_archives
+        let win_cuda13 = audio.get_download_target("windows", "x86_64", "cuda-13").expect("windows cuda-13 target");
+        assert!(win_cuda13.url.contains("bin-windows-x64-cuda13.*.zip"));
+        assert_eq!(win_cuda13.extra_archives.len(), 1);
+        assert!(win_cuda13.extra_archives[0].url.contains("cudart-windows-x64-cuda13.*.zip"));
+
+        // Windows cuda-12 target and extra_archives
+        let win_cuda12 = audio.get_download_target("windows", "x86_64", "cuda-12").expect("windows cuda-12 target");
+        assert!(win_cuda12.url.contains("bin-windows-x64-cuda12.*.zip"));
+        assert_eq!(win_cuda12.extra_archives.len(), 1);
+        assert!(win_cuda12.extra_archives[0].url.contains("cudart-windows-x64-cuda12.*.zip"));
+
+        // Windows generic "cuda" fallback points to recommended (cuda-13) and has extra_archives
+        let win_cuda_generic = audio.get_download_target("windows", "x86_64", "cuda").expect("windows generic cuda target");
+        assert!(win_cuda_generic.url.contains("bin-windows-x64-cuda13.*.zip"));
+        assert_eq!(win_cuda_generic.extra_archives.len(), 1);
+        assert!(win_cuda_generic.extra_archives[0].url.contains("cudart-windows-x64-cuda13.*.zip"));
+    }
+
+    #[test]
+    fn test_llama_cpp_manifest_resolution_and_extra_archives() {
+        let mut llama = get_manifest_for_runtime(None, "llama-cpp").expect("llama-cpp manifest should exist");
+        llama.version = "b12207".to_string();
+
+        let linux_accels = llama.get_available_accelerations("linux", "x86_64");
+        assert_eq!(linux_accels[0], "cuda-13");
+        assert_eq!(linux_accels[1], "cuda-12");
+
+        let win_accels = llama.get_available_accelerations("windows", "x86_64");
+        assert_eq!(win_accels[0], "cuda-13");
+        assert_eq!(win_accels[1], "cuda-12");
+
+        let win_cuda13 = llama.get_download_target("windows", "x86_64", "cuda-13").expect("win cuda-13 target");
+        assert!(win_cuda13.url.contains("bin-win-cuda-13.*-x64.zip"));
+        assert_eq!(win_cuda13.extra_archives.len(), 1);
+        assert!(win_cuda13.extra_archives[0].url.contains("cudart-llama-bin-win-cuda-13.*-x64.zip"));
+    }
 }

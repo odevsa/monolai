@@ -372,7 +372,7 @@ impl RuntimeManifest {
                     6
                 }
             };
-            score(a).cmp(&score(b)).then_with(|| a.cmp(b))
+            score(a).cmp(&score(b)).then_with(|| b.cmp(a))
         });
 
         list

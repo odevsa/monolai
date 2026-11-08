@@ -31,28 +31,28 @@ downloads:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-vulkan-x64.tar.gz"
         archive_type: "tar.gz"
       cuda:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.*-x64.tar.gz"
         archive_type: "tar.gz"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.*-x64.tar.gz"
             archive_type: "tar.gz"
-      cuda-12.8:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+      cuda-13:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.*-x64.tar.gz"
         archive_type: "tar.gz"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.*-x64.tar.gz"
             archive_type: "tar.gz"
-      cuda-13.4:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.4-x64.tar.gz"
+      cuda-12:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-12.*-x64.tar.gz"
         archive_type: "tar.gz"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.4-x64.tar.gz"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-12.*-x64.tar.gz"
             archive_type: "tar.gz"
       rocm:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-rocm-10.0-x64.tar.gz"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-rocm-*-x64.tar.gz"
         archive_type: "tar.gz"
       openvino:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-openvino-2026.4.1-x64.tar.gz"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-openvino-*-x64.tar.gz"
         archive_type: "tar.gz"
       sycl:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-sycl-fp32-x64.tar.gz"
@@ -71,16 +71,16 @@ downloads:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-vulkan-arm64.tar.gz"
         archive_type: "tar.gz"
       cuda:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.4-arm64.tar.gz"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.*-arm64.tar.gz"
         archive_type: "tar.gz"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.4-arm64.tar.gz"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.*-arm64.tar.gz"
             archive_type: "tar.gz"
-      cuda-13.4:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.4-arm64.tar.gz"
+      cuda-13:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-ubuntu-cuda-13.*-arm64.tar.gz"
         archive_type: "tar.gz"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.4-arm64.tar.gz"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-{version}-bin-ubuntu-cuda-13.*-arm64.tar.gz"
             archive_type: "tar.gz"
       snapdragon:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-linux-arm64-snapdragon.tar.gz"
@@ -98,28 +98,28 @@ downloads:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-vulkan-x64.zip"
         archive_type: "zip"
       cuda:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-12.4-x64.zip"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.*-x64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-12.4-x64.zip"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.*-x64.zip"
             archive_type: "zip"
-      cuda-12.4:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-12.4-x64.zip"
+      cuda-13:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.*-x64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-12.4-x64.zip"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.*-x64.zip"
             archive_type: "zip"
-      cuda-13.4:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.4-x64.zip"
+      cuda-12:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-12.*-x64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.4-x64.zip"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-12.*-x64.zip"
             archive_type: "zip"
       rocm:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-rocm-10.0-x64.zip"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-rocm-*-x64.zip"
         archive_type: "zip"
       openvino:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-openvino-2026.4.1-x64.zip"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-openvino-*-x64.zip"
         archive_type: "zip"
       sycl:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-sycl-x64.zip"
@@ -132,16 +132,16 @@ downloads:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-vulkan-arm64.zip"
         archive_type: "zip"
       cuda:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.4-arm64.zip"
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.*-arm64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.4-arm64.zip"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.*-arm64.zip"
             archive_type: "zip"
-      cuda-13.4:
-        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.4-arm64.zip"
+      cuda-13:
+        url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-cuda-13.*-arm64.zip"
         archive_type: "zip"
         extra_archives:
-          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.4-arm64.zip"
+          - url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/cudart-llama-bin-win-cuda-13.*-arm64.zip"
             archive_type: "zip"
       opencl-adreno:
         url: "https://github.com/ggml-org/llama.cpp/releases/download/{version}/llama-{version}-bin-win-opencl-adreno-arm64.zip"

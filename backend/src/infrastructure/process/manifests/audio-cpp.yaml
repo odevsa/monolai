@@ -9,7 +9,6 @@ description: |
   High-performance pure C++ inference engine for modern audio AI models powered by ggml.
   Supports Text-to-Speech (TTS), Automatic Speech Recognition (ASR/STT), Voice Cloning,
   Voice Activity Detection (VAD), and Audio Processing without Python dependencies.
-version: "v0.9.3"
 features:
   - text-to-speech
   - automatic-speech-recognition
@@ -33,7 +32,7 @@ system_dependencies:
       debian: "sudo apt install espeak-ng libespeak-ng-dev"
       fedora: "sudo dnf install espeak-ng espeak-ng-devel"
       macos: "brew install espeak-ng"
-      windows: "Download and install from https://github.com/espeak-ng/espeak-ng/releases"
+      windows: "winget install eSpeak-ng.eSpeak-ng"
 
 downloads:
   linux:
@@ -45,20 +44,19 @@ downloads:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-vulkan-portable.tar.gz"
         archive_type: "tar.gz"
       cuda:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.*.tar.gz"
         archive_type: "tar.gz"
+        extra_archives:
+          - url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-cudart-ubuntu-x64-cuda12.*.tar.gz"
+            archive_type: "tar.gz"
       cuda-12:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.*.tar.gz"
         archive_type: "tar.gz"
-      cuda-12.8:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-cuda12.8-colab.tar.gz"
-        archive_type: "tar.gz"
+        extra_archives:
+          - url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-cudart-ubuntu-x64-cuda12.*.tar.gz"
+            archive_type: "tar.gz"
       rocm:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-rocm10.0.0-test.tar.gz"
-        archive_type: "tar.gz"
-    arm64:
-      cpu:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-arm64-cpu.tar.gz"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-ubuntu-x64-rocm*.tar.gz"
         archive_type: "tar.gz"
   windows:
     x86_64:
@@ -66,13 +64,28 @@ downloads:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cpu-portable.zip"
         archive_type: "zip"
       cuda:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda13.*.zip"
         archive_type: "zip"
+        extra_archives:
+          - url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-cudart-windows-x64-cuda13.*.zip"
+            archive_type: "zip"
+      cuda-13:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda13.*.zip"
+        archive_type: "zip"
+        extra_archives:
+          - url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-cudart-windows-x64-cuda13.*.zip"
+            archive_type: "zip"
       cuda-12:
-        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda.zip"
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-cuda12.*.zip"
         archive_type: "zip"
+        extra_archives:
+          - url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-cudart-windows-x64-cuda12.*.zip"
+            archive_type: "zip"
       vulkan:
         url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-vulkan-portable.zip"
+        archive_type: "zip"
+      rocm:
+        url: "https://github.com/0xShug0/audio.cpp/releases/download/{version}/audio-{version}-bin-windows-x64-rocm*.zip"
         archive_type: "zip"
   macos:
     arm64:
