@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Button, EmptyState, FeatureGate, Input } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { imageGalleryState } from '$lib/state';
 	import type { GeneratedImageItem } from '$lib/types/chat';
-	import { Search, Trash } from '@lucide/svelte';
+	import { Plus, Search, Trash } from '@lucide/svelte';
 
 	interface SidebarImageGalleryProps {
 		onCloseMobile?: () => void;
@@ -26,6 +27,12 @@
 	function handleImageSelect(item: GeneratedImageItem) {
 		imageGalleryState.selectImage(item);
 		onCloseMobile();
+	}
+
+	function createNewImage() {
+		onCloseMobile();
+		imageGalleryState.newSession();
+		goto('/image');
 	}
 
 	async function deleteSingleImage(id: string, e: MouseEvent) {
@@ -67,18 +74,30 @@
 			<span class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider">
 				{t('common.sessionHistory')}
 			</span>
-			{#if imageGalleryState.history.length > 0}
+			<div class="flex items-center gap-1">
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
-					onclick={clearImageHistory}
-					title={t('common.clear')}
-					ariaLabel={t('common.clear')}
+					class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+					onclick={createNewImage}
+					title={t('common.new')}
+					ariaLabel={t('common.new')}
 				>
-					<Trash size={13} />
+					<Plus size={15} />
 				</Button>
-			{/if}
+				{#if imageGalleryState.history.length > 0}
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
+						onclick={clearImageHistory}
+						title={t('common.clear')}
+						ariaLabel={t('common.clear')}
+					>
+						<Trash size={13} />
+					</Button>
+				{/if}
+			</div>
 		</div>
 
 		<Input

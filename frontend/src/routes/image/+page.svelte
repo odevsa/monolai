@@ -100,6 +100,20 @@
 		}
 	});
 
+	let lastNewSessionVersion = 0;
+	$effect(() => {
+		const v = imageGalleryState.newSessionVersion;
+		if (v > 0 && v !== lastNewSessionVersion) {
+			lastNewSessionVersion = v;
+			prompt = '';
+			negativePrompt = '';
+			seed = '';
+			currentResult = [];
+			selectedResultImage = null;
+			generationError = null;
+		}
+	});
+
 	function handleModelUnloadInterruption(targetModelId?: string) {
 		if (!isGenerating) return;
 		if (!targetModelId || targetModelId === '*' || targetModelId === selectedModel) {

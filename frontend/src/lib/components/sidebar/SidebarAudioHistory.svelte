@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Badge, Button, EmptyState, FeatureGate, Input } from '$lib/components/ui';
 	import { askConfirm } from '$lib/confirmStore';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
 	import type { AudioGenerationItem } from '$lib/types/audio';
 	import { formatAudioDuration } from '$lib/utils/audio';
-	import { Headphones, Mic, Search, Trash } from '@lucide/svelte';
+	import { Headphones, Mic, Plus, Search, Trash } from '@lucide/svelte';
 
 	interface SidebarAudioHistoryProps {
 		onCloseMobile?: () => void;
@@ -28,6 +29,12 @@
 	function handleItemSelect(item: AudioGenerationItem) {
 		audioState.selectItem(item);
 		onCloseMobile();
+	}
+
+	function createNewAudio() {
+		onCloseMobile();
+		audioState.newSession();
+		goto('/audio');
 	}
 
 	async function deleteSingleItem(id: string, e: MouseEvent) {
@@ -69,18 +76,30 @@
 			<span class="text-[0.75rem] font-bold text-[var(--text-muted)] uppercase tracking-wider">
 				{t('common.sessionHistory')}
 			</span>
-			{#if audioState.history.length > 0}
+			<div class="flex items-center gap-1">
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
-					onclick={clearAudioHistory}
-					title={t('common.clear')}
-					ariaLabel={t('common.clear')}
+					class="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+					onclick={createNewAudio}
+					title={t('common.new')}
+					ariaLabel={t('common.new')}
 				>
-					<Trash size={13} />
+					<Plus size={15} />
 				</Button>
-			{/if}
+				{#if audioState.history.length > 0}
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						class="text-[var(--text-muted)] hover:text-[var(--danger-text)]"
+						onclick={clearAudioHistory}
+						title={t('common.clear')}
+						ariaLabel={t('common.clear')}
+					>
+						<Trash size={13} />
+					</Button>
+				{/if}
+			</div>
 		</div>
 
 		<Input

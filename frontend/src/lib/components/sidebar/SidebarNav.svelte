@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { runtimesRefreshFn } from '$lib/headerStore';
 	import { t } from '$lib/i18n';
+	import { audioState, imageGalleryState } from '$lib/state';
 	import {
 		Activity,
 		Box,
@@ -45,6 +46,16 @@
 			window.dispatchEvent(new CustomEvent('monolai:nav-models'));
 		}
 	}
+
+	function handleImageClick() {
+		onCloseMobile();
+		imageGalleryState.newSession();
+	}
+
+	function handleAudioClick() {
+		onCloseMobile();
+		audioState.newSession();
+	}
 </script>
 
 <!-- Top Action Navigation Items -->
@@ -65,7 +76,7 @@
 			icon={ImageIcon}
 			isActive={isImagePage}
 			{isExpanded}
-			onclick={onCloseMobile}
+			onclick={handleImageClick}
 		/>
 
 		<SidebarNavLink
@@ -74,9 +85,13 @@
 			icon={Headphones}
 			isActive={isAudioPage}
 			{isExpanded}
-			onclick={onCloseMobile}
+			onclick={handleAudioClick}
 		/>
+	</div>
 
+	<Divider />
+
+	<div class="flex flex-col gap-1 px-2">
 		<SidebarNavLink
 			href="/sysinfo"
 			label={t('navigation.sysinfo')}
@@ -94,11 +109,7 @@
 			{isExpanded}
 			onclick={onCloseMobile}
 		/>
-	</div>
 
-	<Divider />
-
-	<div class="flex flex-col gap-1 px-2">
 		<SidebarNavLink
 			href="/runtimes"
 			label={t('navigation.runtimes')}

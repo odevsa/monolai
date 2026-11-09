@@ -5,6 +5,7 @@ class ImageGalleryStateManager {
 	history = $state<GeneratedImageItem[]>([]);
 	selectedImage = $state<GeneratedImageItem | null>(null);
 	selectionVersion = $state<number>(0);
+	newSessionVersion = $state<number>(0);
 	isLoading = $state(false);
 	isInitialized = $state(false);
 
@@ -76,6 +77,12 @@ class ImageGalleryStateManager {
 	selectImage(item: GeneratedImageItem | null) {
 		this.selectedImage = item;
 		this.selectionVersion++;
+	}
+
+	newSession() {
+		this.selectedImage = null;
+		this.selectionVersion++;
+		this.newSessionVersion++;
 	}
 }
 

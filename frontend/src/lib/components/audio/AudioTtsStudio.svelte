@@ -190,6 +190,21 @@
 		}
 	});
 
+	let lastNewSessionVersion = 0;
+	$effect(() => {
+		const v = audioState.newSessionVersion;
+		if (v > 0 && v !== lastNewSessionVersion) {
+			lastNewSessionVersion = v;
+			untrack(() => {
+				promptText = '';
+				lastGeneratedAudioUrl = null;
+				lastGeneratedDuration = 0;
+				lastGenerationElapsed = 0;
+				generationError = null;
+			});
+		}
+	});
+
 	async function handleSynthesize() {
 		if (!promptText.trim() || !selectedModel || isGenerating) return;
 

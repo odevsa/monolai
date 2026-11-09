@@ -79,6 +79,29 @@
 		}
 	});
 
+	let lastNewSessionVersion = 0;
+	$effect(() => {
+		const v = audioState.newSessionVersion;
+		if (v > 0 && v !== lastNewSessionVersion) {
+			lastNewSessionVersion = v;
+			untrack(() => {
+				lastTranscript = '';
+				uploadedFile = null;
+				recordedBlob = null;
+				recordedDuration = 0;
+				transcriptionError = null;
+				if (fileAudioUrl) {
+					URL.revokeObjectURL(fileAudioUrl);
+					fileAudioUrl = null;
+				}
+				if (recordedAudioUrl) {
+					URL.revokeObjectURL(recordedAudioUrl);
+					recordedAudioUrl = null;
+				}
+			});
+		}
+	});
+
 	const languageOptions = [
 		{ value: 'auto', label: 'Auto Detect' },
 		{ value: 'en', label: 'English (en)' },

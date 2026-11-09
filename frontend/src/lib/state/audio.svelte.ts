@@ -5,6 +5,7 @@ class AudioStateManager {
 	history = $state<AudioGenerationItem[]>([]);
 	selectedItem = $state<AudioGenerationItem | null>(null);
 	selectionVersion = $state<number>(0);
+	newSessionVersion = $state<number>(0);
 	isLoading = $state(false);
 	isInitialized = $state(false);
 
@@ -74,6 +75,12 @@ class AudioStateManager {
 	selectItem(item: AudioGenerationItem | null) {
 		this.selectedItem = item;
 		this.selectionVersion++;
+	}
+
+	newSession() {
+		this.selectedItem = null;
+		this.selectionVersion++;
+		this.newSessionVersion++;
 	}
 }
 
