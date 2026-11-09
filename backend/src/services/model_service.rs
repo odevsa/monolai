@@ -455,7 +455,7 @@ impl ModelService {
         let preset = self
             .repo
             .get_preset_by_id(preset_id)
-            .await?, o que precis
+            .await?
             .ok_or_else(|| AppError::not_found(format!("Preset '{}' not found", preset_id)))?;
 
         let all_presets = self.repo.get_presets_for_model(&preset.model_id).await?;

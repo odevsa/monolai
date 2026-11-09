@@ -20,9 +20,6 @@ class AudioStateManager {
 		try {
 			const items = await audioApi.list(type, 200);
 			this.history = items;
-			if (items.length > 0 && !this.selectedItem) {
-				this.selectedItem = items[0];
-			}
 			this.isInitialized = true;
 		} catch (err) {
 			console.error('Failed to load audio history from SQLite database:', err);
@@ -35,7 +32,6 @@ class AudioStateManager {
 		try {
 			const created = await audioApi.create(item);
 			this.history = [created, ...this.history];
-			this.selectItem(created);
 		} catch (err) {
 			console.error('Failed to persist audio generation to database:', err);
 			// Optimistic fallback in case of immediate network failure
@@ -45,7 +41,6 @@ class AudioStateManager {
 				createdAt: new Date().toISOString()
 			};
 			this.history = [fallback, ...this.history];
-			this.selectItem(fallback);
 		}
 	}
 
@@ -59,7 +54,7 @@ class AudioStateManager {
 		const filtered = this.history.filter((i) => i.id !== id);
 		this.history = filtered;
 		if (this.selectedItem?.id === id) {
-			this.selectedItem = filtered.length > 0 ? filtered[0] : null;
+			this.selectedItem = null;
 			this.selectionVersion++;
 		}
 	}

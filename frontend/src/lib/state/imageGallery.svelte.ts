@@ -20,9 +20,6 @@ class ImageGalleryStateManager {
 		try {
 			const items = await imagesApi.list(200);
 			this.history = items;
-			if (items.length > 0 && !this.selectedImage) {
-				this.selectedImage = items[0];
-			}
 			this.isInitialized = true;
 		} catch (err) {
 			console.error('Failed to load image history from SQLite database:', err);
@@ -46,7 +43,6 @@ class ImageGalleryStateManager {
 
 		if (createdList.length > 0) {
 			this.history = [...createdList, ...this.history];
-			this.selectImage(createdList[0]);
 		}
 	}
 
@@ -60,7 +56,7 @@ class ImageGalleryStateManager {
 		const filtered = this.history.filter((img) => img.id !== id);
 		this.history = filtered;
 		if (this.selectedImage?.id === id) {
-			this.selectedImage = filtered.length > 0 ? filtered[0] : null;
+			this.selectedImage = null;
 			this.selectionVersion++;
 		}
 	}
