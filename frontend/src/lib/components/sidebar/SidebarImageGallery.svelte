@@ -32,8 +32,8 @@
 		e.stopPropagation();
 		e.preventDefault();
 		const confirmed = await askConfirm(
-			t('common.delete') + '?',
-			t('common.delete'),
+			t('image.deleteImageConfirmMsg'),
+			t('image.deleteImageConfirmTitle'),
 			'danger',
 			t('common.delete'),
 			t('common.cancel')

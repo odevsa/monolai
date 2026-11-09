@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Casuale (nuovo seed ad ogni esecuzione)",
 		"clearHistoryConfirmTitle": "Cancella cronologia immagini",
 		"clearHistoryConfirmMsg": "Sei sicuro di voler cancellare tutte le immagini dalla cronologia?",
+		"deleteImageConfirmTitle": "Elimina immagine",
+		"deleteImageConfirmMsg": "Sei sicuro di voler eliminare questa immagine?",
 		"modelLabel": "Modello",
 		"promptStudio": "Studio prompt",
 		"ctrlEnterHint": "(Ctrl+Invio)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "L’accesso al microfono è stato negato o non è stato possibile inizializzarlo.",
 		"clearHistoryConfirmTitle": "Cancella Cronologia Audio",
 		"clearHistoryConfirmMsg": "Sei sicuro di voler cancellare la cronologia audio?",
+		"deleteAudioConfirmTitle": "Elimina audio",
+		"deleteAudioConfirmMsg": "Sei sicuro di voler eliminare questo audio?",
 		"randomPrompts": [
 			"Benvenuto su Monolai, la tua piattaforma IA locale e privata.",
 			"La rapida volpe bruna salta sopra il cane pigro.",

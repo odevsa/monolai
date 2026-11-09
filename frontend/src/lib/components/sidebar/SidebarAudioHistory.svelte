@@ -34,8 +34,8 @@
 		e.stopPropagation();
 		e.preventDefault();
 		const confirmed = await askConfirm(
-			t('common.delete') + '?',
-			t('common.delete'),
+			t('audio.deleteAudioConfirmMsg'),
+			t('audio.deleteAudioConfirmTitle'),
 			'danger',
 			t('common.delete'),
 			t('common.cancel')

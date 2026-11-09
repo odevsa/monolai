@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Aleatório (novo seed a cada geração)",
 		"clearHistoryConfirmTitle": "Limpar Histórico de Imagens",
 		"clearHistoryConfirmMsg": "Tem certeza de que deseja limpar todas as imagens do histórico da sessão?",
+		"deleteImageConfirmTitle": "Excluir Imagem",
+		"deleteImageConfirmMsg": "Tem certeza de que deseja excluir esta imagem?",
 		"modelLabel": "Modelo",
 		"promptStudio": "Estúdio de Prompt",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "O acesso ao microfone foi negado ou não pôde ser inicializado.",
 		"clearHistoryConfirmTitle": "Limpar Histórico de Áudio",
 		"clearHistoryConfirmMsg": "Tem certeza de que deseja limpar seu histórico de áudio?",
+		"deleteAudioConfirmTitle": "Excluir Áudio",
+		"deleteAudioConfirmMsg": "Tem certeza de que deseja excluir este áudio?",
 		"randomPrompts": [
 			"Bem-vindo ao Monolai, sua plataforma privada de IA local.",
 			"A rápida raposa marrom salta sobre o cão preguiçoso.",

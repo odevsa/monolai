@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Zufällig (neuer Seed bei jedem Durchlauf)",
 		"clearHistoryConfirmTitle": "Bildverlauf leeren",
 		"clearHistoryConfirmMsg": "Möchten Sie wirklich alle Bilder aus dem Sitzungsverlauf löschen?",
+		"deleteImageConfirmTitle": "Bild löschen",
+		"deleteImageConfirmMsg": "Möchten Sie dieses Bild wirklich löschen?",
 		"modelLabel": "Modell",
 		"promptStudio": "Prompt-Studio",
 		"ctrlEnterHint": "(Strg+Eingabe)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "Mikrofonzugriff wurde verweigert oder konnte nicht initialisiert werden.",
 		"clearHistoryConfirmTitle": "Audioverlauf Löschen",
 		"clearHistoryConfirmMsg": "Sind Sie sicher, dass Sie Ihren Audioverlauf löschen möchten?",
+		"deleteAudioConfirmTitle": "Audio löschen",
+		"deleteAudioConfirmMsg": "Möchten Sie dieses Audio wirklich löschen?",
 		"randomPrompts": [
 			"Willkommen bei Monolai, Ihrer privaten lokalen KI-Plattform.",
 			"Der schnelle braune Fuchs springt über den faulen Hund.",

@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Random (new seed every run)",
 		"clearHistoryConfirmTitle": "Clear Image History",
 		"clearHistoryConfirmMsg": "Are you sure you want to clear all images from your session history?",
+		"deleteImageConfirmTitle": "Delete Image",
+		"deleteImageConfirmMsg": "Are you sure you want to delete this image?",
 		"modelLabel": "Model",
 		"promptStudio": "Prompt Studio",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -300,6 +302,8 @@
 		"micAccessDenied": "Microphone access was denied or could not be initialized.",
 		"clearHistoryConfirmTitle": "Clear Audio History",
 		"clearHistoryConfirmMsg": "Are you sure you want to clear your audio history?",
+		"deleteAudioConfirmTitle": "Delete Audio",
+		"deleteAudioConfirmMsg": "Are you sure you want to delete this audio?",
 		"randomPrompts": [
 			"Welcome to Monolai, your private local AI platform.",
 			"The quick brown fox jumps over the lazy dog.",

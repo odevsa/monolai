@@ -159,6 +159,8 @@
 		"seedPlaceholder": "ランダム (毎回新しいシード)",
 		"clearHistoryConfirmTitle": "画像履歴のクリア",
 		"clearHistoryConfirmMsg": "セッション履歴からすべての画像を消去してもよろしいですか？",
+		"deleteImageConfirmTitle": "画像を削除",
+		"deleteImageConfirmMsg": "この画像を削除してもよろしいですか？",
 		"modelLabel": "モデル",
 		"promptStudio": "プロンプトスタジオ",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "マイクへのアクセスが拒否されたか、初期化できませんでした。",
 		"clearHistoryConfirmTitle": "オーディオ履歴を消去",
 		"clearHistoryConfirmMsg": "オーディオ履歴を消去してもよろしいですか？",
+		"deleteAudioConfirmTitle": "音声を削除",
+		"deleteAudioConfirmMsg": "この音声を削除してもよろしいですか？",
 		"randomPrompts": [
 			"プライベートなローカルAIプラットフォーム「Monolai」へようこそ。",
 			"素早い茶色のキツネが怠惰な犬を飛び越えます。",

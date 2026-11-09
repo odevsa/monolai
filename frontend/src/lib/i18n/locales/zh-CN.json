@@ -159,6 +159,8 @@
 		"seedPlaceholder": "随机（每次生成使用新种子）",
 		"clearHistoryConfirmTitle": "清空生成记录",
 		"clearHistoryConfirmMsg": "确定要清空会话中的所有生成图片吗？",
+		"deleteImageConfirmTitle": "删除图片",
+		"deleteImageConfirmMsg": "确定要删除此图片吗？",
 		"modelLabel": "模型",
 		"promptStudio": "提示词工作室",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "麦克风访问被拒绝或无法初始化。",
 		"clearHistoryConfirmTitle": "清空音频历史",
 		"clearHistoryConfirmMsg": "确定要清空音频历史记录吗？",
+		"deleteAudioConfirmTitle": "删除音频",
+		"deleteAudioConfirmMsg": "确定要删除此音频吗？",
 		"randomPrompts": [
 			"欢迎使用 Monolai，您的私有本地 AI 计算平台。",
 			"敏捷的棕色狐狸跃过了懒惰的狗。",

@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Случайный (новый сид каждый раз)",
 		"clearHistoryConfirmTitle": "Очистить историю",
 		"clearHistoryConfirmMsg": "Вы уверены, что хотите удалить все изображения из истории сессии?",
+		"deleteImageConfirmTitle": "Удалить изображение",
+		"deleteImageConfirmMsg": "Вы уверены, что хотите удалить это изображение?",
 		"modelLabel": "Модель",
 		"promptStudio": "Студия промптов",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "Доступ к микрофону отклонен или не удалось инициализировать устройство.",
 		"clearHistoryConfirmTitle": "Очистить историю аудио",
 		"clearHistoryConfirmMsg": "Вы уверены, что хотите очистить историю аудио?",
+		"deleteAudioConfirmTitle": "Удалить аудио",
+		"deleteAudioConfirmMsg": "Вы уверены, что хотите удалить это аудио?",
 		"randomPrompts": [
 			"Добро пожаловать в Monolai — вашу персональную локальную платформу ИИ.",
 			"Быстрая бурая лиса перепрыгивает через ленивую собаку.",

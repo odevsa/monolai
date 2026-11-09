@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Aleatorio (nueva semilla cada vez)",
 		"clearHistoryConfirmTitle": "Limpiar historial de imágenes",
 		"clearHistoryConfirmMsg": "¿Estás seguro de que deseas eliminar todas las imágenes de tu historial de sesión?",
+		"deleteImageConfirmTitle": "Eliminar Imagen",
+		"deleteImageConfirmMsg": "¿Estás seguro de que deseas eliminar esta imagen?",
 		"modelLabel": "Modelo",
 		"promptStudio": "Estudio de Prompts",
 		"ctrlEnterHint": "(Ctrl+Enter)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "El acceso al micrófono fue denegado o no pudo inicializarse.",
 		"clearHistoryConfirmTitle": "Borrar Historial de Audio",
 		"clearHistoryConfirmMsg": "¿Está seguro de que desea borrar su historial de audio?",
+		"deleteAudioConfirmTitle": "Eliminar Audio",
+		"deleteAudioConfirmMsg": "¿Está seguro de que desea eliminar este audio?",
 		"randomPrompts": [
 			"Bienvenido a Monolai, su plataforma privada de IA local.",
 			"El veloz zorro marrón salta sobre el perro perezoso.",

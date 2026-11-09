@@ -159,6 +159,8 @@
 		"seedPlaceholder": "Aléatoire (nouvelle graine à chaque essai)",
 		"clearHistoryConfirmTitle": "Effacer l'historique des images",
 		"clearHistoryConfirmMsg": "Êtes-vous sûr de vouloir effacer toutes les images de l'historique ?",
+		"deleteImageConfirmTitle": "Supprimer l'image",
+		"deleteImageConfirmMsg": "Êtes-vous sûr de vouloir supprimer cette image ?",
 		"modelLabel": "Modèle",
 		"promptStudio": "Atelier d'invites",
 		"ctrlEnterHint": "(Ctrl+Entrée)",
@@ -655,6 +657,8 @@
 		"micAccessDenied": "L’accès au microphone a été refusé ou n’a pas pu être initialisé.",
 		"clearHistoryConfirmTitle": "Effacer l’Historique Audio",
 		"clearHistoryConfirmMsg": "Êtes-vous sûr de vouloir effacer votre historique audio ?",
+		"deleteAudioConfirmTitle": "Supprimer l'audio",
+		"deleteAudioConfirmMsg": "Êtes-vous sûr de vouloir supprimer cet audio ?",
 		"randomPrompts": [
 			"Bienvenue sur Monolai, votre plateforme locale et privée d'IA.",
 			"Le renard brun et agile saute par-dessus le chien paresseux.",
