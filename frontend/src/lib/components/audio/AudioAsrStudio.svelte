@@ -14,7 +14,7 @@
 	} from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { audioState } from '$lib/state';
-	import { convertBlobToWav } from '$lib/utils/audio';
+	import { convertBlobToWav, getAudioBlobDuration } from '$lib/utils/audio';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import { Download, FileHeadphone, Mic, Sparkles, Upload } from '@lucide/svelte';
 	import { onDestroy, untrack } from 'svelte';
@@ -97,12 +97,20 @@
 		{ id: 'mic', label: t('audio.recordMicrophone'), icon: Mic }
 	];
 
-	function handleFileSelected(file: File) {
+	async function handleFileSelected(file: File) {
 		uploadedFile = file;
 		if (fileAudioUrl) {
 			URL.revokeObjectURL(fileAudioUrl);
 		}
 		fileAudioUrl = URL.createObjectURL(file);
+		try {
+			const dur = await getAudioBlobDuration(file);
+			if (dur > 0) {
+				recordedDuration = dur;
+			}
+		} catch (err) {
+			console.warn('Failed to extract audio file duration:', err);
+		}
 	}
 
 	function handleRecordingComplete(blob: Blob, durationSecs: number) {
@@ -318,10 +326,7 @@
 							</Button>
 						</div>
 
-						<AudioPlayer
-							src={activePreviewUrl}
-							durationSecs={inputMethod === 'mic' ? recordedDuration : 0}
-						/>
+						<AudioPlayer src={activePreviewUrl} durationSecs={recordedDuration} />
 					</div>
 				</Card>
 			</div>

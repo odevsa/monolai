@@ -14,6 +14,64 @@ export function formatAudioDuration(secs?: number | null): string {
 }
 
 /**
+ * Accurately extracts the duration in seconds of any audio Blob using Web Audio API
+ * with a fallback to HTMLAudioElement.
+ */
+export async function getAudioBlobDuration(blob: Blob): Promise<number> {
+	if (typeof window === 'undefined' || !blob || blob.size === 0) return 0;
+
+	// 1. Try native Web Audio API decodeAudioData (fast, accurate)
+	try {
+		const AudioCtx =
+			window.AudioContext ||
+			(window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+		if (AudioCtx) {
+			const ctx = new AudioCtx();
+			try {
+				const buffer = await blob.arrayBuffer();
+				const decoded = await ctx.decodeAudioData(buffer);
+				if (decoded && isFinite(decoded.duration) && decoded.duration > 0) {
+					return Math.round(decoded.duration * 10) / 10;
+				}
+			} finally {
+				if (ctx.state !== 'closed') {
+					await ctx.close().catch(() => {});
+				}
+			}
+		}
+	} catch {
+		// Fallback to HTMLAudioElement below
+	}
+
+	// 2. Fallback using temporary HTMLAudioElement
+	return new Promise<number>((resolve) => {
+		try {
+			const url = URL.createObjectURL(blob);
+			const audio = new Audio();
+			const cleanup = () => {
+				audio.removeEventListener('loadedmetadata', onLoaded);
+				audio.removeEventListener('error', onError);
+				URL.revokeObjectURL(url);
+			};
+			const onLoaded = () => {
+				const dur = audio.duration;
+				cleanup();
+				resolve(isFinite(dur) && dur > 0 ? Math.round(dur * 10) / 10 : 0);
+			};
+			const onError = () => {
+				cleanup();
+				resolve(0);
+			};
+			audio.addEventListener('loadedmetadata', onLoaded);
+			audio.addEventListener('error', onError);
+			audio.src = url;
+		} catch {
+			resolve(0);
+		}
+	});
+}
+
+/**
  * Encodes Float32 PCM channel samples into a 16-bit PCM RIFF WAVE Blob.
  * Generates a valid standard RIFF header with accurate data chunk size and sample rate.
  */

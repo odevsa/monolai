@@ -21,6 +21,7 @@
 	} from '$lib/constants/voices';
 	import { t, tArray } from '$lib/i18n';
 	import { audioState } from '$lib/state';
+	import { formatAudioDuration, getAudioBlobDuration } from '$lib/utils/audio';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 	import { formatElapsedTime } from '$lib/utils/format';
 	import { Check, Copy, Download, Headphones, Sparkles } from '@lucide/svelte';
@@ -53,6 +54,7 @@
 
 	let lastGeneratedAudioUrl = $state<string | null>(null);
 	let lastGeneratedDuration = $state<number>(0);
+	let lastGenerationElapsed = $state<number>(0);
 	let copied = $state(false);
 
 	function handleDownload() {
@@ -181,6 +183,7 @@
 					}
 					lastGeneratedAudioUrl = item.audioUrl || null;
 					lastGeneratedDuration = item.durationSecs || 0;
+					lastGenerationElapsed = 0;
 					generationError = null;
 				}
 			});
@@ -213,7 +216,10 @@
 			);
 
 			const totalSecs = Math.round((Date.now() - startTime) / 100) / 10;
-			lastGeneratedDuration = totalSecs;
+			lastGenerationElapsed = totalSecs;
+
+			const audioDuration = await getAudioBlobDuration(blob);
+			lastGeneratedDuration = audioDuration;
 
 			let audioUrl = '';
 			try {
@@ -233,7 +239,7 @@
 				voice: selectedVoice,
 				speed: Number(speed) || 1.0,
 				format: selectedFormat,
-				durationSecs: totalSecs
+				durationSecs: audioDuration > 0 ? audioDuration : undefined
 			});
 		} catch (err: unknown) {
 			console.error('TTS speech generation error:', err);
@@ -485,7 +491,12 @@
 						{/if}
 						{#if lastGeneratedDuration}
 							<Badge variant="muted" rounded="rounded-md">
-								{formatElapsedTime(lastGeneratedDuration)}
+								{formatAudioDuration(lastGeneratedDuration)}
+							</Badge>
+						{/if}
+						{#if lastGenerationElapsed}
+							<Badge variant="muted" rounded="rounded-md">
+								{formatElapsedTime(lastGenerationElapsed)}
 							</Badge>
 						{/if}
 					</div>
