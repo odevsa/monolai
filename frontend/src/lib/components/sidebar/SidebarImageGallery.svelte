@@ -91,10 +91,7 @@
 
 		<div class="flex flex-col gap-1">
 			{#if filteredImages.length === 0}
-				<EmptyState
-					size="sm"
-					title={t('navigation.noItemsFound')}
-				/>
+				<EmptyState size="sm" title={t('navigation.noItemsFound')} />
 			{:else}
 				{#each filteredImages as item (item.id)}
 					<div

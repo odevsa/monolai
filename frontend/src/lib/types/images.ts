@@ -7,6 +7,8 @@ export interface GeneratedImageItem {
 	steps: number;
 	cfgScale: number;
 	seed?: number;
+	samplingMethod?: string;
+	scheduleMethod?: string;
 	src: string;
 	generationTimeSecs?: number;
 	createdAt?: string;
@@ -21,6 +23,8 @@ export interface CreateGeneratedImagePayload {
 	steps: number;
 	cfgScale: number;
 	seed?: number;
+	samplingMethod?: string;
+	scheduleMethod?: string;
 	src: string;
 	generationTimeSecs?: number;
 }

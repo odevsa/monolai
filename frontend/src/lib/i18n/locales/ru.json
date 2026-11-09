@@ -170,6 +170,28 @@
 		"advancedParams": "Расширенные параметры",
 		"steps": "Шаги",
 		"cfgScale": "Шкала CFG",
+		"samplingMethod": "Метод сэмплирования",
+		"scheduleMethod": "Метод планировщика (Scheduler)",
+		"samplers": {
+			"euler_a": "Euler Ancestral (euler_a)",
+			"euler": "Euler",
+			"heun": "Heun",
+			"dpm2": "DPM2",
+			"dpm2s_a": "DPM++ 2S Ancestral",
+			"dpm2m": "DPM++ 2M",
+			"dpm2mv2": "DPM++ 2M v2",
+			"lcm": "LCM (Latent Consistency)",
+			"ipndm": "iPNDM",
+			"ipndm_v": "iPNDM v"
+		},
+		"schedulers": {
+			"default": "По умолчанию",
+			"discrete": "Дискретный",
+			"karras": "Karras",
+			"exponential": "Экспоненциальный",
+			"ays": "Align Your Steps (AYS)",
+			"gits": "GITS"
+		},
 		"generateImage": "Сгенерировать",
 		"generatingWithTime": "Генерация... ({{time}})",
 		"generationError": "Ошибка генерации:",

@@ -170,6 +170,28 @@
 		"advancedParams": "高度な設定",
 		"steps": "ステップ数",
 		"cfgScale": "CFGスケール",
+		"samplingMethod": "サンプリング方法",
+		"scheduleMethod": "スケジューラ方法",
+		"samplers": {
+			"euler_a": "Euler Ancestral (euler_a)",
+			"euler": "Euler",
+			"heun": "Heun",
+			"dpm2": "DPM2",
+			"dpm2s_a": "DPM++ 2S Ancestral",
+			"dpm2m": "DPM++ 2M",
+			"dpm2mv2": "DPM++ 2M v2",
+			"lcm": "LCM (Latent Consistency)",
+			"ipndm": "iPNDM",
+			"ipndm_v": "iPNDM v"
+		},
+		"schedulers": {
+			"default": "デフォルト",
+			"discrete": "Discrete (離散)",
+			"karras": "Karras",
+			"exponential": "Exponential (指数)",
+			"ays": "Align Your Steps (AYS)",
+			"gits": "GITS"
+		},
 		"generateImage": "画像を生成",
 		"generatingWithTime": "生成中... ({{time}})",
 		"generationError": "生成エラー:",

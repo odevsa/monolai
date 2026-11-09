@@ -23,6 +23,8 @@
 		selectedCount: string;
 		steps: number;
 		cfgScale: number;
+		samplingMethod?: string;
+		scheduleMethod?: string;
 		seed: number | string;
 		isGenerating: boolean;
 		isModelRunning: boolean;
@@ -42,6 +44,8 @@
 		selectedCount = $bindable('1'),
 		steps = $bindable(20),
 		cfgScale = $bindable(7.5),
+		samplingMethod = $bindable('euler_a'),
+		scheduleMethod = $bindable('default'),
 		seed = $bindable(''),
 		isGenerating = false,
 		isModelRunning = false,
@@ -178,7 +182,14 @@
 		</div>
 
 		<!-- Advanced Parameters Component -->
-		<ImageAdvancedParams bind:steps bind:cfgScale bind:seed disabled={isGenerating} />
+		<ImageAdvancedParams
+			bind:steps
+			bind:cfgScale
+			bind:samplingMethod
+			bind:scheduleMethod
+			bind:seed
+			disabled={isGenerating}
+		/>
 
 		<!-- Generate Action Button -->
 		<div class="pt-2">

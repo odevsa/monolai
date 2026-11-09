@@ -240,11 +240,7 @@
 		<!-- Group 1: Appearance & Localization -->
 		<div class="relative z-30">
 			<SettingGroup title={t('settings.groupAppearance')}>
-				<SettingRow
-					icon={Globe}
-					title={t('common.language')}
-					subtitle={t('settings.languageDesc')}
-				>
+				<SettingRow icon={Globe} title={t('common.language')} subtitle={t('settings.languageDesc')}>
 					<div class="w-40 sm:w-48">
 						<Select
 							value={i18n.currentLocale}

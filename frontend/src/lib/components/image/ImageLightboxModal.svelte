@@ -38,9 +38,15 @@
 			<div
 				class="w-full flex items-center justify-between pb-2 border-b border-[var(--border-color)]"
 			>
-				<div class="flex items-center gap-2 min-w-0">
+				<div class="flex items-center gap-2 min-w-0 flex-wrap">
 					<ModelBadge model={image.model} variant="inline" class="text-xs" />
 					<Badge variant="muted" rounded="rounded-md">{image.size}</Badge>
+					{#if image.samplingMethod}
+						<Badge variant="muted" rounded="rounded-md">{image.samplingMethod}</Badge>
+					{/if}
+					{#if image.scheduleMethod && image.scheduleMethod !== 'default'}
+						<Badge variant="muted" rounded="rounded-md">{image.scheduleMethod}</Badge>
+					{/if}
 					{#if image.generationTimeSecs}
 						<Badge variant="muted" rounded="rounded-md">
 							{formatElapsedTime(image.generationTimeSecs)}

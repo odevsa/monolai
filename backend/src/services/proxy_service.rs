@@ -274,8 +274,8 @@ impl ProxyService {
         let mut final_body_bytes = body_bytes;
 
         // If this is an image generation request forwarded to sd-server/sd-cpp, ensure
-        // parameters like seed, steps, cfg_scale, and negative_prompt are embedded via
-        // <sd_cpp_extra_args> if not already present in the prompt string.
+        // parameters like seed, steps, cfg_scale, negative_prompt, sampling_method, and schedule_method
+        // are canonicalized into <sd_cpp_extra_args> with a valid `sample_params` structure.
         if (path == "images/generations" || path.starts_with("images/generations"))
             && !final_body_bytes.is_empty()
         {
@@ -285,45 +285,20 @@ impl ProxyService {
                     .and_then(|p| p.as_str())
                     .map(|s| s.to_string())
                 {
-                    if !prompt_str.contains("<sd_cpp_extra_args>") {
-                        let mut extra_args = serde_json::Map::new();
+                    let (clean_prompt, existing_args) = extract_existing_sd_extra_args(&prompt_str);
+                    let normalized = normalize_sd_extra_args(&json_val, existing_args);
+                    let extra_json = serde_json::to_string(&normalized).unwrap_or_default();
+                    let new_prompt = format!(
+                        "{} <sd_cpp_extra_args>{}</sd_cpp_extra_args>",
+                        clean_prompt.trim(),
+                        extra_json
+                    );
 
-                        // If seed is provided and non-negative, use it; otherwise default to -1 (random)
-                        // to prevent sd-server from falling back to default seed 42.
-                        let seed_val = match json_val.get("seed").and_then(|s| s.as_i64()) {
-                            Some(s) if s >= 0 => serde_json::json!(s),
-                            _ => serde_json::json!(-1),
-                        };
-                        extra_args.insert("seed".to_string(), seed_val);
-
-                        if let Some(neg) = json_val.get("negative_prompt") {
-                            extra_args.insert("negative_prompt".to_string(), neg.clone());
-                        }
-
-                        if let Some(steps) = json_val
-                            .get("steps")
-                            .or_else(|| json_val.get("sample_steps"))
-                        {
-                            extra_args.insert("sample_steps".to_string(), steps.clone());
-                        }
-
-                        if let Some(cfg) = json_val.get("cfg_scale") {
-                            extra_args.insert("cfg_scale".to_string(), cfg.clone());
-                        }
-
-                        let extra_json = serde_json::to_string(&extra_args).unwrap_or_default();
-                        let new_prompt = format!(
-                            "{} <sd_cpp_extra_args>{}</sd_cpp_extra_args>",
-                            prompt_str.trim(),
-                            extra_json
-                        );
-
-                        if let Some(obj) = json_val.as_object_mut() {
-                            obj.insert("prompt".to_string(), Value::String(new_prompt));
-                        }
-                        if let Ok(new_bytes) = serde_json::to_vec(&json_val) {
-                            final_body_bytes = Bytes::from(new_bytes);
-                        }
+                    if let Some(obj) = json_val.as_object_mut() {
+                        obj.insert("prompt".to_string(), Value::String(new_prompt));
+                    }
+                    if let Ok(new_bytes) = serde_json::to_vec(&json_val) {
+                        final_body_bytes = Bytes::from(new_bytes);
                     }
                 }
             }
@@ -571,9 +546,168 @@ fn extract_model_from_multipart(body: &[u8]) -> Option<String> {
     }
 }
 
+pub fn extract_existing_sd_extra_args(prompt: &str) -> (String, Option<Value>) {
+    let start_tag = "<sd_cpp_extra_args>";
+    let end_tag = "</sd_cpp_extra_args>";
+    if let Some(start_idx) = prompt.find(start_tag) {
+        if let Some(end_idx) = prompt[start_idx..].find(end_tag) {
+            let actual_end = start_idx + end_idx;
+            let json_str = &prompt[start_idx + start_tag.len()..actual_end];
+            let parsed = serde_json::from_str::<Value>(json_str.trim()).ok();
+            let mut clean = String::with_capacity(prompt.len());
+            clean.push_str(&prompt[..start_idx]);
+            clean.push_str(&prompt[actual_end + end_tag.len()..]);
+            return (clean.trim().to_string(), parsed);
+        }
+    }
+    (prompt.to_string(), None)
+}
+
+pub fn normalize_sd_extra_args(json_val: &Value, existing_args: Option<Value>) -> Value {
+    let mut extra_obj = match existing_args {
+        Some(Value::Object(map)) => map,
+        _ => serde_json::Map::new(),
+    };
+
+    // Seed: prefer non-negative seed, default to -1 (random) to avoid sd-server fixed default 42
+    if !extra_obj.contains_key("seed") {
+        let seed_val = match json_val.get("seed").and_then(|s| s.as_i64()) {
+            Some(s) if s >= 0 => serde_json::json!(s),
+            _ => serde_json::json!(-1),
+        };
+        extra_obj.insert("seed".to_string(), seed_val);
+    }
+
+    // Negative prompt
+    if !extra_obj.contains_key("negative_prompt") {
+        if let Some(neg) = json_val.get("negative_prompt") {
+            extra_obj.insert("negative_prompt".to_string(), neg.clone());
+        }
+    }
+
+    // Batch count (maps from n or batch_count)
+    if !extra_obj.contains_key("batch_count") {
+        if let Some(n) = json_val.get("batch_count").or_else(|| json_val.get("n")) {
+            extra_obj.insert("batch_count".to_string(), n.clone());
+        }
+    }
+
+    // sample_params object (Stable Diffusion C++ canonical sampling container)
+    let mut sample_params = match extra_obj.remove("sample_params") {
+        Some(Value::Object(map)) => map,
+        _ => serde_json::Map::new(),
+    };
+
+    // Steps / sample_steps
+    if !sample_params.contains_key("sample_steps") {
+        if let Some(steps) = extra_obj
+            .remove("sample_steps")
+            .or_else(|| json_val.get("steps").cloned())
+            .or_else(|| json_val.get("sample_steps").cloned())
+        {
+            sample_params.insert("sample_steps".to_string(), steps);
+        }
+    }
+
+    // Sampling method (e.g. euler_a, dpm++2m, etc.)
+    if !sample_params.contains_key("sample_method") {
+        if let Some(method) = extra_obj
+            .remove("sample_method")
+            .or_else(|| extra_obj.remove("sampling_method"))
+            .or_else(|| json_val.get("sample_method").cloned())
+            .or_else(|| json_val.get("sampling_method").cloned())
+        {
+            sample_params.insert("sample_method".to_string(), method);
+        }
+    }
+
+    // Scheduler (e.g. default, karras, ays, etc.)
+    if !sample_params.contains_key("scheduler") {
+        if let Some(scheduler) = extra_obj
+            .remove("scheduler")
+            .or_else(|| extra_obj.remove("schedule_method"))
+            .or_else(|| json_val.get("scheduler").cloned())
+            .or_else(|| json_val.get("schedule_method").cloned())
+        {
+            sample_params.insert("scheduler".to_string(), scheduler);
+        }
+    }
+
+    // Guidance / CFG scale: nested under guidance.txt_cfg in sd.cpp
+    let mut guidance = match sample_params.remove("guidance") {
+        Some(Value::Object(map)) => map,
+        _ => serde_json::Map::new(),
+    };
+    if !guidance.contains_key("txt_cfg") {
+        if let Some(cfg) = extra_obj
+            .remove("cfg_scale")
+            .or_else(|| json_val.get("cfg_scale").cloned())
+        {
+            guidance.insert("txt_cfg".to_string(), cfg);
+        }
+    }
+    if !guidance.is_empty() {
+        sample_params.insert("guidance".to_string(), Value::Object(guidance));
+    }
+
+    if !sample_params.is_empty() {
+        extra_obj.insert("sample_params".to_string(), Value::Object(sample_params));
+    }
+
+    Value::Object(extra_obj)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_normalize_sd_extra_args_structures_sample_params() {
+        let json_val = serde_json::json!({
+            "prompt": "a beautiful landscape",
+            "negative_prompt": "blurry",
+            "steps": 28,
+            "cfg_scale": 7.5,
+            "sampling_method": "dpm++2m",
+            "schedule_method": "karras",
+            "n": 2,
+            "seed": 42
+        });
+
+        let normalized = normalize_sd_extra_args(&json_val, None);
+        let obj = normalized.as_object().expect("object");
+
+        assert_eq!(obj.get("seed"), Some(&serde_json::json!(42)));
+        assert_eq!(obj.get("negative_prompt"), Some(&serde_json::json!("blurry")));
+        assert_eq!(obj.get("batch_count"), Some(&serde_json::json!(2)));
+
+        let sample_params = obj.get("sample_params").and_then(|v| v.as_object()).expect("sample_params");
+        assert_eq!(sample_params.get("sample_steps"), Some(&serde_json::json!(28)));
+        assert_eq!(sample_params.get("sample_method"), Some(&serde_json::json!("dpm++2m")));
+        assert_eq!(sample_params.get("scheduler"), Some(&serde_json::json!("karras")));
+
+        let guidance = sample_params.get("guidance").and_then(|v| v.as_object()).expect("guidance");
+        assert_eq!(guidance.get("txt_cfg"), Some(&serde_json::json!(7.5)));
+    }
+
+    #[test]
+    fn test_extract_and_normalize_existing_extra_args() {
+        let prompt = "sunset on mars <sd_cpp_extra_args>{\"sample_steps\":35,\"cfg_scale\":8.0}</sd_cpp_extra_args>";
+        let (clean, existing) = extract_existing_sd_extra_args(prompt);
+        assert_eq!(clean, "sunset on mars");
+
+        let json_val = serde_json::json!({
+            "sampling_method": "euler_a"
+        });
+        let normalized = normalize_sd_extra_args(&json_val, existing);
+        let sample_params = normalized.get("sample_params").and_then(|v| v.as_object()).expect("sample_params");
+
+        assert_eq!(sample_params.get("sample_steps"), Some(&serde_json::json!(35)));
+        assert_eq!(sample_params.get("sample_method"), Some(&serde_json::json!("euler_a")));
+
+        let guidance = sample_params.get("guidance").and_then(|v| v.as_object()).expect("guidance");
+        assert_eq!(guidance.get("txt_cfg"), Some(&serde_json::json!(8.0)));
+    }
 
     #[test]
     fn test_extract_model_from_multipart_crlf() {

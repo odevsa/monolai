@@ -93,10 +93,7 @@
 
 		<div class="flex flex-col gap-1">
 			{#if filteredItems.length === 0}
-				<EmptyState
-					size="sm"
-					title={t('navigation.noItemsFound')}
-				/>
+				<EmptyState size="sm" title={t('navigation.noItemsFound')} />
 			{:else}
 				{#each filteredItems as item (item.id)}
 					{@const isSelected = audioState.selectedItem?.id === item.id}

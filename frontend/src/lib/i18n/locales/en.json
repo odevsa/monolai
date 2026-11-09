@@ -170,6 +170,28 @@
 		"advancedParams": "Advanced Parameters",
 		"steps": "Steps",
 		"cfgScale": "CFG Scale",
+		"samplingMethod": "Sampling Method",
+		"scheduleMethod": "Schedule Method",
+		"samplers": {
+			"euler_a": "Euler Ancestral (euler_a)",
+			"euler": "Euler",
+			"heun": "Heun",
+			"dpm2": "DPM2",
+			"dpm2s_a": "DPM++ 2S Ancestral",
+			"dpm2m": "DPM++ 2M",
+			"dpm2mv2": "DPM++ 2M v2",
+			"lcm": "LCM (Latent Consistency)",
+			"ipndm": "iPNDM",
+			"ipndm_v": "iPNDM v"
+		},
+		"schedulers": {
+			"default": "Default",
+			"discrete": "Discrete",
+			"karras": "Karras",
+			"exponential": "Exponential",
+			"ays": "Align Your Steps (AYS)",
+			"gits": "GITS"
+		},
 		"generateImage": "Generate Image",
 		"generatingWithTime": "Generating... ({{time}})",
 		"generationError": "Generation Error:",

@@ -22,6 +22,8 @@
 	let selectedCount = $state('1');
 	let steps = $state(20);
 	let cfgScale = $state(7.5);
+	let samplingMethod = $state('euler_a');
+	let scheduleMethod = $state('default');
 	let seed = $state<number | string>('');
 
 	// Execution & Output State
@@ -80,6 +82,18 @@
 	});
 
 	$effect(() => {
+		if (samplingMethod && typeof localStorage !== 'undefined') {
+			localStorage.setItem('monolai:selected_sampling_method', samplingMethod);
+		}
+	});
+
+	$effect(() => {
+		if (scheduleMethod && typeof localStorage !== 'undefined') {
+			localStorage.setItem('monolai:selected_schedule_method', scheduleMethod);
+		}
+	});
+
+	$effect(() => {
 		if (imageGalleryState.selectionVersion > 0 && imageGalleryState.selectedImage) {
 			selectedResultImage = imageGalleryState.selectedImage;
 			currentResult = [imageGalleryState.selectedImage];
@@ -122,10 +136,19 @@
 			userProvidedSeed !== undefined ? userProvidedSeed : Math.floor(Math.random() * 2147483647);
 		const n = parseInt(selectedCount, 10) || 1;
 
+		const sampleParams: Record<string, any> = {
+			sample_steps: Number(steps) || 20,
+			sample_method: samplingMethod || 'euler_a',
+			guidance: { txt_cfg: Number(cfgScale) || 7.5 }
+		};
+		if (scheduleMethod && scheduleMethod !== 'default') {
+			sampleParams.scheduler = scheduleMethod;
+		}
+
 		const extraArgs: Record<string, any> = {
 			seed: effectiveSeed,
-			sample_steps: Number(steps) || 20,
-			cfg_scale: Number(cfgScale) || 7.5
+			batch_count: n,
+			sample_params: sampleParams
 		};
 		if (negativePrompt.trim()) {
 			extraArgs.negative_prompt = negativePrompt.trim();
@@ -152,6 +175,12 @@
 		}
 		if (cfgScale) {
 			requestBody.cfg_scale = Number(cfgScale);
+		}
+		if (samplingMethod) {
+			requestBody.sample_method = samplingMethod;
+		}
+		if (scheduleMethod && scheduleMethod !== 'default') {
+			requestBody.scheduler = scheduleMethod;
 		}
 
 		try {
@@ -180,6 +209,8 @@
 					size: selectedSize,
 					steps,
 					cfgScale,
+					samplingMethod,
+					scheduleMethod,
 					seed: effectiveSeed,
 					src: imageSrc,
 					generationTimeSecs: totalSecs
@@ -241,6 +272,12 @@
 		if (item.cfgScale) {
 			cfgScale = item.cfgScale;
 		}
+		if (item.samplingMethod) {
+			samplingMethod = item.samplingMethod;
+		}
+		if (item.scheduleMethod) {
+			scheduleMethod = item.scheduleMethod;
+		}
 		if (item.seed !== undefined) {
 			seed = item.seed;
 		}
@@ -276,6 +313,12 @@
 	});
 
 	onMount(() => {
+		if (typeof localStorage !== 'undefined') {
+			const savedSampler = localStorage.getItem('monolai:selected_sampling_method');
+			if (savedSampler) samplingMethod = savedSampler;
+			const savedScheduler = localStorage.getItem('monolai:selected_schedule_method');
+			if (savedScheduler) scheduleMethod = savedScheduler;
+		}
 		loadImageModels();
 		const unsubFeatures = onFeaturesChange(() => {
 			loadImageModels();
@@ -330,6 +373,8 @@
 						bind:selectedCount
 						bind:steps
 						bind:cfgScale
+						bind:samplingMethod
+						bind:scheduleMethod
 						bind:seed
 						{isGenerating}
 						{isModelRunning}
