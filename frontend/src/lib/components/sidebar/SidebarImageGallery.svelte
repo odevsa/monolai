@@ -85,7 +85,7 @@
 			size="sm"
 			variant="surface"
 			bind:value={imageSearchQuery}
-			placeholder={t('image.searchPrompts')}
+			placeholder={t('navigation.searchHistory')}
 			prefix={searchPrefix}
 		/>
 
@@ -93,9 +93,7 @@
 			{#if filteredImages.length === 0}
 				<EmptyState
 					size="sm"
-					title={imageGalleryState.history.length === 0
-						? t('image.noImagesFound')
-						: t('image.noImagesFound')}
+					title={t('navigation.noItemsFound')}
 				/>
 			{:else}
 				{#each filteredImages as item (item.id)}

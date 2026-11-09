@@ -125,13 +125,13 @@
 			size="sm"
 			variant="surface"
 			bind:value={searchQuery}
-			placeholder={t('navigation.searchConversations')}
+			placeholder={t('navigation.searchHistory')}
 			prefix={searchPrefix}
 		/>
 
 		<div class="flex flex-col gap-1">
 			{#if filteredConversations.length === 0}
-				<EmptyState size="sm" title={t('navigation.noConversationsFound')} />
+				<EmptyState size="sm" title={t('navigation.noItemsFound')} />
 			{:else}
 				{#each filteredConversations as chat (chat.id)}
 					<div

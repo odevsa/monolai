@@ -87,7 +87,7 @@
 			size="sm"
 			variant="surface"
 			bind:value={searchQuery}
-			placeholder={t('audio.searchHistory')}
+			placeholder={t('navigation.searchHistory')}
 			prefix={searchPrefix}
 		/>
 
@@ -95,8 +95,7 @@
 			{#if filteredItems.length === 0}
 				<EmptyState
 					size="sm"
-					title={t('audio.noHistoryFound')}
-					description={t('audio.noHistoryFoundDesc')}
+					title={t('navigation.noItemsFound')}
 				/>
 			{:else}
 				{#each filteredItems as item (item.id)}
