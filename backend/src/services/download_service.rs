@@ -658,6 +658,7 @@ impl DownloadService {
                 let part_path =
                     PathBuf::from(format!("{}/{}.part", models_dir.display(), r.file_path));
                 let _ = tokio::fs::remove_file(&part_path).await;
+                crate::services::model_service::clean_empty_parent_dirs(&part_path, &models_dir).await;
             }
             let _ = self
                 .download_repo

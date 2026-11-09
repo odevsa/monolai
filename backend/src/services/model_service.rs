@@ -17,6 +17,15 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{Mutex, RwLock};
 
+pub const CANONICAL_MODALITY_FOLDERS: &[&str] = &[
+    "text-to-text",
+    "text-to-image",
+    "text-to-speech",
+    "automatic-speech-recognition",
+    "embeddings",
+    "miscellaneous",
+];
+
 #[derive(Clone)]
 pub struct ModelService {
     repo: ModelRepository,
@@ -55,15 +64,7 @@ impl ModelService {
 
     pub async fn setup_canonical_folders(&self) {
         let models_dir = self.resolve_models_dir().await;
-        let subfolders = [
-            "text-to-text",
-            "text-to-image",
-            "text-to-speech",
-            "automatic-speech-recognition",
-            "embeddings",
-            "miscellaneous",
-        ];
-        for sf in subfolders {
+        for sf in CANONICAL_MODALITY_FOLDERS {
             let _ = tokio::fs::create_dir_all(models_dir.join(sf)).await;
         }
     }
@@ -356,6 +357,8 @@ impl ModelService {
             let part_path = PathBuf::from(format!("{}.part", full_path.display()));
             let _ = tokio::fs::remove_file(part_path).await;
             tracing::info!(target: "monolai", "Model file '{}' deleted from disk", full_path.display());
+
+            clean_empty_parent_dirs(&full_path, &models_dir).await;
         }
 
         self.repo.delete_model(id).await?;
@@ -452,7 +455,7 @@ impl ModelService {
         let preset = self
             .repo
             .get_preset_by_id(preset_id)
-            .await?
+            .await?, o que precis
             .ok_or_else(|| AppError::not_found(format!("Preset '{}' not found", preset_id)))?;
 
         let all_presets = self.repo.get_presets_for_model(&preset.model_id).await?;
@@ -575,5 +578,179 @@ impl ModelService {
 
     pub fn subscribe_state(&self) -> tokio::sync::broadcast::Receiver<Vec<RunningModelStatus>> {
         self.process_manager.subscribe_state()
+    }
+}
+
+/// Ascends the directory hierarchy from `file_path` towards `root_dir`,
+/// checking if each parent directory is empty and deleting empty folders.
+/// Stops immediately when reaching `root_dir`, encountering a non-empty directory,
+/// or reaching an immediate canonical modality folder.
+pub async fn clean_empty_parent_dirs(file_path: &Path, root_dir: &Path) {
+    let mut current = file_path.parent();
+    while let Some(dir) = current {
+        // Stop if we have reached or ascended outside root_dir
+        if dir == root_dir || !dir.starts_with(root_dir) {
+            break;
+        }
+
+        // Do not delete immediate canonical modality folders inside models_dir
+        if let Ok(rel) = dir.strip_prefix(root_dir) {
+            if rel.components().count() == 1 {
+                if let Some(first) = rel.to_str() {
+                    if CANONICAL_MODALITY_FOLDERS.contains(&first) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Check if directory is empty (cleaning up benign OS metadata files like .DS_Store)
+        match is_dir_empty(dir).await {
+            Ok(true) => {
+                if let Err(e) = tokio::fs::remove_dir(dir).await {
+                    tracing::warn!(target: "monolai", "Failed to remove empty directory '{}': {}", dir.display(), e);
+                    break;
+                }
+                tracing::info!(target: "monolai", "Removed empty directory '{}'", dir.display());
+                current = dir.parent();
+            }
+            Ok(false) => {
+                // Directory still contains other files or folders; stop ascending
+                break;
+            }
+            Err(e) => {
+                tracing::warn!(target: "monolai", "Failed to inspect directory '{}': {}", dir.display(), e);
+                break;
+            }
+        }
+    }
+}
+
+async fn is_dir_empty(path: &Path) -> Result<bool, std::io::Error> {
+    let mut entries = tokio::fs::read_dir(path).await?;
+    let mut junk_files = Vec::new();
+
+    while let Some(entry) = entries.next_entry().await? {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str == ".DS_Store" || name_str == "Thumbs.db" {
+            junk_files.push(entry.path());
+        } else {
+            return Ok(false);
+        }
+    }
+
+    // Clean up benign OS metadata files so remove_dir succeeds
+    for junk in junk_files {
+        let _ = tokio::fs::remove_file(junk).await;
+    }
+
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestDirGuard(PathBuf);
+    impl Drop for TestDirGuard {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn create_test_dir(prefix: &str) -> (TestDirGuard, PathBuf) {
+        let path = std::env::temp_dir().join(format!("{}_{}", prefix, uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&path).expect("create_dir_all");
+        (TestDirGuard(path.clone()), path)
+    }
+
+    #[tokio::test]
+    async fn test_clean_empty_parent_dirs_removes_nested_empty_folders() {
+        let (_guard, root) = create_test_dir("monolai_test_clean_empty");
+
+        // Create nested structure: root/custom_author/custom_repo/model.gguf
+        let author_dir = root.join("custom_author");
+        let repo_dir = author_dir.join("custom_repo");
+        tokio::fs::create_dir_all(&repo_dir).await.expect("create_dir_all");
+
+        let file_path = repo_dir.join("model.gguf");
+        tokio::fs::write(&file_path, b"dummy gguf content").await.expect("write");
+
+        // Remove the file itself
+        tokio::fs::remove_file(&file_path).await.expect("remove_file");
+
+        // Now clean empty parent dirs
+        clean_empty_parent_dirs(&file_path, &root).await;
+
+        // Both custom_repo and custom_author should be deleted
+        assert!(!repo_dir.exists(), "custom_repo should be deleted");
+        assert!(!author_dir.exists(), "custom_author should be deleted");
+        assert!(root.exists(), "root models_dir must never be deleted");
+    }
+
+    #[tokio::test]
+    async fn test_clean_empty_parent_dirs_stops_if_sibling_exists() {
+        let (_guard, root) = create_test_dir("monolai_test_clean_sibling");
+
+        // Create structure: root/author/repo/file1.gguf and root/author/repo/file2.gguf
+        let repo_dir = root.join("author").join("repo");
+        tokio::fs::create_dir_all(&repo_dir).await.expect("create_dir_all");
+
+        let file1 = repo_dir.join("file1.gguf");
+        let file2 = repo_dir.join("file2.gguf");
+        tokio::fs::write(&file1, b"1").await.expect("write");
+        tokio::fs::write(&file2, b"2").await.expect("write");
+
+        // Remove only file1
+        tokio::fs::remove_file(&file1).await.expect("remove_file");
+
+        clean_empty_parent_dirs(&file1, &root).await;
+
+        // repo_dir must still exist because file2 is there
+        assert!(repo_dir.exists(), "repo_dir must not be deleted when sibling exists");
+        assert!(file2.exists(), "file2 must still exist");
+    }
+
+    #[tokio::test]
+    async fn test_clean_empty_parent_dirs_preserves_canonical_modality_folder() {
+        let (_guard, root) = create_test_dir("monolai_test_clean_canonical");
+
+        // Create structure: root/text-to-text/author/model.gguf
+        let canonical_dir = root.join("text-to-text");
+        let author_dir = canonical_dir.join("author");
+        tokio::fs::create_dir_all(&author_dir).await.expect("create_dir_all");
+
+        let file_path = author_dir.join("model.gguf");
+        tokio::fs::write(&file_path, b"content").await.expect("write");
+
+        tokio::fs::remove_file(&file_path).await.expect("remove_file");
+
+        clean_empty_parent_dirs(&file_path, &root).await;
+
+        // author should be deleted because it is empty
+        assert!(!author_dir.exists(), "author folder should be deleted");
+        // text-to-text is an immediate canonical folder and must be preserved
+        assert!(canonical_dir.exists(), "text-to-text canonical folder must be preserved");
+    }
+
+    #[tokio::test]
+    async fn test_clean_empty_parent_dirs_handles_ds_store() {
+        let (_guard, root) = create_test_dir("monolai_test_clean_ds_store");
+
+        let folder = root.join("my_author").join("my_model");
+        tokio::fs::create_dir_all(&folder).await.expect("create_dir_all");
+
+        let file_path = folder.join("model.gguf");
+        tokio::fs::write(&file_path, b"content").await.expect("write");
+        // Add a .DS_Store junk file
+        tokio::fs::write(folder.join(".DS_Store"), b"junk").await.expect("write ds store");
+
+        tokio::fs::remove_file(&file_path).await.expect("remove_file");
+
+        clean_empty_parent_dirs(&file_path, &root).await;
+
+        // The folder should be deleted despite having had .DS_Store
+        assert!(!folder.exists(), "folder with .DS_Store should be cleaned up");
     }
 }
