@@ -608,6 +608,7 @@
 		"selectModelPlaceholder": "オーディオモデルを選択...",
 		"voice": "音声",
 		"selectVoice": "音声を選択...",
+		"voiceCloningNotice": "音声クローニングモデル（参照音声）",
 		"format": "音声フォーマット",
 		"selectFormat": "フォーマットを選択...",
 		"speed": "再生速度",

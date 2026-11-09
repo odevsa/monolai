@@ -76,12 +76,14 @@
 
 	let availableVoiceOptions = $state<SelectOption[]>(KOKORO_VOICE_OPTIONS);
 	let isLoadingVoices = $state(false);
+	let currentVoiceType = $state<string>('preset');
 
 	// Dynamically load model voices when selectedModel changes
 	$effect(() => {
 		const modelId = selectedModel;
 		if (!modelId) {
 			availableVoiceOptions = KOKORO_VOICE_OPTIONS;
+			currentVoiceType = 'preset';
 			return;
 		}
 
@@ -93,19 +95,30 @@
 			.getVoices(modelId)
 			.then((res) => {
 				if (!active) return;
-				if (res && res.voices && res.voices.length > 0) {
-					availableVoiceOptions = resolveVoiceOptions(res.voices, res.family, modelId);
-				} else {
-					availableVoiceOptions = resolveVoiceOptions(
-						undefined,
-						currentModel?.architecture,
-						modelId
-					);
+				currentVoiceType = res?.voiceType || res?.voice_type || 'preset';
+				const options =
+					res && res.voices && res.voices.length > 0
+						? resolveVoiceOptions(res.voices, res.family, modelId)
+						: resolveVoiceOptions(undefined, currentModel?.architecture || res?.family, modelId);
+
+				availableVoiceOptions = options;
+
+				// Auto-synchronize selectedVoice to defaultVoice or first valid option
+				const targetDefault = res?.defaultVoice || res?.default_voice;
+				if (targetDefault && options.some((opt) => opt.value === targetDefault)) {
+					selectedVoice = targetDefault;
+				} else if (options.length > 0 && !options.some((opt) => opt.value === selectedVoice)) {
+					selectedVoice = options[0].value;
 				}
 			})
 			.catch(() => {
 				if (!active) return;
-				availableVoiceOptions = resolveVoiceOptions(undefined, currentModel?.architecture, modelId);
+				const options = resolveVoiceOptions(undefined, currentModel?.architecture, modelId);
+				availableVoiceOptions = options;
+				currentVoiceType = 'preset';
+				if (options.length > 0 && !options.some((opt) => opt.value === selectedVoice)) {
+					selectedVoice = options[0].value;
+				}
 			})
 			.finally(() => {
 				if (active) {
@@ -292,6 +305,10 @@
 					{#if isLoadingVoices}
 						<span class="text-[10px] text-[var(--text-muted)] animate-pulse">
 							{t('common.loading')}...
+						</span>
+					{:else if currentVoiceType === 'cloning'}
+						<span class="text-[10px] text-[var(--info-text)]">
+							{t('audio.voiceCloningNotice')}
 						</span>
 					{/if}
 				</div>

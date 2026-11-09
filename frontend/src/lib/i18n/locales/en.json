@@ -253,6 +253,7 @@
 		"selectModelPlaceholder": "Select audio model...",
 		"voice": "Voice",
 		"selectVoice": "Select voice...",
+		"voiceCloningNotice": "Voice cloning model (reference audio)",
 		"format": "Audio Format",
 		"selectFormat": "Select format...",
 		"speed": "Playback Speed",

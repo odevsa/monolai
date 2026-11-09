@@ -608,6 +608,7 @@
 		"selectModelPlaceholder": "Seleccione modelo de audio...",
 		"voice": "Voz",
 		"selectVoice": "Seleccione voz...",
+		"voiceCloningNotice": "Modelo de clonación de voz (audio de referencia)",
 		"format": "Formato de Audio",
 		"selectFormat": "Seleccione formato...",
 		"speed": "Velocidad de Reproducción",

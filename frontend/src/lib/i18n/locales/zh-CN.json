@@ -608,6 +608,7 @@
 		"selectModelPlaceholder": "选择音频模型...",
 		"voice": "声音",
 		"selectVoice": "选择声音...",
+		"voiceCloningNotice": "声音克隆模型（参考音频）",
 		"format": "音频格式",
 		"selectFormat": "选择格式...",
 		"speed": "播放速度",

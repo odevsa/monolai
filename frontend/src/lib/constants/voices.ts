@@ -95,6 +95,86 @@ export const OPENAI_STANDARD_VOICES: SelectOption[] = [
 	{ value: 'default', label: 'Default' }
 ];
 
+export interface Qwen3VoiceMetadata {
+	id: string;
+	name: string;
+	gender: 'female' | 'male';
+	language: string;
+	description: string;
+}
+
+export const QWEN3_VOICES: Qwen3VoiceMetadata[] = [
+	{
+		id: 'Vivian',
+		name: 'Vivian',
+		gender: 'female',
+		language: 'Multilingual / Chinese',
+		description: 'Confident & Cute'
+	},
+	{
+		id: 'Ryan',
+		name: 'Ryan',
+		gender: 'male',
+		language: 'Multilingual / English',
+		description: 'Dramatic & Dynamic'
+	},
+	{
+		id: 'Serena',
+		name: 'Serena',
+		gender: 'female',
+		language: 'Multilingual',
+		description: 'Warm & Gentle'
+	},
+	{
+		id: 'Uncle_Fu',
+		name: 'Uncle Fu',
+		gender: 'male',
+		language: 'Multilingual / Chinese',
+		description: 'Mature Storyteller'
+	},
+	{
+		id: 'Dylan',
+		name: 'Dylan',
+		gender: 'male',
+		language: 'Multilingual / English',
+		description: 'Youthful & Energetic'
+	},
+	{
+		id: 'Eric',
+		name: 'Eric',
+		gender: 'male',
+		language: 'Multilingual / English',
+		description: 'Deep & Resonant'
+	},
+	{
+		id: 'Aiden',
+		name: 'Aiden',
+		gender: 'male',
+		language: 'Multilingual',
+		description: 'Clear & Articulate'
+	},
+	{
+		id: 'Ono_Anna',
+		name: 'Ono Anna',
+		gender: 'female',
+		language: 'Multilingual / Japanese',
+		description: 'Soft & Expressive'
+	},
+	{
+		id: 'Sohee',
+		name: 'Sohee',
+		gender: 'female',
+		language: 'Multilingual / Korean',
+		description: 'Lively & Melodic'
+	}
+];
+
+export const QWEN3_VOICE_OPTIONS: SelectOption[] = QWEN3_VOICES.map((v) => ({
+	value: v.id,
+	label: `${v.name} (${v.gender === 'female' ? 'Female' : 'Male'}, ${v.description})`,
+	sublabel: `${v.language} • ${v.id}`
+}));
+
 const KOKORO_MAP = new Map<string, VoiceMetadata>(KOKORO_VOICES.map((v) => [v.id, v]));
 
 export function formatVoiceOption(voiceId: string): SelectOption {
@@ -105,6 +185,16 @@ export function formatVoiceOption(voiceId: string): SelectOption {
 			value: kokoro.id,
 			label: `${kokoro.flag} ${kokoro.name} (${genderLabel}, ${kokoro.language})`,
 			sublabel: kokoro.id
+		};
+	}
+
+	const qwen = QWEN3_VOICES.find((q) => q.id.toLowerCase() === voiceId.toLowerCase());
+	if (qwen) {
+		const genderLabel = qwen.gender === 'female' ? 'Female' : 'Male';
+		return {
+			value: qwen.id,
+			label: `${qwen.name} (${genderLabel}, ${qwen.description})`,
+			sublabel: `${qwen.language} • ${qwen.id}`
 		};
 	}
 
@@ -138,6 +228,12 @@ export function resolveVoiceOptions(
 	}
 
 	const normalized = `${family || ''} ${modelId || ''}`.toLowerCase();
+	if (normalized.includes('qwen3')) {
+		if (normalized.includes('base') || normalized.includes('clone')) {
+			return [];
+		}
+		return QWEN3_VOICE_OPTIONS;
+	}
 	if (normalized.includes('kokoro')) {
 		return KOKORO_VOICE_OPTIONS;
 	}

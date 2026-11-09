@@ -157,4 +157,8 @@ export interface ModelVoicesResponse {
 	model_id: string;
 	family: string;
 	voices: string[];
+	default_voice?: string;
+	defaultVoice?: string;
+	voice_type?: string;
+	voiceType?: string;
 }

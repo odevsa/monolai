@@ -305,6 +305,20 @@ pub fn get_canonical_kokoro_voices() -> Vec<String> {
     ]
 }
 
+pub fn get_canonical_qwen3_voices() -> Vec<String> {
+    vec![
+        "Vivian".to_string(),
+        "Ryan".to_string(),
+        "Serena".to_string(),
+        "Uncle_Fu".to_string(),
+        "Dylan".to_string(),
+        "Eric".to_string(),
+        "Aiden".to_string(),
+        "Ono_Anna".to_string(),
+        "Sohee".to_string(),
+    ]
+}
+
 pub fn get_openai_standard_voices() -> Vec<String> {
     vec![
         "alloy".to_string(),
@@ -315,6 +329,62 @@ pub fn get_openai_standard_voices() -> Vec<String> {
         "shimmer".to_string(),
         "default".to_string(),
     ]
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TtsModelInfo {
+    pub family: String,
+    pub voice_type: String, // "preset", "cloning", "design", "generic"
+    pub default_voice: Option<String>,
+}
+
+pub fn detect_tts_model_info(identifier: &str, fallback_family: Option<&str>) -> TtsModelInfo {
+    let lower = identifier.to_lowercase();
+    let norm_family = fallback_family.unwrap_or("").to_lowercase();
+
+    if lower.contains("qwen3") || norm_family.contains("qwen3") {
+        if lower.contains("customvoice") || lower.contains("custom_voice") {
+            TtsModelInfo {
+                family: "qwen3_tts".to_string(),
+                voice_type: "preset".to_string(),
+                default_voice: Some("Vivian".to_string()),
+            }
+        } else if lower.contains("voicedesign") || lower.contains("voice_design") {
+            TtsModelInfo {
+                family: "qwen3_tts".to_string(),
+                voice_type: "design".to_string(),
+                default_voice: None,
+            }
+        } else if lower.contains("base") || lower.contains("clone") {
+            TtsModelInfo {
+                family: "qwen3_tts".to_string(),
+                voice_type: "cloning".to_string(),
+                default_voice: None,
+            }
+        } else {
+            TtsModelInfo {
+                family: "qwen3_tts".to_string(),
+                voice_type: "preset".to_string(),
+                default_voice: Some("Vivian".to_string()),
+            }
+        }
+    } else if lower.contains("kokoro") || norm_family.contains("kokoro") {
+        TtsModelInfo {
+            family: "kokoro_tts".to_string(),
+            voice_type: "preset".to_string(),
+            default_voice: Some("af_heart".to_string()),
+        }
+    } else {
+        TtsModelInfo {
+            family: if norm_family.is_empty() || norm_family == "audiocpp" {
+                "generic_tts".to_string()
+            } else {
+                norm_family
+            },
+            voice_type: "preset".to_string(),
+            default_voice: Some("alloy".to_string()),
+        }
+    }
 }
 
 pub fn extract_gguf_voices<P: AsRef<Path>>(path: P) -> Option<Vec<String>> {
@@ -350,8 +420,16 @@ pub fn extract_gguf_voices<P: AsRef<Path>>(path: P) -> Option<Vec<String>> {
         let key = read_string(&mut reader, version)?;
         let val_type = read_u32(&mut reader)?;
 
-        // If key is voices list in metadata
-        let is_voice_key = key == "voices" || key.ends_with(".voices") || key.contains("voice_list");
+        // Check if key relates to voices or speakers list in metadata
+        let lower_key = key.to_lowercase();
+        let is_voice_key = lower_key == "voices"
+            || lower_key == "speakers"
+            || lower_key.ends_with(".voices")
+            || lower_key.ends_with(".speakers")
+            || lower_key.contains("voice_list")
+            || lower_key.contains("speaker_list")
+            || lower_key.contains("speaker_names");
+
         if is_voice_key && val_type == 9 {
             let elem_type = read_u32(&mut reader)?;
             let count = if version >= 2 {
@@ -371,6 +449,34 @@ pub fn extract_gguf_voices<P: AsRef<Path>>(path: P) -> Option<Vec<String>> {
             } else {
                 for _ in 0..count {
                     read_value(&mut reader, elem_type, version)?;
+                }
+            }
+        } else if val_type == 8 {
+            // String metadata: handle JSON specs (e.g. audiocpp.model_spec) or string configs
+            if let Some(s) = read_string(&mut reader, version) {
+                if lower_key.contains("model_spec")
+                    || lower_key.contains("speakers")
+                    || lower_key.contains("voices")
+                    || lower_key.contains("config")
+                {
+                    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.trim()) {
+                        let voice_arr = json_val
+                            .get("voices")
+                            .or_else(|| json_val.get("speakers"))
+                            .or_else(|| json_val.get("speaker_list"))
+                            .or_else(|| json_val.get("speaker_names"));
+
+                        if let Some(serde_json::Value::Array(arr)) = voice_arr {
+                            for item in arr {
+                                if let Some(v_str) = item.as_str() {
+                                    let trimmed = v_str.trim();
+                                    if !trimmed.is_empty() {
+                                        metadata_voices.push(trimmed.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -403,6 +509,14 @@ pub fn extract_gguf_voices<P: AsRef<Path>>(path: P) -> Option<Vec<String>> {
         if let Some(voice_name) = name.strip_prefix("voices.") {
             tensor_voices.push(voice_name.to_string());
         } else if let Some(voice_name) = name.strip_prefix("voice.") {
+            tensor_voices.push(voice_name.to_string());
+        } else if let Some(voice_name) = name.strip_prefix("speakers.") {
+            tensor_voices.push(voice_name.to_string());
+        } else if let Some(voice_name) = name.strip_prefix("speaker.") {
+            tensor_voices.push(voice_name.to_string());
+        } else if let Some(voice_name) = name.strip_prefix("spk.") {
+            tensor_voices.push(voice_name.to_string());
+        } else if let Some(voice_name) = name.strip_prefix("qwen3.speaker.") {
             tensor_voices.push(voice_name.to_string());
         }
     }
@@ -701,5 +815,28 @@ mod tests {
         let openai_voices = get_openai_standard_voices();
         assert_eq!(openai_voices.len(), 7);
         assert!(openai_voices.contains(&"alloy".to_string()));
+
+        let qwen3_voices = get_canonical_qwen3_voices();
+        assert_eq!(qwen3_voices.len(), 9);
+        assert!(qwen3_voices.contains(&"Vivian".to_string()));
+        assert!(qwen3_voices.contains(&"Ryan".to_string()));
+    }
+
+    #[test]
+    fn test_detect_tts_model_info() {
+        let qwen_custom = detect_tts_model_info("qwen3-tts-12hz-1.7b-customvoice-q8_0.gguf", Some("audiocpp"));
+        assert_eq!(qwen_custom.family, "qwen3_tts");
+        assert_eq!(qwen_custom.voice_type, "preset");
+        assert_eq!(qwen_custom.default_voice, Some("Vivian".to_string()));
+
+        let qwen_base = detect_tts_model_info("qwen3-tts-12hz-0.6b-base-q8_0.gguf", Some("audiocpp"));
+        assert_eq!(qwen_base.family, "qwen3_tts");
+        assert_eq!(qwen_base.voice_type, "cloning");
+        assert_eq!(qwen_base.default_voice, None);
+
+        let kokoro = detect_tts_model_info("kokoro-v1.0.gguf", Some("kokoro_tts"));
+        assert_eq!(kokoro.family, "kokoro_tts");
+        assert_eq!(kokoro.voice_type, "preset");
+        assert_eq!(kokoro.default_voice, Some("af_heart".to_string()));
     }
 }

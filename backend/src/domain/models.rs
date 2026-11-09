@@ -192,4 +192,8 @@ pub struct ModelVoicesResponse {
     pub model_id: String,
     pub family: String,
     pub voices: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_voice: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voice_type: Option<String>,
 }

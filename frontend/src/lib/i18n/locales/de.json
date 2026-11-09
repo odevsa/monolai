@@ -608,6 +608,7 @@
 		"selectModelPlaceholder": "Audiomodell auswählen...",
 		"voice": "Stimme",
 		"selectVoice": "Stimme auswählen...",
+		"voiceCloningNotice": "Stimmklonungsmodell (Referenzaudio)",
 		"format": "Audioformat",
 		"selectFormat": "Format auswählen...",
 		"speed": "Wiedergabegeschwindigkeit",

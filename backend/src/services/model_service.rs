@@ -306,13 +306,11 @@ impl ModelService {
         let models_dir = self.resolve_models_dir().await;
         let full_path = models_dir.join(&model.relative_path);
 
-        let family = model.architecture.clone().unwrap_or_else(|| {
-            if model.filename.to_lowercase().contains("kokoro") {
-                "kokoro_tts".to_string()
-            } else {
-                "unknown".to_string()
-            }
-        });
+        let identifier = format!("{} {} {}", model.id, model.filename, model.relative_path);
+        let info = crate::infrastructure::scanner::gguf::detect_tts_model_info(
+            &identifier,
+            model.architecture.as_deref(),
+        );
 
         // 1. Try extracting embedded voices from GGUF file
         let mut voices = if full_path.is_file() && model.format.to_lowercase() == "gguf" {
@@ -327,22 +325,27 @@ impl ModelService {
         };
 
         // 2. Multi-tier fallback if no embedded voices found
+        let mut default_voice = info.default_voice.clone();
         if voices.is_empty() {
-            let is_kokoro = family.to_lowercase().contains("kokoro")
-                || model.filename.to_lowercase().contains("kokoro")
-                || model.name.to_lowercase().contains("kokoro");
-
-            if is_kokoro {
+            if info.family == "qwen3_tts" {
+                if info.voice_type == "preset" {
+                    voices = crate::infrastructure::scanner::gguf::get_canonical_qwen3_voices();
+                }
+            } else if info.family == "kokoro_tts" {
                 voices = crate::infrastructure::scanner::gguf::get_canonical_kokoro_voices();
             } else if model.modality == "text-to-speech" {
                 voices = crate::infrastructure::scanner::gguf::get_openai_standard_voices();
             }
+        } else if default_voice.is_none() && !voices.is_empty() {
+            default_voice = Some(voices[0].clone());
         }
 
         Ok(ModelVoicesResponse {
             model_id: model.id,
-            family,
+            family: info.family,
             voices,
+            default_voice,
+            voice_type: Some(info.voice_type),
         })
     }
 
