@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::ConnectInfo,
+    extract::{ConnectInfo, DefaultBodyLimit},
     http::Request,
     middleware::{self, Next},
     response::{Redirect, Response},
@@ -143,6 +143,7 @@ pub fn create_router(state: AppState) -> Router {
         .merge(swagger_router())
         .fallback(static_handler)
         .layer(middleware::from_fn(request_logging_middleware))
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

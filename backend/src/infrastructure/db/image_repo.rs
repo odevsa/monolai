@@ -135,6 +135,29 @@ mod tests {
 
         let all_after = repo.get_all(50, 0).await.unwrap();
         assert_eq!(all_after.len(), 0);
+
+        // Test inserting large image payload (e.g. 4MB base64 string for 1024x1024)
+        let large_src = format!("data:image/png;base64,{}", "A".repeat(4 * 1024 * 1024));
+        let large_payload = CreateGeneratedImagePayload {
+            id: Some("test-large-1024".to_string()),
+            prompt: "1024x1024 high-res photo".to_string(),
+            negative_prompt: None,
+            model: "flux-schnell".to_string(),
+            size: "1024x1024".to_string(),
+            steps: 30,
+            cfg_scale: 5.0,
+            seed: Some(12345),
+            src: large_src.clone(),
+            generation_time_secs: Some(8.5),
+        };
+
+        let created_large = repo.insert(&large_payload).await.unwrap();
+        assert_eq!(created_large.id, "test-large-1024");
+        assert_eq!(created_large.src.len(), large_src.len());
+
+        let fetched_large = repo.get_by_id("test-large-1024").await.unwrap().expect("should find large image");
+        assert_eq!(fetched_large.size, "1024x1024");
+        assert_eq!(fetched_large.src.len(), large_src.len());
     }
 }
 
